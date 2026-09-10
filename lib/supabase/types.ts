@@ -188,7 +188,7 @@ export type Database = {
           condominio_id: string
           titulo: string
           descricao: string | null
-          status: "rascunho" | "aberta" | "encerrada"
+          status: "rascunho" | "aberta" | "pausada" | "encerrada"
           data_abertura: string | null
           data_encerramento: string | null
           quorum_minimo: number | null
@@ -202,7 +202,7 @@ export type Database = {
           condominio_id: string
           titulo: string
           descricao?: string | null
-          status?: "rascunho" | "aberta" | "encerrada"
+          status?: "rascunho" | "aberta" | "pausada" | "encerrada"
           data_abertura?: string | null
           data_encerramento?: string | null
           quorum_minimo?: number | null
@@ -214,7 +214,7 @@ export type Database = {
         Update: {
           titulo?: string
           descricao?: string | null
-          status?: "rascunho" | "aberta" | "encerrada"
+          status?: "rascunho" | "aberta" | "pausada" | "encerrada"
           data_abertura?: string | null
           data_encerramento?: string | null
           quorum_minimo?: number | null

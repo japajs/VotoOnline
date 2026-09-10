@@ -287,13 +287,17 @@ export async function updateAssembleiaCompleta(
 // no condomínio pode fazer o peso da unidade ser contado duas vezes (uma no
 // voto do dono antigo, outra no voto do novo dono) na mesma apuração — ambos
 // calculam o peso "ao vivo" a partir das unidades atuais no momento do voto.
+// "Pausada" conta como aberta aqui de propósito: é uma assembleia em
+// andamento só temporariamente sem receber voto novo, não um estado seguro
+// pra mexer em unidade/critério de peso — só "rascunho" (nenhum voto ainda)
+// e "encerrada" (apuração já congelada) são seguros.
 export async function hasAssembleiaAberta(condominioId: string): Promise<boolean> {
   const db = createServerClient()
   const { data, error } = await db
     .from("assembleias")
     .select("id")
     .eq("condominio_id", condominioId)
-    .eq("status", "aberta")
+    .in("status", ["aberta", "pausada"])
     .limit(1)
 
   if (error) throw new Error(error.message)

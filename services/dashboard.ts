@@ -5,8 +5,9 @@ import type { AssembleiaStatus, CondoDashboardStats, AssembleiaRecente, Condomin
 // encerradas, para o operador ver primeiro o que ainda exige ação.
 const STATUS_PRIORIDADE: Record<AssembleiaStatus, number> = {
   aberta: 0,
-  rascunho: 1,
-  encerrada: 2,
+  pausada: 1,
+  rascunho: 2,
+  encerrada: 3,
 }
 
 // `condominioIds` filtra o resultado quando informado — usado para usuários
@@ -90,7 +91,9 @@ export async function getResumoPorCondominio(condominioIds?: string[]): Promise<
   }
   const abertasCount = new Map<string, number>()
   for (const r of (assembRes.data ?? []) as { condominio_id: string; status: AssembleiaStatus }[]) {
-    if (r.status === "aberta") {
+    // Pausada conta como "aberta" aqui — ainda é uma assembleia em
+    // andamento, só temporariamente sem receber voto novo.
+    if (r.status === "aberta" || r.status === "pausada") {
       abertasCount.set(r.condominio_id, (abertasCount.get(r.condominio_id) ?? 0) + 1)
     }
   }

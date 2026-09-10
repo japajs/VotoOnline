@@ -150,7 +150,7 @@ export interface Proprietario {
 
 // ─── Assembleia ────────────────────────────────────────────────────────────
 
-export type AssembleiaStatus = "rascunho" | "aberta" | "encerrada"
+export type AssembleiaStatus = "rascunho" | "aberta" | "pausada" | "encerrada"
 export type AssembleiaRespostaValor = "Sim" | "Não" | "Abstenção"
 export type PautaTipo = "sim_nao" | "multipla_escolha"
 // Ciclo de vida da pauta, independente do status da assembleia: "aberta" é o

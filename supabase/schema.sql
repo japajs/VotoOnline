@@ -184,7 +184,7 @@ create table if not exists assembleias (
   titulo              text          not null,
   descricao           text,
   status              text          not null default 'rascunho'
-                                    check (status in ('rascunho', 'aberta', 'encerrada')),
+                                    check (status in ('rascunho', 'aberta', 'pausada', 'encerrada')),
   data_abertura       timestamptz,
   data_encerramento   timestamptz,
   quorum_minimo       numeric(5,4)  check (quorum_minimo is null or (quorum_minimo > 0 and quorum_minimo <= 1)),
@@ -511,3 +511,15 @@ alter table unidade_coproprietarios enable row level security;
 
 delete from configuracoes
   where chave in ('votacao_resposta_unica', 'votacao_ponderada', 'votacao_permite_abstencao');
+
+-- ============================================================
+-- Migração — status "pausada": permite suspender temporariamente o
+-- recebimento de novos votos (sem encerrar de vez, sem mexer nos votos já
+-- registrados) e depois retomar. Diferente de "encerrada" (definitivo,
+-- apura resultado) e de "rascunho" (antes de qualquer voto) — "pausada"
+-- só existe no meio de uma assembleia já aberta. Execute no SQL Editor.
+-- ============================================================
+
+alter table assembleias drop constraint if exists assembleias_status_check;
+alter table assembleias add constraint assembleias_status_check
+  check (status in ('rascunho', 'aberta', 'pausada', 'encerrada'));

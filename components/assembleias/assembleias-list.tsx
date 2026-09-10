@@ -2,7 +2,16 @@
 
 import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { ClipboardList, BarChart3, Trash2, LockKeyhole, Unlock, RotateCcw } from "lucide-react"
+import {
+  ClipboardList,
+  BarChart3,
+  Trash2,
+  LockKeyhole,
+  Unlock,
+  RotateCcw,
+  Pause,
+  Play,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -34,12 +43,14 @@ interface AssembleiasListProps {
 const STATUS_LABEL: Record<AssembleiaStatus, string> = {
   rascunho: "Rascunho",
   aberta: "Aberta",
+  pausada: "Pausada",
   encerrada: "Encerrada",
 }
 
 const STATUS_CLASS: Record<AssembleiaStatus, string> = {
   rascunho: "bg-muted text-muted-foreground",
   aberta: "bg-emerald-500/15 text-emerald-500",
+  pausada: "bg-amber-500/15 text-amber-500",
   encerrada: "bg-rose-500/15 text-rose-500",
 }
 
@@ -102,9 +113,7 @@ function AssembleiaRow({
     startTransition(async () => {
       const result = await updateAssembleiaStatusAction(assembleia.id, condominioId, nextStatus)
       if (result.success) {
-        toast.success(
-          `Assembleia ${nextStatus === "aberta" ? "aberta" : "encerrada"} com sucesso.`
-        )
+        toast.success(`Assembleia ${STATUS_LABEL[nextStatus].toLowerCase()} com sucesso.`)
       } else {
         toast.error(result.error)
       }
@@ -180,6 +189,30 @@ function AssembleiaRow({
           </Button>
         )}
         {assembleia.status === "aberta" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleStatusChange("pausada")}
+            disabled={isPending}
+            className="gap-1.5 px-2.5 text-xs text-amber-500 hover:text-amber-600"
+          >
+            <Pause className="h-4 w-4" />
+            Pausar
+          </Button>
+        )}
+        {assembleia.status === "pausada" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleStatusChange("aberta")}
+            disabled={isPending}
+            className="gap-1.5 px-2.5 text-xs text-emerald-500 hover:text-emerald-600"
+          >
+            <Play className="h-4 w-4" />
+            Retomar
+          </Button>
+        )}
+        {(assembleia.status === "aberta" || assembleia.status === "pausada") && (
           <Button
             variant="ghost"
             size="sm"

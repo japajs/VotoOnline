@@ -520,7 +520,13 @@ export function ApuracaoPDF({
         {assembleia.status !== "encerrada" ? (
           <View style={s.avisoParcial}>
             <Text style={s.avisoParcialText}>
-              ⚠ RESULTADO PARCIAL — VOTAÇÃO {assembleia.status === "aberta" ? "EM ANDAMENTO" : "AINDA NÃO INICIADA"}, SUJEITO A ALTERAÇÃO
+              ⚠ RESULTADO PARCIAL — VOTAÇÃO{" "}
+              {assembleia.status === "aberta"
+                ? "EM ANDAMENTO"
+                : assembleia.status === "pausada"
+                  ? "PAUSADA"
+                  : "AINDA NÃO INICIADA"}
+              , SUJEITO A ALTERAÇÃO
             </Text>
           </View>
         ) : null}

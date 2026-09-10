@@ -35,7 +35,9 @@ export function pctStr(n: number, total: number): string {
 
 export function statusLabelPT(status: string): string {
   return (
-    { rascunho: "Rascunho", aberta: "Aberta", encerrada: "Encerrada" }[status] ?? status
+    { rascunho: "Rascunho", aberta: "Aberta", pausada: "Pausada", encerrada: "Encerrada" }[
+      status
+    ] ?? status
   )
 }
 

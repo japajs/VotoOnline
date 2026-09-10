@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
-import { CheckCircle2, Clock } from "lucide-react"
+import { CheckCircle2, Clock, PauseCircle } from "lucide-react"
 import {
   getAssembleiaSendByToken,
   getRespostasBySendId,
@@ -247,6 +247,33 @@ export default async function PublicVotoPage({ params }: Props) {
               />
             </div>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Situação 5: Pausada + ainda não votou ──────────────────────────────────
+  // Suspensão temporária de novos votos (ex.: síndico corrigindo algo),
+  // diferente de "encerrada" (definitivo) — quem já votou nunca cai aqui,
+  // continua vendo a confirmação normal (Situação 3 acima).
+  if (status === "pausada") {
+    return (
+      <div className="min-h-screen bg-background">
+        {header}
+        <div className="mx-auto max-w-2xl px-4 py-10">
+          {heading}
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-border/60 bg-card px-6 py-10 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/10 ring-1 ring-amber-400/20">
+              <PauseCircle className="h-7 w-7 text-amber-500" />
+            </div>
+            <div>
+              <p className="font-medium">Votação pausada temporariamente</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                O síndico suspendeu o recebimento de novos votos por um momento. Volte a este
+                link mais tarde para votar.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     )

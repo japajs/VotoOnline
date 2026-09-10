@@ -21,12 +21,14 @@ interface RecentSurveysTableProps {
 const STATUS_LABEL: Record<AssembleiaStatus, string> = {
   rascunho: "Rascunho",
   aberta: "Aberta",
+  pausada: "Pausada",
   encerrada: "Encerrada",
 }
 
 const STATUS_CLASS: Record<AssembleiaStatus, string> = {
   rascunho: "bg-muted text-muted-foreground",
   aberta: "bg-emerald-500/15 text-emerald-500",
+  pausada: "bg-amber-500/15 text-amber-500",
   encerrada: "bg-rose-500/15 text-rose-500",
 }
 
