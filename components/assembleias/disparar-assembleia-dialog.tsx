@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState, useTransition } from "react"
-import { Send, Loader2, CheckCircle2, AlertCircle, Paperclip, X, FileText } from "lucide-react"
+import { useMemo, useRef, useState, useTransition } from "react"
+import { Send, Loader2, CheckCircle2, AlertCircle, Paperclip, X, FileText, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -13,7 +13,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { enviarAssembleiaAction, type EnviarAssembleiaResult } from "@/app/actions/assembleia-votos"
+import { normalizarBusca } from "@/lib/format"
+import { formatUnidade } from "@/lib/unidade-format"
 import type { Assembleia, Proprietario } from "@/types"
 
 type Step = "compose" | "sending" | "done"
@@ -41,9 +44,24 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
   const [result, setResult] = useState<EnviarAssembleiaResult | null>(null)
   const [isPending, startTransition] = useTransition()
   const [anexo, setAnexo] = useState<File | null>(null)
+  const [busca, setBusca] = useState("")
   const anexoInputRef = useRef<HTMLInputElement>(null)
 
-  const allSelected = proprietarios.length > 0 && proprietarios.every((p) => selectedIds.has(p.id))
+  const proprietariosFiltrados = useMemo(() => {
+    const termo = normalizarBusca(busca.trim())
+    if (!termo) return proprietarios
+    return proprietarios.filter((p) => {
+      const alvo = [
+        p.nome,
+        p.email ?? "",
+        ...(p.unidades ?? []).flatMap((u) => [u.numero, u.bloco ?? ""]),
+      ].join(" ")
+      return normalizarBusca(alvo).includes(termo)
+    })
+  }, [proprietarios, busca])
+
+  const allSelected =
+    proprietariosFiltrados.length > 0 && proprietariosFiltrados.every((p) => selectedIds.has(p.id))
   const pautaCount = assembleia.pautas?.length ?? 0
 
   function toggleProprietario(id: string) {
@@ -54,8 +72,20 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
     })
   }
 
+  // Seleciona/desmarca só quem está visível com o filtro atual — quem já
+  // estava selecionado fora do filtro (de uma busca anterior) permanece
+  // selecionado.
   function toggleAll() {
-    setSelectedIds(allSelected ? new Set() : new Set(proprietarios.map((p) => p.id)))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      const idsFiltrados = proprietariosFiltrados.map((p) => p.id)
+      if (allSelected) {
+        idsFiltrados.forEach((id) => next.delete(id))
+      } else {
+        idsFiltrados.forEach((id) => next.add(id))
+      }
+      return next
+    })
   }
 
   function reset() {
@@ -63,6 +93,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
     setSelectedIds(new Set())
     setResult(null)
     setAnexo(null)
+    setBusca("")
   }
 
   function handleOpenChange(next: boolean) {
@@ -134,6 +165,17 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
 
         {(step === "compose" || step === "sending") && (
           <div className="max-h-[60vh] space-y-3 overflow-y-auto px-1">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, e-mail ou unidade…"
+                className="border-border/60 bg-background pl-10"
+                aria-label="Buscar proprietário"
+              />
+            </div>
+
             <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
               <label className="flex cursor-pointer items-center gap-2.5 border-b border-border/40 bg-muted/30 px-3 py-2 hover:bg-accent/30">
                 <input
@@ -148,13 +190,16 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
               </label>
 
               <div className="max-h-56 divide-y divide-border/30 overflow-y-auto">
-                {proprietarios.length === 0 ? (
+                {proprietariosFiltrados.length === 0 ? (
                   <p className="px-3 py-4 text-center text-sm text-muted-foreground">
-                    Nenhum proprietário cadastrado.
+                    {proprietarios.length === 0
+                      ? "Nenhum proprietário cadastrado."
+                      : "Nenhum proprietário encontrado."}
                   </p>
                 ) : (
-                  proprietarios.map((p) => {
+                  proprietariosFiltrados.map((p) => {
                     const peso = p.unidades?.length ?? 0
+                    const unidades = (p.unidades ?? []).map(formatUnidade).join(", ")
                     return (
                       <label
                         key={p.id}
@@ -168,7 +213,10 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{p.nome}</p>
-                          <p className="truncate text-xs text-muted-foreground">{p.email}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {p.email}
+                            {unidades && ` · ${unidades}`}
+                          </p>
                         </div>
                         <span className="shrink-0 text-xs text-muted-foreground">
                           {peso} {peso === 1 ? "apto" : "aptos"}

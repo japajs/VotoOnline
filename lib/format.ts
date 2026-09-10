@@ -62,3 +62,16 @@ export function normalizarCelular(valor: string): string | null {
 export function validarEmailFormato(valor: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor.trim())
 }
+
+// Remove acentos, hífens e espaços, e baixa a caixa — assim buscar "joao",
+// "C0502", "C-0502" ou "c 0502" encontra "João" ou a unidade "C-0502"
+// independente de como foi digitado. Compartilhada entre toda busca de
+// proprietário/unidade na aplicação (lista de proprietários, disparo de
+// assembleia etc.).
+export function normalizarBusca(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[-\s]/g, "")
+    .toLowerCase()
+}

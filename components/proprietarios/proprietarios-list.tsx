@@ -12,7 +12,7 @@ import {
 } from "@/app/actions/proprietarios"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
-import { formatCelular } from "@/lib/format"
+import { formatCelular, normalizarBusca } from "@/lib/format"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import type { Proprietario, CriterioPeso } from "@/types"
 
@@ -35,20 +35,6 @@ type Ordenacao = "nome" | "unidade"
 // grandes (lg+) — é o que garante nome/e-mail/celular/peso/ações alinhados
 // verticalmente mesmo com textos de tamanhos bem diferentes entre linhas.
 const GRID_COLUNAS = "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_140px_64px_72px]"
-
-// Remove acentos e caixa para a busca não exigir digitação exata
-// (ex.: "joao" encontra "João").
-// Remove acentos, hífens e espaços — assim buscar "C0502", "C-0502" ou
-// "c 0502" encontra a mesma unidade independente de como foi digitado
-// (padronização de unidades, item 7), sem restringir buscas por nome (só
-// deixa a comparação mais permissiva a espaços/hífens em qualquer campo).
-function normalizarBusca(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[-\s]/g, "")
-    .toLowerCase()
-}
 
 export function ProprietariosList({
   proprietarios,
