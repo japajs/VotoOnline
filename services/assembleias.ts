@@ -1,5 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server"
-import { createPautasBatch, hasVotoPauta } from "@/services/pautas"
+import { createPautasBatch } from "@/services/pautas"
 import type { Assembleia, AssembleiaStatus, Pauta, PautaOpcao, PautaStatus } from "@/types"
 
 type JoinedPautaOpcao = {
@@ -317,11 +317,16 @@ export async function updateAssembleiaStatus(
   // aqui.
   const { data: atual, error: fetchError } = await db
     .from("assembleias")
-    .select("status")
+    .select("status, data_abertura, data_encerramento")
     .eq("id", id)
     .single()
   if (fetchError) throw new Error(fetchError.message)
-  if ((atual as { status: AssembleiaStatus }).status === "encerrada") {
+  const atualRow = atual as {
+    status: AssembleiaStatus
+    data_abertura: string | null
+    data_encerramento: string | null
+  }
+  if (atualRow.status === "encerrada") {
     throw new Error("Assembleia encerrada não pode ser reaberta.")
   }
 
@@ -330,10 +335,23 @@ export async function updateAssembleiaStatus(
     status: AssembleiaStatus
     updated_at: string
     data_abertura?: string
-    data_encerramento?: string
+    data_encerramento?: string | null
   } = { status, updated_at: now }
 
-  if (status === "aberta") updates.data_abertura = now
+  // "Retomar" (pausada → aberta) passa por aqui também, não só a 1ª
+  // abertura (rascunho → aberta) — por isso data_abertura só é definida
+  // quando ainda não existia, senão cada pausa/retomada reescreveria a
+  // data oficial de abertura mostrada em relatórios/ata. Pelo mesmo motivo,
+  // um prazo (data_encerramento) já vencido durante a pausa é limpo ao
+  // retomar — senão o fechamento automático por prazo reencerraria a
+  // assembleia sozinho assim que alguém abrisse o link de voto (mesmo
+  // raciocínio de reabrirAssembleia, abaixo).
+  if (status === "aberta") {
+    if (!atualRow.data_abertura) updates.data_abertura = now
+    if (atualRow.data_encerramento && new Date(atualRow.data_encerramento) < new Date(now)) {
+      updates.data_encerramento = null
+    }
+  }
   if (status === "encerrada") updates.data_encerramento = now
 
   const { error } = await db.from("assembleias").update(updates).eq("id", id)
@@ -401,14 +419,37 @@ export async function reabrirAssembleia(id: string): Promise<void> {
     .eq("assembleia_id", id)
   if (pautasError) throw new Error(pautasError.message)
 
-  await Promise.all(
-    (pautas ?? []).map(async (p) => {
-      const pautaId = (p as { id: string }).id
-      const status: PautaStatus = (await hasVotoPauta(pautaId)) ? "em_votacao" : "aberta"
-      const { error: updateError } = await db.from("pautas").update({ status }).eq("id", pautaId)
-      if (updateError) throw new Error(updateError.message)
-    })
-  )
+  const pautaIds = (pautas ?? []).map((p) => (p as { id: string }).id)
+  if (pautaIds.length === 0) return
+
+  // Uma única consulta pra achar quem já tem voto, em vez de um
+  // hasVotoPauta por pauta — e dois updates em lote (não um por pauta),
+  // reduzindo tanto o número de idas ao banco quanto a janela de uma falha
+  // parcial deixar pautas num status inconsistente com a assembleia já
+  // reaberta.
+  const { data: respostas, error: respostasError } = await db
+    .from("assembleia_respostas")
+    .select("pauta_id")
+    .in("pauta_id", pautaIds)
+  if (respostasError) throw new Error(respostasError.message)
+
+  const idsComVoto = [...new Set((respostas ?? []).map((r) => (r as { pauta_id: string }).pauta_id))]
+  const idsSemVoto = pautaIds.filter((pid) => !idsComVoto.includes(pid))
+
+  if (idsComVoto.length > 0) {
+    const { error: emVotacaoError } = await db
+      .from("pautas")
+      .update({ status: "em_votacao" satisfies PautaStatus })
+      .in("id", idsComVoto)
+    if (emVotacaoError) throw new Error(emVotacaoError.message)
+  }
+  if (idsSemVoto.length > 0) {
+    const { error: abertaError } = await db
+      .from("pautas")
+      .update({ status: "aberta" satisfies PautaStatus })
+      .in("id", idsSemVoto)
+    if (abertaError) throw new Error(abertaError.message)
+  }
 }
 
 // Quantos participantes desta assembleia já registraram pelo menos 1 voto —

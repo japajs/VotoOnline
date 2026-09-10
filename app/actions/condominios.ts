@@ -95,7 +95,7 @@ export async function updateCondominioInfoAction(
     return {
       success: false,
       error:
-        "Este condomínio tem uma assembleia aberta — não é possível trocar o critério de peso agora, pois mudaria o resultado da votação em andamento.",
+        "Este condomínio tem uma assembleia aberta ou pausada — não é possível trocar o critério de peso agora, pois mudaria o resultado da votação em andamento.",
     }
   }
 

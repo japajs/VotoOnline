@@ -375,12 +375,27 @@ export async function createAssembleiaRespostas(
   const outorgantesIds = await getOutorgantesIds(send.assembleia_id, send.proprietario_id)
   let unidadesDelegadas: { numero: string; bloco: string | null; fracao_ideal: number | null }[] = []
   if (outorgantesIds.length > 0) {
-    const { data: unidadesOutorgantes, error: outorgantesError } = await db
-      .from("unidades")
-      .select("numero, bloco, fracao_ideal")
-      .in("proprietario_id", outorgantesIds)
-    if (outorgantesError) throw new Error(outorgantesError.message)
-    unidadesDelegadas = unidadesOutorgantes ?? []
+    // Defesa em profundidade: mesmo que uma procuração já exista de antes
+    // da checagem em createProcuracao (services/procuracoes.ts), o peso de
+    // um outorgante inadimplente nunca entra na soma — "inadimplente não
+    // vota" vale mesmo por procuração, sem exceção.
+    const { data: outorgantesProps, error: outorgantesPropsError } = await db
+      .from("proprietarios")
+      .select("id, inadimplente")
+      .in("id", outorgantesIds)
+    if (outorgantesPropsError) throw new Error(outorgantesPropsError.message)
+    const outorgantesValidos = ((outorgantesProps ?? []) as { id: string; inadimplente: boolean }[])
+      .filter((p) => !p.inadimplente)
+      .map((p) => p.id)
+
+    if (outorgantesValidos.length > 0) {
+      const { data: unidadesOutorgantes, error: outorgantesError } = await db
+        .from("unidades")
+        .select("numero, bloco, fracao_ideal")
+        .in("proprietario_id", outorgantesValidos)
+      if (outorgantesError) throw new Error(outorgantesError.message)
+      unidadesDelegadas = unidadesOutorgantes ?? []
+    }
   }
 
   const unidades = [...unidadesProprias, ...unidadesDelegadas]

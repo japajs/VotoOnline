@@ -336,7 +336,7 @@ export async function transferUnidadeAction(input: {
       return {
         success: false,
         error:
-          "Não é possível transferir unidades enquanto houver uma assembleia aberta neste condomínio. Aguarde o encerramento da votação.",
+          "Não é possível transferir unidades enquanto houver uma assembleia aberta ou pausada neste condomínio. Aguarde o encerramento da votação.",
       }
     }
 

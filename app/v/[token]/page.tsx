@@ -211,10 +211,17 @@ export default async function PublicVotoPage({ params }: Props) {
             </div>
             <div className="w-full rounded-lg border border-border/40 bg-muted/30 px-4 py-3 text-sm">
               <p className="font-medium text-foreground">Status da assembleia</p>
-              <p className="mt-1 flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                Em andamento
-              </p>
+              {status === "pausada" ? (
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                  Pausada temporariamente
+                </p>
+              ) : (
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                  Em andamento
+                </p>
+              )}
               <p className="mt-2 text-xs text-muted-foreground">
                 O resultado pode mudar até o encerramento — o boletim abaixo é parcial.
               </p>
