@@ -104,10 +104,10 @@ create table if not exists rate_limits (
 -- assembleia_respostas.peso / assembleia_sends.*_snapshot (ver abaixo).
 -- ============================================================
 
--- inadimplente: campo puramente informativo (Fase 4 da auditoria de
--- assembleias) — um selo pro síndico ver quem está em débito. NUNCA
--- bloqueia voto/participação: se a convenção do condomínio restringe voto
--- de inadimplente, essa decisão continua sendo humana, não do sistema.
+-- inadimplente: bloqueia voto (Código Civil, art. 1.335, §único /
+-- convenção condominial) — ver validarVotoOuFalhar em
+-- services/assembleia-votos.ts. Marcado manualmente pelo síndico, não
+-- calculado a partir de nenhuma cobrança/boleto.
 create table if not exists proprietarios (
   id                    uuid        primary key default uuid_generate_v4(),
   condominio_id         uuid        not null references condominios(id) on delete cascade,
@@ -448,7 +448,7 @@ alter table assembleias add constraint assembleias_quorum_minimo_2a_check
 
 -- ============================================================
 -- Migração — Fase 4 da auditoria de assembleias: inadimplência
--- (campo informativo, não bloqueia voto). Execute no SQL Editor.
+-- (bloqueia voto — Código Civil). Execute no SQL Editor.
 -- ============================================================
 
 alter table proprietarios add column if not exists inadimplente boolean not null default false;

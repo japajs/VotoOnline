@@ -248,6 +248,7 @@ type SendComProprietarioCompleto = {
     cpf: string | null
     email: string | null
     telefone: string | null
+    inadimplente: boolean
     unidades: { numero: string; bloco: string | null; fracao_ideal: number | null }[] | null
   } | null
   assembleias: { status: AssembleiaStatus; condominios: { criterio_peso: CriterioPeso } | null } | null
@@ -277,13 +278,21 @@ async function validarVotoOuFalhar(
   assembleiaId: string,
   proprietarioId: string,
   status: AssembleiaStatus,
-  pautaIds: string[]
+  pautaIds: string[],
+  inadimplente: boolean
 ): Promise<void> {
   if (status !== "aberta") {
     throw new Error("Esta assembleia não está aberta para votação.")
   }
   if (pautaIds.length === 0) {
     throw new Error("Nenhuma pauta para registrar.")
+  }
+
+  // Código Civil, art. 1.335, §único / convenções condominiais: proprietário
+  // inadimplente não vota. Vale tanto pro link de autoatendimento quanto pro
+  // lançamento manual do síndico — sem exceção nos dois.
+  if (inadimplente) {
+    throw new Error("Proprietário inadimplente não pode votar.")
   }
 
   // Auditoria de assembleias — Fase 8: quem outorgou procuração pra outro
@@ -336,7 +345,7 @@ export async function createAssembleiaRespostas(
   const { data: sendRow, error: sendError } = await db
     .from("assembleia_sends")
     .select(
-      "assembleia_id, proprietario_id, votado_em, proprietarios(nome, cpf, email, telefone, unidades(numero, bloco, fracao_ideal)), assembleias(status, condominios(criterio_peso))"
+      "assembleia_id, proprietario_id, votado_em, proprietarios(nome, cpf, email, telefone, inadimplente, unidades(numero, bloco, fracao_ideal)), assembleias(status, condominios(criterio_peso))"
     )
     .eq("id", sendId)
     .single()
@@ -351,7 +360,8 @@ export async function createAssembleiaRespostas(
     send.assembleia_id,
     send.proprietario_id,
     send.assembleias?.status ?? "encerrada",
-    respostas.map((r) => r.pauta_id)
+    respostas.map((r) => r.pauta_id),
+    proprietario?.inadimplente ?? false
   )
 
   const unidadesProprias = proprietario?.unidades ?? []

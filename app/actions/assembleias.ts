@@ -6,6 +6,7 @@ import {
   deleteAssembleia,
   updateAssembleiaStatus,
   updateAssembleiaCompleta,
+  reabrirAssembleia,
 } from "@/services/assembleias"
 import {
   createPautasBatch,
@@ -439,6 +440,29 @@ export async function updateAssembleiaStatusAction(
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao atualizar status.",
+    }
+  }
+}
+
+// Reabertura excepcional (ver reabrirAssembleia em services/assembleias.ts)
+// — mesma checagem de perfil/acesso de updateAssembleiaStatusAction, mas
+// separada porque bypassa a trava normal de "encerrada é definitiva".
+export async function reabrirAssembleiaAction(
+  id: string,
+  condominioId: string
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    await reabrirAssembleia(id)
+    revalidatePath(`${ROUTES.condominios}/${condominioId}`)
+    return { success: true }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao reabrir assembleia.",
     }
   }
 }

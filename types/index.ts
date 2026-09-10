@@ -139,10 +139,8 @@ export interface Proprietario {
   cpf: string | null
   telefone: string | null
   observacoes: string | null
-  // Auditoria de assembleias — Fase 4: campo puramente informativo, um
-  // selo pro síndico ver quem está em débito. Nunca bloqueia voto — se a
-  // convenção do condomínio restringe voto de inadimplente, é decisão
-  // humana, não do sistema.
+  // Bloqueia voto (Código Civil, art. 1.335, §único / convenção
+  // condominial) — ver validarVotoOuFalhar em services/assembleia-votos.ts.
   inadimplente: boolean
   historico_alteracoes: HistoricoAlteracao[]
   created_at: string

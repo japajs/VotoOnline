@@ -378,6 +378,9 @@ export async function iniciarVotoManualAction(
     if (!proprietario || proprietario.condominio_id !== condominioId) {
       return { success: false, error: "Proprietário não encontrado neste condomínio." }
     }
+    if (proprietario.inadimplente) {
+      return { success: false, error: "Proprietário inadimplente não pode votar." }
+    }
 
     const send = await upsertAssembleiaSend({
       assembleia_id: assembleiaId,

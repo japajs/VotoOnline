@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { ClipboardList, BarChart3, Trash2, LockKeyhole, Unlock } from "lucide-react"
+import { ClipboardList, BarChart3, Trash2, LockKeyhole, Unlock, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -17,7 +17,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { DispararAssembleiaDialog } from "./disparar-assembleia-dialog"
-import { deleteAssembleiaAction, updateAssembleiaStatusAction } from "@/app/actions/assembleias"
+import {
+  deleteAssembleiaAction,
+  updateAssembleiaStatusAction,
+  reabrirAssembleiaAction,
+} from "@/app/actions/assembleias"
 import { ROUTES } from "@/lib/constants"
 import type { Assembleia, AssembleiaStatus, Proprietario } from "@/types"
 
@@ -75,14 +79,16 @@ function AssembleiaRow({
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [encerrarOpen, setEncerrarOpen] = useState(false)
+  const [reabrirOpen, setReabrirOpen] = useState(false)
   const pautaCount = assembleia.pautas?.length ?? 0
 
-  // Achado de auditoria: foco inicial nos dois diálogos abaixo é o botão
-  // "Cancelar", não a ação destrutiva — quem confirmar sem querer (Enter,
-  // toque duplo etc.) cancela por padrão, precisa mover pra excluir/encerrar
-  // de propósito.
+  // Achado de auditoria: foco inicial nos diálogos abaixo é o botão
+  // "Cancelar", não a ação destrutiva/excepcional — quem confirmar sem
+  // querer (Enter, toque duplo etc.) cancela por padrão, precisa mover pra
+  // excluir/encerrar/reabrir de propósito.
   const cancelDeleteRef = useRef<HTMLButtonElement>(null)
   const cancelEncerrarRef = useRef<HTMLButtonElement>(null)
+  const cancelReabrirRef = useRef<HTMLButtonElement>(null)
 
   function handleDelete() {
     setDeleteOpen(false)
@@ -112,6 +118,21 @@ function AssembleiaRow({
   function handleEncerrar() {
     setEncerrarOpen(false)
     handleStatusChange("encerrada")
+  }
+
+  // Correção excepcional (ver reabrirAssembleia em services/assembleias.ts)
+  // — usa uma action própria, não handleStatusChange, porque bypassa a
+  // trava normal de "encerrada é definitiva".
+  function handleReabrir() {
+    setReabrirOpen(false)
+    startTransition(async () => {
+      const result = await reabrirAssembleiaAction(assembleia.id, condominioId)
+      if (result.success) {
+        toast.success("Assembleia reaberta.")
+      } else {
+        toast.error(result.error)
+      }
+    })
   }
 
   return (
@@ -168,6 +189,18 @@ function AssembleiaRow({
           >
             <LockKeyhole className="h-4 w-4" />
             Encerrar
+          </Button>
+        )}
+        {assembleia.status === "encerrada" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setReabrirOpen(true)}
+            disabled={isPending}
+            className="gap-1.5 px-2.5 text-xs text-amber-500 hover:text-amber-600"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reabrir
           </Button>
         )}
 
@@ -230,10 +263,10 @@ function AssembleiaRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Encerrar assembleia?</AlertDialogTitle>
               <AlertDialogDescription>
-                <strong>"{assembleia.titulo}"</strong> deixará de aceitar novos votos e{" "}
-                <strong>não poderá ser reaberta depois</strong>. Quem ainda não votou fica de fora
-                definitivamente. Confira se todos que precisavam votar já votaram antes de
-                continuar.
+                <strong>"{assembleia.titulo}"</strong> deixará de aceitar novos votos. Reabrir
+                depois é possível, mas só deve ser usado em caráter excepcional pra corrigir um
+                problema pontual — não é um fluxo normal. Confira se todos que precisavam votar
+                já votaram antes de continuar.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -249,6 +282,26 @@ function AssembleiaRow({
                 className="active:border-destructive active:bg-destructive active:text-destructive-foreground"
               >
                 Encerrar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={reabrirOpen} onOpenChange={setReabrirOpen}>
+          <AlertDialogContent initialFocus={cancelReabrirRef}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reabrir assembleia?</AlertDialogTitle>
+              <AlertDialogDescription>
+                <strong>"{assembleia.titulo}"</strong> volta para "Aberta" e todas as pautas voltam
+                a aceitar voto — inclusive uma apuração já divulgada pode mudar enquanto estiver
+                reaberta. Use só pra corrigir um problema pontual (ex.: remover um voto indevido) e
+                encerre de novo assim que terminar.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel ref={cancelReabrirRef}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction variant="outline" onClick={handleReabrir}>
+                Reabrir
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

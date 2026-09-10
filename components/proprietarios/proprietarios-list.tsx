@@ -253,12 +253,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
       <div className={`grid grid-cols-1 gap-1 lg:items-center lg:gap-3 ${GRID_COLUNAS}`}>
         <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold lg:font-medium">
           <span className="truncate">{proprietario.nome}</span>
-          {/* Auditoria de assembleias — Fase 4: selo puramente informativo,
-              nunca impede votar. */}
           {proprietario.inadimplente && (
             <span
               className="shrink-0 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
-              title="Inadimplente (informativo — não impede votar)"
+              title="Inadimplente — não pode votar"
             >
               Inadimplente
             </span>

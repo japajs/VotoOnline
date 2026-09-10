@@ -462,9 +462,6 @@ export function EditarProprietarioDialog({
                 />
               </div>
 
-              {/* Auditoria de assembleias — Fase 4: campo puramente
-                  informativo, um selo pro síndico — nunca bloqueia voto ou
-                  participação. */}
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -474,7 +471,7 @@ export function EditarProprietarioDialog({
                 />
                 Inadimplente
                 <span className="text-xs font-normal text-muted-foreground">
-                  (só informativo — não impede votar)
+                  (impede votar — Código Civil)
                 </span>
               </label>
 
