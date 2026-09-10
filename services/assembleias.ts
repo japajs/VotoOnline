@@ -306,10 +306,11 @@ export async function updateAssembleiaStatus(
 ): Promise<void> {
   const db = createServerClient()
 
-  // Auditoria de segurança: uma assembleia encerrada é definitiva — nunca
-  // pode voltar para rascunho/aberta, não importa quem chame esta função.
-  // Sem essa trava, reabrir permitiria novos votos numa assembleia cujo
-  // resultado já foi apurado/divulgado.
+  // Auditoria de segurança: por ESTA função, uma assembleia encerrada é
+  // definitiva — nunca volta pra rascunho/aberta. A única exceção
+  // deliberada é reabrirAssembleia (abaixo), uma função separada e
+  // explícita pra correção excepcional — nunca um parâmetro escondido
+  // aqui.
   const { data: atual, error: fetchError } = await db
     .from("assembleias")
     .select("status")
