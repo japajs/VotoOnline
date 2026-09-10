@@ -89,12 +89,18 @@ export async function getResumoPorCondominio(condominioIds?: string[]): Promise<
   for (const r of (unidRes.data ?? []) as { condominio_id: string }[]) {
     unidCount.set(r.condominio_id, (unidCount.get(r.condominio_id) ?? 0) + 1)
   }
+  // Contadas separadamente (não como um único "em andamento") pra tela
+  // poder colorir o badge de "aberta" (verde, votação rolando de verdade)
+  // diferente do de "pausada" (âmbar, mesma cor usada em todo o resto do
+  // app) — um selo verde só de "aberta" enganaria o operador achando que
+  // está recebendo voto quando na verdade está pausada.
   const abertasCount = new Map<string, number>()
+  const pausadasCount = new Map<string, number>()
   for (const r of (assembRes.data ?? []) as { condominio_id: string; status: AssembleiaStatus }[]) {
-    // Pausada conta como "aberta" aqui — ainda é uma assembleia em
-    // andamento, só temporariamente sem receber voto novo.
-    if (r.status === "aberta" || r.status === "pausada") {
+    if (r.status === "aberta") {
       abertasCount.set(r.condominio_id, (abertasCount.get(r.condominio_id) ?? 0) + 1)
+    } else if (r.status === "pausada") {
+      pausadasCount.set(r.condominio_id, (pausadasCount.get(r.condominio_id) ?? 0) + 1)
     }
   }
 
@@ -104,6 +110,7 @@ export async function getResumoPorCondominio(condominioIds?: string[]): Promise<
     total_proprietarios: propCount.get(c.id) ?? 0,
     total_unidades: unidCount.get(c.id) ?? 0,
     assembleias_abertas: abertasCount.get(c.id) ?? 0,
+    assembleias_pausadas: pausadasCount.get(c.id) ?? 0,
   }))
 }
 

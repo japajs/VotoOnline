@@ -1,3 +1,5 @@
+import { ASSEMBLEIA_STATUS_LABEL } from "@/lib/assembleia-status"
+
 export function safeFilename(str: string): string {
   return str
     .normalize("NFD")
@@ -34,11 +36,7 @@ export function pctStr(n: number, total: number): string {
 }
 
 export function statusLabelPT(status: string): string {
-  return (
-    { rascunho: "Rascunho", aberta: "Aberta", pausada: "Pausada", encerrada: "Encerrada" }[
-      status
-    ] ?? status
-  )
+  return (ASSEMBLEIA_STATUS_LABEL as Record<string, string>)[status] ?? status
 }
 
 export function sendStatusLabelPT(status: string): string {

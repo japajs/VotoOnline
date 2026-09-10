@@ -48,6 +48,7 @@ export interface CondominioResumo {
   total_proprietarios: number
   total_unidades: number
   assembleias_abertas: number
+  assembleias_pausadas: number
 }
 
 export interface AssembleiaRecente {

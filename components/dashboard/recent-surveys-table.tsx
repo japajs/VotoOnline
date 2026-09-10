@@ -12,24 +12,11 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/lib/constants"
-import type { AssembleiaRecente, AssembleiaStatus } from "@/types"
+import { ASSEMBLEIA_STATUS_LABEL as STATUS_LABEL, ASSEMBLEIA_STATUS_CLASS as STATUS_CLASS } from "@/lib/assembleia-status"
+import type { AssembleiaRecente } from "@/types"
 
 interface RecentSurveysTableProps {
   assembleias: AssembleiaRecente[]
-}
-
-const STATUS_LABEL: Record<AssembleiaStatus, string> = {
-  rascunho: "Rascunho",
-  aberta: "Aberta",
-  pausada: "Pausada",
-  encerrada: "Encerrada",
-}
-
-const STATUS_CLASS: Record<AssembleiaStatus, string> = {
-  rascunho: "bg-muted text-muted-foreground",
-  aberta: "bg-emerald-500/15 text-emerald-500",
-  pausada: "bg-amber-500/15 text-amber-500",
-  encerrada: "bg-rose-500/15 text-rose-500",
 }
 
 function formatDate(dateString: string | null) {

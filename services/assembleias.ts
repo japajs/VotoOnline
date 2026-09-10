@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { createPautasBatch } from "@/services/pautas"
+import { STATUS_EM_ANDAMENTO } from "@/lib/assembleia-status"
 import type { Assembleia, AssembleiaStatus, Pauta, PautaOpcao, PautaStatus } from "@/types"
 
 type JoinedPautaOpcao = {
@@ -297,7 +298,7 @@ export async function hasAssembleiaAberta(condominioId: string): Promise<boolean
     .from("assembleias")
     .select("id")
     .eq("condominio_id", condominioId)
-    .in("status", ["aberta", "pausada"])
+    .in("status", STATUS_EM_ANDAMENTO)
     .limit(1)
 
   if (error) throw new Error(error.message)

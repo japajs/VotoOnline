@@ -36,7 +36,7 @@ export function ResumoCondominiosTable({ condominios }: ResumoCondominiosTablePr
                   <TableHead className="pl-6 text-xs">Condomínio</TableHead>
                   <TableHead className="text-right text-xs">Proprietários</TableHead>
                   <TableHead className="text-right text-xs">Unidades</TableHead>
-                  <TableHead className="pr-6 text-right text-xs">Assembleias abertas</TableHead>
+                  <TableHead className="pr-6 text-right text-xs">Assembleias em andamento</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -60,12 +60,24 @@ export function ResumoCondominiosTable({ condominios }: ResumoCondominiosTablePr
                       {c.total_unidades.toLocaleString("pt-BR")}
                     </TableCell>
                     <TableCell className="pr-6 text-right tabular-nums">
-                      {c.assembleias_abertas > 0 ? (
-                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-500">
-                          {c.assembleias_abertas}
-                        </span>
-                      ) : (
+                      {c.assembleias_abertas === 0 && c.assembleias_pausadas === 0 ? (
                         <span className="text-muted-foreground">0</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          {c.assembleias_abertas > 0 && (
+                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-500">
+                              {c.assembleias_abertas}
+                            </span>
+                          )}
+                          {c.assembleias_pausadas > 0 && (
+                            <span
+                              className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-500"
+                              title="Pausada(s)"
+                            >
+                              {c.assembleias_pausadas}
+                            </span>
+                          )}
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>

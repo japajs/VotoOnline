@@ -25,6 +25,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
+import {
+  ASSEMBLEIA_STATUS_LABEL as STATUS_LABEL,
+  ASSEMBLEIA_STATUS_CLASS as STATUS_CLASS,
+  isEmAndamento,
+} from "@/lib/assembleia-status"
 import { DispararAssembleiaDialog } from "./disparar-assembleia-dialog"
 import {
   deleteAssembleiaAction,
@@ -38,20 +43,6 @@ interface AssembleiasListProps {
   assembleias: Assembleia[]
   condominioId: string
   proprietarios: Proprietario[]
-}
-
-const STATUS_LABEL: Record<AssembleiaStatus, string> = {
-  rascunho: "Rascunho",
-  aberta: "Aberta",
-  pausada: "Pausada",
-  encerrada: "Encerrada",
-}
-
-const STATUS_CLASS: Record<AssembleiaStatus, string> = {
-  rascunho: "bg-muted text-muted-foreground",
-  aberta: "bg-emerald-500/15 text-emerald-500",
-  pausada: "bg-amber-500/15 text-amber-500",
-  encerrada: "bg-rose-500/15 text-rose-500",
 }
 
 export function AssembleiasList({ assembleias, condominioId, proprietarios }: AssembleiasListProps) {
@@ -212,7 +203,7 @@ function AssembleiaRow({
             Retomar
           </Button>
         )}
-        {(assembleia.status === "aberta" || assembleia.status === "pausada") && (
+        {isEmAndamento(assembleia.status) && (
           <Button
             variant="ghost"
             size="sm"

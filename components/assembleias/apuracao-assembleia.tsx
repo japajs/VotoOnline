@@ -13,6 +13,11 @@ import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { excluirPautaAction } from "@/app/actions/assembleias"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { APP_NAME } from "@/lib/constants"
+import {
+  STATUS_EXIBIDO_LABEL as STATUS_LABEL,
+  STATUS_EXIBIDO_CLASS as STATUS_CLASS,
+  type StatusExibido,
+} from "@/lib/assembleia-status"
 import type { Assembleia, AssembleiaApuracao, PautaApuracao, PautaStatus } from "@/types"
 
 const PAUTA_STATUS_LABEL: Record<PautaStatus, string> = {
@@ -34,26 +39,6 @@ interface Props {
   condominioId: string
   apuracao: AssembleiaApuracao
   canExport?: boolean
-}
-
-// "Em votação" não é um status novo no banco — é só "aberta" + já tem pelo
-// menos um voto, derivado aqui na exibição (item 6: evitar coluna nova).
-type StatusExibido = Assembleia["status"] | "em_votacao"
-
-const STATUS_LABEL: Record<StatusExibido, string> = {
-  rascunho: "Rascunho",
-  aberta: "Aberta",
-  pausada: "Pausada",
-  em_votacao: "Em votação",
-  encerrada: "Encerrada",
-}
-
-const STATUS_CLASS: Record<StatusExibido, string> = {
-  rascunho: "bg-muted text-muted-foreground",
-  aberta: "bg-emerald-500/15 text-emerald-500",
-  pausada: "bg-amber-500/15 text-amber-500",
-  em_votacao: "bg-indigo-500/15 text-indigo-500",
-  encerrada: "bg-rose-500/15 text-rose-500",
 }
 
 function formatDateHora(dateString: string) {
