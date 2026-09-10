@@ -9,6 +9,12 @@ const fraunces = Fraunces({
   variable: "--font-heading-serif",
   subsets: ["latin"],
   display: "swap",
+  // Só usada em título de card/dialog/sidebar (área logada) — nas páginas
+  // públicas (ex.: /v/[token], /login) nunca chega a ser pintada, e o
+  // preload automático (por estar no root layout, toda rota herda) gera o
+  // aviso "preloaded but not used" no console. Mesmo raciocínio já aplicado
+  // ao plexMono abaixo.
+  preload: false,
 })
 
 const sourceSans = Source_Sans_3({
