@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { FileSignature, Loader2, X, Plus } from "lucide-react"
+import { useMemo, useState, useTransition } from "react"
+import { FileSignature, Loader2, X, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -13,12 +13,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   getProcuracoesAction,
   getElegiveisParaProcuracaoAction,
   createProcuracaoAction,
   deleteProcuracaoAction,
 } from "@/app/actions/procuracoes"
+import { normalizarBusca } from "@/lib/format"
 import type { ProcuracaoComNomes } from "@/types"
 import type { ProprietarioSemVoto } from "@/services/assembleia-votos"
 
@@ -39,6 +41,8 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
   const [elegiveis, setElegiveis] = useState<ProprietarioSemVoto[]>([])
   const [outorganteId, setOutorganteId] = useState("")
   const [outorgadoId, setOutorgadoId] = useState("")
+  const [buscaOutorgante, setBuscaOutorgante] = useState("")
+  const [buscaOutorgado, setBuscaOutorgado] = useState("")
   const [isPendingCriar, startCriarTransition] = useTransition()
   const [removendoId, setRemovendoId] = useState<string | null>(null)
   const [isPendingRemover, startRemoverTransition] = useTransition()
@@ -65,6 +69,8 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
       setTimeout(() => {
         setOutorganteId("")
         setOutorgadoId("")
+        setBuscaOutorgante("")
+        setBuscaOutorgado("")
       }, 200)
     }
   }
@@ -98,8 +104,20 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
     })
   }
 
-  const elegiveisOutorgado = elegiveis.filter((p) => p.id !== outorganteId)
-  const elegiveisOutorgante = elegiveis.filter((p) => p.id !== outorgadoId)
+  function combina(p: ProprietarioSemVoto, termo: string): boolean {
+    if (!termo) return true
+    return normalizarBusca(`${p.nome} ${p.email ?? ""}`).includes(termo)
+  }
+
+  const elegiveisOutorgado = useMemo(() => {
+    const termo = normalizarBusca(buscaOutorgado.trim())
+    return elegiveis.filter((p) => p.id !== outorganteId).filter((p) => combina(p, termo))
+  }, [elegiveis, outorganteId, buscaOutorgado])
+
+  const elegiveisOutorgante = useMemo(() => {
+    const termo = normalizarBusca(buscaOutorgante.trim())
+    return elegiveis.filter((p) => p.id !== outorgadoId).filter((p) => combina(p, termo))
+  }, [elegiveis, outorgadoId, buscaOutorgante])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -157,33 +175,57 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                 Nova procuração
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                <select
-                  value={outorganteId}
-                  onChange={(e) => setOutorganteId(e.target.value)}
-                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                >
-                  <option value="">Outorgante (quem delega)…</option>
-                  {elegiveisOutorgante.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-1">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={buscaOutorgante}
+                      onChange={(e) => setBuscaOutorgante(e.target.value)}
+                      placeholder="Buscar outorgante…"
+                      className="h-8 border-border/60 bg-background pl-7 text-xs"
+                      aria-label="Buscar outorgante"
+                    />
+                  </div>
+                  <select
+                    value={outorganteId}
+                    onChange={(e) => setOutorganteId(e.target.value)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="">Outorgante (quem delega)…</option>
+                    {elegiveisOutorgante.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <span className="hidden items-center justify-center text-xs text-muted-foreground sm:flex">
                   →
                 </span>
-                <select
-                  value={outorgadoId}
-                  onChange={(e) => setOutorgadoId(e.target.value)}
-                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                >
-                  <option value="">Outorgado (representante)…</option>
-                  {elegiveisOutorgado.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-1">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={buscaOutorgado}
+                      onChange={(e) => setBuscaOutorgado(e.target.value)}
+                      placeholder="Buscar outorgado…"
+                      className="h-8 border-border/60 bg-background pl-7 text-xs"
+                      aria-label="Buscar outorgado"
+                    />
+                  </div>
+                  <select
+                    value={outorgadoId}
+                    onChange={(e) => setOutorgadoId(e.target.value)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="">Outorgado (representante)…</option>
+                    {elegiveisOutorgado.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               {elegiveis.length === 0 && (
                 <p className="text-xs text-muted-foreground">
