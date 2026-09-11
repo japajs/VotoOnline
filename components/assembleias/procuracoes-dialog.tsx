@@ -174,8 +174,8 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Nova procuração
               </p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                <div className="space-y-1">
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                <div className="min-w-0 space-y-1">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -189,7 +189,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                   <select
                     value={outorganteId}
                     onChange={(e) => setOutorganteId(e.target.value)}
-                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">Outorgante (quem delega)…</option>
                     {elegiveisOutorgante.map((p) => (
@@ -202,7 +202,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                 <span className="hidden items-center justify-center text-xs text-muted-foreground sm:flex">
                   →
                 </span>
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -216,7 +216,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                   <select
                     value={outorgadoId}
                     onChange={(e) => setOutorgadoId(e.target.value)}
-                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">Outorgado (representante)…</option>
                     {elegiveisOutorgado.map((p) => (
