@@ -21,12 +21,68 @@ import {
   deleteProcuracaoAction,
 } from "@/app/actions/procuracoes"
 import { normalizarBusca } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import type { ProcuracaoComNomes } from "@/types"
 import type { ProprietarioSemVoto } from "@/services/assembleia-votos"
 
 interface Props {
   assembleiaId: string
   condominioId: string
+}
+
+// Um <select> nativo não reage visualmente enquanto a pessoa digita numa
+// busca ao lado — o dropdown só mostra as opções (já filtradas) depois de
+// clicado, dando a impressão de que "a busca não funciona". Uma lista
+// sempre visível e clicável, filtrada a cada tecla, resolve isso — mesma
+// lógica de disparar-assembleia-dialog.tsx, adaptada pra seleção única.
+function SeletorProprietario({
+  placeholder,
+  busca,
+  onBuscaChange,
+  selecionadoId,
+  onSelecionar,
+  opcoes,
+}: {
+  placeholder: string
+  busca: string
+  onBuscaChange: (valor: string) => void
+  selecionadoId: string
+  onSelecionar: (id: string) => void
+  opcoes: ProprietarioSemVoto[]
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={busca}
+          onChange={(e) => onBuscaChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-8 border-border/60 bg-background pl-7 text-xs"
+          aria-label={placeholder}
+        />
+      </div>
+      <div className="max-h-32 overflow-y-auto rounded-md border border-input bg-background">
+        {opcoes.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum resultado.</p>
+        ) : (
+          opcoes.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onSelecionar(p.id)}
+              className={cn(
+                "block w-full truncate px-3 py-1.5 text-left text-xs transition-colors hover:bg-accent/50",
+                selecionadoId === p.id && "bg-accent font-medium text-accent-foreground"
+              )}
+            >
+              {p.nome}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  )
 }
 
 // Auditoria de assembleias — Fase 8: outorgante (quem delega) precisa ser
@@ -174,60 +230,37 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Nova procuração
               </p>
-              {/* Empilhado sempre (não lado a lado) — um <select> com nome
-                  comprido não cabe dividindo linha com outro campo em telas
-                  estreitas, e forçar os dois na mesma linha gerava scroll
-                  horizontal dentro do diálogo. Empilhado, a única rolagem
-                  possível é a vertical de sempre do diálogo. */}
               <div className="space-y-2">
-                <div className="space-y-1">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={buscaOutorgante}
-                      onChange={(e) => setBuscaOutorgante(e.target.value)}
-                      placeholder="Buscar outorgante…"
-                      className="h-8 border-border/60 bg-background pl-7 text-xs"
-                      aria-label="Buscar outorgante"
-                    />
-                  </div>
-                  <select
-                    value={outorganteId}
-                    onChange={(e) => setOutorganteId(e.target.value)}
-                    className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm"
-                  >
-                    <option value="">Outorgante (quem delega)…</option>
-                    {elegiveisOutorgante.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome}
-                      </option>
-                    ))}
-                  </select>
+                <div>
+                  <SeletorProprietario
+                    placeholder="Buscar outorgante (quem delega)…"
+                    busca={buscaOutorgante}
+                    onBuscaChange={setBuscaOutorgante}
+                    selecionadoId={outorganteId}
+                    onSelecionar={setOutorganteId}
+                    opcoes={elegiveisOutorgante}
+                  />
+                  {outorganteId && (
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      Outorgante: <span className="font-medium text-foreground">{elegiveis.find((p) => p.id === outorganteId)?.nome}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center justify-center text-xs text-muted-foreground">↓</div>
-                <div className="space-y-1">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={buscaOutorgado}
-                      onChange={(e) => setBuscaOutorgado(e.target.value)}
-                      placeholder="Buscar outorgado…"
-                      className="h-8 border-border/60 bg-background pl-7 text-xs"
-                      aria-label="Buscar outorgado"
-                    />
-                  </div>
-                  <select
-                    value={outorgadoId}
-                    onChange={(e) => setOutorgadoId(e.target.value)}
-                    className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm"
-                  >
-                    <option value="">Outorgado (representante)…</option>
-                    {elegiveisOutorgado.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome}
-                      </option>
-                    ))}
-                  </select>
+                <div>
+                  <SeletorProprietario
+                    placeholder="Buscar outorgado (representante)…"
+                    busca={buscaOutorgado}
+                    onBuscaChange={setBuscaOutorgado}
+                    selecionadoId={outorgadoId}
+                    onSelecionar={setOutorgadoId}
+                    opcoes={elegiveisOutorgado}
+                  />
+                  {outorgadoId && (
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      Outorgado: <span className="font-medium text-foreground">{elegiveis.find((p) => p.id === outorgadoId)?.nome}</span>
+                    </p>
+                  )}
                 </div>
               </div>
               {elegiveis.length === 0 && (
