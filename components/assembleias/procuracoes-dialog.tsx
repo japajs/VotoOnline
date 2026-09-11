@@ -174,8 +174,13 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Nova procuração
               </p>
-              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-                <div className="min-w-0 space-y-1">
+              {/* Empilhado sempre (não lado a lado) — um <select> com nome
+                  comprido não cabe dividindo linha com outro campo em telas
+                  estreitas, e forçar os dois na mesma linha gerava scroll
+                  horizontal dentro do diálogo. Empilhado, a única rolagem
+                  possível é a vertical de sempre do diálogo. */}
+              <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -199,10 +204,8 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                     ))}
                   </select>
                 </div>
-                <span className="hidden items-center justify-center text-xs text-muted-foreground sm:flex">
-                  →
-                </span>
-                <div className="min-w-0 space-y-1">
+                <div className="flex items-center justify-center text-xs text-muted-foreground">↓</div>
+                <div className="space-y-1">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
