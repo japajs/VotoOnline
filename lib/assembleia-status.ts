@@ -43,7 +43,7 @@ export const STATUS_EXIBIDO_CLASS: Record<StatusExibido, string> = {
 // services/assembleias.ts e getResumoPorCondominio em services/dashboard.ts.
 // Array exportado separadamente pra quem precisa passar pro `.in()` de uma
 // query (ex.: hasAssembleiaAberta) sem duplicar a lista de status.
-export const STATUS_EM_ANDAMENTO: AssembleiaStatus[] = ["aberta", "pausada"]
+export const STATUS_EM_ANDAMENTO: readonly AssembleiaStatus[] = ["aberta", "pausada"]
 
 export function isEmAndamento(status: AssembleiaStatus): boolean {
   return STATUS_EM_ANDAMENTO.includes(status)
