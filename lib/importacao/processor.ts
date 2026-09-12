@@ -42,11 +42,20 @@ function resolverTelefone(valorBruto: string | null): ResultadoCampoContato {
 }
 
 // ─── Chave de agrupamento ─────────────────────────────────────────────────────
-// Prioridade: e-mail > nome
-
+// Agrupa por e-mail + nome juntos (não só e-mail): achado de auditoria —
+// quando várias unidades de donos DIFERENTES compartilham um mesmo contato
+// (zelador, administradora, portaria), agrupar só por e-mail fundia todo
+// mundo num único cadastro (ex.: 5 unidades de 5 pessoas diferentes viraram
+// "1 proprietário com 5 aptos", e as outras 4 pessoas nunca ganhavam
+// cadastro próprio). Incluir o nome na chave garante que só duas linhas com
+// o MESMO nome E mesmo e-mail se fundem (o caso legítimo: a mesma pessoa
+// com mais de uma unidade) — nomes diferentes com o mesmo e-mail viram
+// proprietários separados, e o e-mail compartilhado só gera um aviso (ver
+// nomesPorEmail abaixo), não uma fusão silenciosa.
 function chaveProprietario(email: string | null, nome: string): string {
-  if (email) return `email:${email.toLowerCase()}`
-  return `nome:${nome.toLowerCase().trim()}`
+  const nomeChave = nome.toLowerCase().trim()
+  if (email) return `email:${email.toLowerCase()}|nome:${nomeChave}`
+  return `nome:${nomeChave}`
 }
 
 // ─── Processamento principal ──────────────────────────────────────────────────
@@ -54,6 +63,10 @@ function chaveProprietario(email: string | null, nome: string): string {
 export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
   const erros: ImportacaoErro[] = []
   const mapa = new Map<string, ProprietarioImport>()
+  // Rastreia todo nome visto sob cada e-mail — não decide mais a fusão
+  // (isso já é feito por chaveProprietario, que inclui o nome), só alimenta
+  // o aviso abaixo quando um mesmo e-mail aparece com nomes diferentes.
+  const nomesPorEmail = new Map<string, { nomes: Set<string>; primeiraLinha: number }>()
   let duplicidades = 0
   let linhasIgnoradas = 0
 
@@ -110,10 +123,20 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
       })
     }
 
+    if (email) {
+      const registro = nomesPorEmail.get(email) ?? {
+        nomes: new Set<string>(),
+        primeiraLinha: linha._linhaOriginal,
+      }
+      registro.nomes.add(nome.trim().toLowerCase())
+      nomesPorEmail.set(email, registro)
+    }
+
     const chave = chaveProprietario(email, nome)
 
     if (mapa.has(chave)) {
-      // Proprietário já existe — só adiciona a unidade
+      // Proprietário já existe (mesmo nome E mesmo e-mail) — só adiciona a
+      // unidade.
       const prop = mapa.get(chave)!
 
       if (prop.unidades.includes(imovel)) {
@@ -125,20 +148,6 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
         })
         linhasIgnoradas++
         continue
-      }
-
-      // Auditoria funcional: o agrupamento é por e-mail — comum quando um
-      // mesmo administrador/contador é o contato de vários donos diferentes.
-      // Nesse caso o nome da linha nova diverge do proprietário já criado no
-      // grupo; avisa em vez de fundir silenciosamente, para o admin decidir
-      // (corrigir o e-mail antes de importar, ou aceitar).
-      if (email && prop.nome.trim().toLowerCase() !== nome.trim().toLowerCase()) {
-        erros.push({
-          linha: linha._linhaOriginal,
-          campo: "Proprietário",
-          mensagem: `E-mail "${email}" já usado por "${prop.nome}" — "${nome}" será tratado como o mesmo proprietário`,
-          dados: imovel,
-        })
       }
 
       prop.unidades.push(imovel)
@@ -153,6 +162,23 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
         linhasOrigem: [linha._linhaOriginal],
         ...(emailCandidatos ? { emailCandidatos } : {}),
         ...(telefoneCandidatos ? { telefoneCandidatos } : {}),
+      })
+    }
+  }
+
+  // Achado de auditoria: agrupar só por e-mail fundia num único cadastro
+  // várias unidades de donos DIFERENTES que compartilham um mesmo contato
+  // (zelador, administradora, portaria) — as outras pessoas nunca ganhavam
+  // cadastro próprio. Agora cada nome vira um proprietário separado (ver
+  // chaveProprietario acima); isto só avisa que o e-mail é compartilhado,
+  // pra confirmar se é intencional ou erro de digitação na planilha.
+  for (const [emailCompartilhado, { nomes, primeiraLinha }] of nomesPorEmail) {
+    if (nomes.size > 1) {
+      erros.push({
+        linha: primeiraLinha,
+        campo: "E-mail",
+        mensagem: `E-mail "${emailCompartilhado}" está associado a ${nomes.size} nomes diferentes — cada um virou um proprietário separado. Confirme se o e-mail compartilhado é intencional (ex.: portaria) ou erro de digitação.`,
+        dados: [...nomes].join(", "),
       })
     }
   }
