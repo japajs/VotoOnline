@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useMemo, useRef, useState, useTransition } from "react"
 import { FileSignature, Loader2, X, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -102,6 +102,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
   const [isPendingCriar, startCriarTransition] = useTransition()
   const [removendoId, setRemovendoId] = useState<string | null>(null)
   const [isPendingRemover, startRemoverTransition] = useTransition()
+  const limparAoFecharRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function carregar() {
     setCarregando(true)
@@ -120,13 +121,22 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
   function handleOpenChange(next: boolean) {
     setOpen(next)
     if (next) {
+      // Reabrir cancela qualquer limpeza pendente de um fechamento
+      // anterior — sem isso, fechar e reabrir em menos de 200ms deixava o
+      // setTimeout do fechamento antigo disparar depois, apagando silenciosamente
+      // uma seleção/busca que a pessoa acabou de fazer na reabertura.
+      if (limparAoFecharRef.current) {
+        clearTimeout(limparAoFecharRef.current)
+        limparAoFecharRef.current = null
+      }
       carregar()
     } else {
-      setTimeout(() => {
+      limparAoFecharRef.current = setTimeout(() => {
         setOutorganteId("")
         setOutorgadoId("")
         setBuscaOutorgante("")
         setBuscaOutorgado("")
+        limparAoFecharRef.current = null
       }, 200)
     }
   }
@@ -139,6 +149,8 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
         toast.success("Procuração registrada.")
         setOutorganteId("")
         setOutorgadoId("")
+        setBuscaOutorgante("")
+        setBuscaOutorgado("")
         carregar()
       } else {
         toast.error(result.error)

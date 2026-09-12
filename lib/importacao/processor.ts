@@ -42,6 +42,24 @@ function resolverTelefone(valorBruto: string | null): ResultadoCampoContato {
 }
 
 // ─── Chave de agrupamento ─────────────────────────────────────────────────────
+// Remove acentos (case/espaço já eram tratados) — sem isso, "José Silva" e
+// "Jose Silva" (mesma pessoa, mesma célula de e-mail, só a grafia do nome
+// variando entre duas linhas da planilha) virariam chaves diferentes:
+// deixariam de se fundir num só cadastro E disparariam falsamente o aviso
+// de "e-mail compartilhado por nomes diferentes" abaixo, mascarando o caso
+// real que esse aviso existe pra pegar. Preserva os espaços (ao contrário
+// de normalizarBusca em lib/format.ts, que também remove espaço/hífen —
+// bom pra busca livre, mas agressivo demais pra decidir se duas linhas são
+// a mesma pessoa).
+function normalizarNome(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+}
+
 // Agrupa por e-mail + nome juntos (não só e-mail): achado de auditoria —
 // quando várias unidades de donos DIFERENTES compartilham um mesmo contato
 // (zelador, administradora, portaria), agrupar só por e-mail fundia todo
@@ -53,7 +71,7 @@ function resolverTelefone(valorBruto: string | null): ResultadoCampoContato {
 // proprietários separados, e o e-mail compartilhado só gera um aviso (ver
 // nomesPorEmail abaixo), não uma fusão silenciosa.
 function chaveProprietario(email: string | null, nome: string): string {
-  const nomeChave = nome.toLowerCase().trim()
+  const nomeChave = normalizarNome(nome)
   if (email) return `email:${email.toLowerCase()}|nome:${nomeChave}`
   return `nome:${nomeChave}`
 }
@@ -63,10 +81,13 @@ function chaveProprietario(email: string | null, nome: string): string {
 export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
   const erros: ImportacaoErro[] = []
   const mapa = new Map<string, ProprietarioImport>()
-  // Rastreia todo nome visto sob cada e-mail — não decide mais a fusão
-  // (isso já é feito por chaveProprietario, que inclui o nome), só alimenta
-  // o aviso abaixo quando um mesmo e-mail aparece com nomes diferentes.
-  const nomesPorEmail = new Map<string, { nomes: Set<string>; primeiraLinha: number }>()
+  // Rastreia todo nome visto sob cada e-mail (nome normalizado -> 1ª linha
+  // onde apareceu) — não decide mais a fusão (isso já é feito por
+  // chaveProprietario, que inclui o nome; mesma normalizarNome, pra não
+  // divergir da chave de fusão), só alimenta o aviso abaixo quando um mesmo
+  // e-mail aparece com nomes diferentes, com linha de cada um pra localizar
+  // na planilha.
+  const nomesPorEmail = new Map<string, Map<string, number>>()
   let duplicidades = 0
   let linhasIgnoradas = 0
 
@@ -124,12 +145,10 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
     }
 
     if (email) {
-      const registro = nomesPorEmail.get(email) ?? {
-        nomes: new Set<string>(),
-        primeiraLinha: linha._linhaOriginal,
-      }
-      registro.nomes.add(nome.trim().toLowerCase())
-      nomesPorEmail.set(email, registro)
+      const porNome = nomesPorEmail.get(email) ?? new Map<string, number>()
+      const nomeNormalizado = normalizarNome(nome)
+      if (!porNome.has(nomeNormalizado)) porNome.set(nomeNormalizado, linha._linhaOriginal)
+      nomesPorEmail.set(email, porNome)
     }
 
     const chave = chaveProprietario(email, nome)
@@ -172,13 +191,20 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
   // cadastro próprio. Agora cada nome vira um proprietário separado (ver
   // chaveProprietario acima); isto só avisa que o e-mail é compartilhado,
   // pra confirmar se é intencional ou erro de digitação na planilha.
-  for (const [emailCompartilhado, { nomes, primeiraLinha }] of nomesPorEmail) {
-    if (nomes.size > 1) {
+  for (const [emailCompartilhado, porNome] of nomesPorEmail) {
+    if (porNome.size > 1) {
+      // "dados" traz nome + linha de cada ocorrência — sem isso, um e-mail
+      // compartilhado por muitas linhas (ex.: 5+) vira um aviso genérico
+      // sem indicar onde cada nome está na planilha original.
+      const ocorrencias = [...porNome.entries()]
+        .sort((a, b) => a[1] - b[1])
+        .map(([nome, linha]) => `${nome} (linha ${linha})`)
+        .join(", ")
       erros.push({
-        linha: primeiraLinha,
+        linha: Math.min(...porNome.values()),
         campo: "E-mail",
-        mensagem: `E-mail "${emailCompartilhado}" está associado a ${nomes.size} nomes diferentes — cada um virou um proprietário separado. Confirme se o e-mail compartilhado é intencional (ex.: portaria) ou erro de digitação.`,
-        dados: [...nomes].join(", "),
+        mensagem: `E-mail "${emailCompartilhado}" está associado a ${porNome.size} nomes diferentes — cada um virou um proprietário separado. Confirme se o e-mail compartilhado é intencional (ex.: portaria) ou erro de digitação.`,
+        dados: ocorrencias,
       })
     }
   }

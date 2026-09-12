@@ -342,11 +342,17 @@ export async function updateAssembleiaStatus(
   // "Retomar" (pausada → aberta) passa por aqui também, não só a 1ª
   // abertura (rascunho → aberta) — por isso data_abertura só é definida
   // quando ainda não existia, senão cada pausa/retomada reescreveria a
-  // data oficial de abertura mostrada em relatórios/ata. Pelo mesmo motivo,
-  // um prazo (data_encerramento) já vencido durante a pausa é limpo ao
-  // retomar — senão o fechamento automático por prazo reencerraria a
-  // assembleia sozinho assim que alguém abrisse o link de voto (mesmo
-  // raciocínio de reabrirAssembleia, abaixo).
+  // data oficial de abertura mostrada em relatórios/ata.
+  //
+  // Um prazo (data_encerramento) já vencido é limpo sempre que a assembleia
+  // vira "aberta" — não só ao retomar de uma pausa, mas também na 1ª
+  // abertura, se o síndico configurou um prazo e só clicou "Abrir" depois
+  // dele já ter passado. Nos dois casos, deixar o prazo vencido faria o
+  // fechamento automático por prazo (ver app/v/[token]/page.tsx) reencerrar
+  // a assembleia sozinha assim que alguém abrisse o link de voto — o
+  // oposto do que o síndico acabou de pedir ao clicar em abrir/retomar
+  // (mesmo raciocínio de reabrirAssembleia, abaixo). Sem prazo, a
+  // assembleia só encerra quando alguém clicar em "Encerrar".
   if (status === "aberta") {
     if (!atualRow.data_abertura) updates.data_abertura = now
     if (atualRow.data_encerramento && new Date(atualRow.data_encerramento) < new Date(now)) {
