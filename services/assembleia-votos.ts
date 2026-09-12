@@ -4,6 +4,8 @@ import { marcarPautaEmVotacaoSeNecessario } from "@/services/pautas"
 import { getCondominioById } from "@/services/condominios"
 import { getUnidadesByCondominioId } from "@/services/unidades"
 import { outorgouProcuracao, getOutorgantesIds } from "@/services/procuracoes"
+import { getIdsInadimplentes } from "@/services/proprietarios"
+import { isVotacaoAberta } from "@/lib/assembleia-status"
 import type {
   AssembleiaSend,
   AssembleiaResposta,
@@ -281,7 +283,7 @@ async function validarVotoOuFalhar(
   pautaIds: string[],
   inadimplente: boolean
 ): Promise<void> {
-  if (status !== "aberta") {
+  if (!isVotacaoAberta(status)) {
     throw new Error("Esta assembleia não está aberta para votação.")
   }
   if (pautaIds.length === 0) {
@@ -379,14 +381,8 @@ export async function createAssembleiaRespostas(
     // da checagem em createProcuracao (services/procuracoes.ts), o peso de
     // um outorgante inadimplente nunca entra na soma — "inadimplente não
     // vota" vale mesmo por procuração, sem exceção.
-    const { data: outorgantesProps, error: outorgantesPropsError } = await db
-      .from("proprietarios")
-      .select("id, inadimplente")
-      .in("id", outorgantesIds)
-    if (outorgantesPropsError) throw new Error(outorgantesPropsError.message)
-    const outorgantesValidos = ((outorgantesProps ?? []) as { id: string; inadimplente: boolean }[])
-      .filter((p) => !p.inadimplente)
-      .map((p) => p.id)
+    const inadimplentes = await getIdsInadimplentes(db, outorgantesIds)
+    const outorgantesValidos = outorgantesIds.filter((id) => !inadimplentes.has(id))
 
     if (outorgantesValidos.length > 0) {
       const { data: unidadesOutorgantes, error: outorgantesError } = await db

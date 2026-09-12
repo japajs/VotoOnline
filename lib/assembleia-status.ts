@@ -46,7 +46,7 @@ export const STATUS_EXIBIDO_CLASS: Record<StatusExibido, string> = {
 export const STATUS_EM_ANDAMENTO: AssembleiaStatus[] = ["aberta", "pausada"]
 
 export function isEmAndamento(status: AssembleiaStatus): boolean {
-  return (STATUS_EM_ANDAMENTO as string[]).includes(status)
+  return STATUS_EM_ANDAMENTO.includes(status)
 }
 
 // Grupo "votável": só "aberta" aceita voto novo — "pausada" e "rascunho"

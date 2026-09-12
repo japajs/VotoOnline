@@ -17,6 +17,7 @@ import {
 import { getAssembleiaById, contarParticipantesJaVotaram } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
+import { isVotacaoAberta } from "@/lib/assembleia-status"
 import type { AssembleiaStatus, PautaTipo } from "@/types"
 
 interface PautaInput {
@@ -304,7 +305,7 @@ export async function adicionarPautaAssembleiaAction(input: {
   try {
     const assembleia = await getAssembleiaById(input.assembleiaId)
     if (!assembleia) return { success: false, error: "Assembleia não encontrada." }
-    if (assembleia.status !== "aberta") {
+    if (!isVotacaoAberta(assembleia.status)) {
       return {
         success: false,
         error: "Só é possível adicionar pautas enquanto a assembleia estiver aberta.",

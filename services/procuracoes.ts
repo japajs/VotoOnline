@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server"
+import { getIdsInadimplentes } from "@/services/proprietarios"
 import type { Procuracao, ProcuracaoComNomes } from "@/types"
 
 function rowToProcuracao(row: {
@@ -112,17 +113,7 @@ export async function createProcuracao(
   // procuração pra outro proprietário ANTES de ser barrado, e o peso da
   // unidade dele seria somado no voto do outorgado mesmo assim — furo que
   // contornaria por completo a regra "sem exceção" do Código Civil.
-  const { data: proprietariosRows, error: proprietariosError } = await db
-    .from("proprietarios")
-    .select("id, inadimplente")
-    .in("id", [outorganteId, outorgadoId])
-  if (proprietariosError) throw new Error(proprietariosError.message)
-
-  const inadimplentes = new Set(
-    ((proprietariosRows ?? []) as { id: string; inadimplente: boolean }[])
-      .filter((p) => p.inadimplente)
-      .map((p) => p.id)
-  )
+  const inadimplentes = await getIdsInadimplentes(db, [outorganteId, outorgadoId])
   if (inadimplentes.has(outorganteId)) {
     throw new Error("Proprietário inadimplente não pode outorgar procuração.")
   }

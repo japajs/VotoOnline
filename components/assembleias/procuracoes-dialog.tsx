@@ -30,12 +30,27 @@ interface Props {
   condominioId: string
 }
 
+// Função pura de módulo (não fecha sobre nenhum estado do componente) —
+// de propósito, pra nunca virar uma dependência escondida dos useMemo que
+// a usam mais abaixo.
+function combina(p: ProprietarioSemVoto, termo: string): boolean {
+  if (!termo) return true
+  return normalizarBusca(`${p.nome} ${p.email ?? ""}`).includes(termo)
+}
+
 // Um <select> nativo não reage visualmente enquanto a pessoa digita numa
 // busca ao lado — o dropdown só mostra as opções (já filtradas) depois de
 // clicado, dando a impressão de que "a busca não funciona". Uma lista
 // sempre visível e clicável, filtrada a cada tecla, resolve isso — mesma
 // lógica de disparar-assembleia-dialog.tsx, adaptada pra seleção única.
+//
+// Achado de auditoria: o <select> nativo que isto substituiu navegava por
+// seta do teclado de graça; uma lista de <button> comuns não. Reimplementa
+// aqui a semântica mínima de combobox/listbox (role, aria-activedescendant,
+// setas/Home/End/Enter) — sem isso seria um retrocesso de acessibilidade
+// pra quem navega só por teclado ou usa leitor de tela.
 function SeletorProprietario({
+  idPrefix,
   placeholder,
   busca,
   onBuscaChange,
@@ -43,6 +58,7 @@ function SeletorProprietario({
   onSelecionar,
   opcoes,
 }: {
+  idPrefix: string
   placeholder: string
   busca: string
   onBuscaChange: (valor: string) => void
@@ -50,6 +66,48 @@ function SeletorProprietario({
   onSelecionar: (id: string) => void
   opcoes: ProprietarioSemVoto[]
 }) {
+  // Guarda só o índice "bruto" digitado pelas setas; o valor efetivo abaixo
+  // é recalculado a cada render, preso aos limites da lista JÁ filtrada —
+  // isso evita precisar de um useEffect só pra "corrigir" o estado toda vez
+  // que a busca muda o tamanho da lista (setState dentro de effect gera um
+  // ciclo de render a mais à toa).
+  const [destaqueBruto, setDestaqueBruto] = useState(0)
+  const destaque = opcoes.length === 0 ? 0 : Math.min(destaqueBruto, opcoes.length - 1)
+
+  function moverDestaque(delta: number) {
+    if (opcoes.length === 0) return
+    const proximo = Math.min(Math.max(destaque + delta, 0), opcoes.length - 1)
+    setDestaqueBruto(proximo)
+    document.getElementById(`${idPrefix}-opcao-${proximo}`)?.scrollIntoView({ block: "nearest" })
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault()
+        moverDestaque(1)
+        break
+      case "ArrowUp":
+        e.preventDefault()
+        moverDestaque(-1)
+        break
+      case "Home":
+        e.preventDefault()
+        setDestaqueBruto(0)
+        break
+      case "End":
+        e.preventDefault()
+        setDestaqueBruto(Math.max(opcoes.length - 1, 0))
+        break
+      case "Enter": {
+        e.preventDefault()
+        const alvo = opcoes[destaque]
+        if (alvo) onSelecionar(alvo.id)
+        break
+      }
+    }
+  }
+
   return (
     <div className="space-y-1">
       <div className="relative">
@@ -57,22 +115,38 @@ function SeletorProprietario({
         <Input
           value={busca}
           onChange={(e) => onBuscaChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="h-8 border-border/60 bg-background pl-7 text-xs"
           aria-label={placeholder}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls={`${idPrefix}-listbox`}
+          aria-activedescendant={opcoes[destaque] ? `${idPrefix}-opcao-${destaque}` : undefined}
         />
       </div>
-      <div className="max-h-32 overflow-y-auto rounded-md border border-input bg-background">
+      <div
+        id={`${idPrefix}-listbox`}
+        role="listbox"
+        aria-label={placeholder}
+        className="max-h-32 overflow-y-auto rounded-md border border-input bg-background"
+      >
         {opcoes.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum resultado.</p>
         ) : (
-          opcoes.map((p) => (
+          opcoes.map((p, i) => (
             <button
               key={p.id}
+              id={`${idPrefix}-opcao-${i}`}
               type="button"
+              role="option"
+              aria-selected={selecionadoId === p.id}
+              onMouseEnter={() => setDestaqueBruto(i)}
               onClick={() => onSelecionar(p.id)}
               className={cn(
                 "block w-full truncate px-3 py-1.5 text-left text-xs transition-colors hover:bg-accent/50",
+                i === destaque && "bg-accent/50",
                 selecionadoId === p.id && "bg-accent font-medium text-accent-foreground"
               )}
             >
@@ -172,19 +246,14 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
     })
   }
 
-  function combina(p: ProprietarioSemVoto, termo: string): boolean {
-    if (!termo) return true
-    return normalizarBusca(`${p.nome} ${p.email ?? ""}`).includes(termo)
-  }
-
   const elegiveisOutorgado = useMemo(() => {
     const termo = normalizarBusca(buscaOutorgado.trim())
-    return elegiveis.filter((p) => p.id !== outorganteId).filter((p) => combina(p, termo))
+    return elegiveis.filter((p) => p.id !== outorganteId && combina(p, termo))
   }, [elegiveis, outorganteId, buscaOutorgado])
 
   const elegiveisOutorgante = useMemo(() => {
     const termo = normalizarBusca(buscaOutorgante.trim())
-    return elegiveis.filter((p) => p.id !== outorgadoId).filter((p) => combina(p, termo))
+    return elegiveis.filter((p) => p.id !== outorgadoId && combina(p, termo))
   }, [elegiveis, outorgadoId, buscaOutorgante])
 
   return (
@@ -245,6 +314,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
               <div className="space-y-2">
                 <div>
                   <SeletorProprietario
+                    idPrefix="outorgante"
                     placeholder="Buscar outorgante (quem delega)…"
                     busca={buscaOutorgante}
                     onBuscaChange={setBuscaOutorgante}
@@ -261,6 +331,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                 <div className="flex items-center justify-center text-xs text-muted-foreground">↓</div>
                 <div>
                   <SeletorProprietario
+                    idPrefix="outorgado"
                     placeholder="Buscar outorgado (representante)…"
                     busca={buscaOutorgado}
                     onBuscaChange={setBuscaOutorgado}

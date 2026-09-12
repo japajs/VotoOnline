@@ -16,6 +16,26 @@ type JoinedProprietario = {
   unidades: Unidade[] | null
 }
 
+// Bloqueio de inadimplente (Código Civil, art. 1.335, §único — ver
+// validarVotoOuFalhar em services/assembleia-votos.ts) precisa da mesma
+// checagem em mais de um lugar (criar procuração, somar peso delegado na
+// hora do voto) — centralizado aqui pra as duas cópias nunca divergirem.
+// Recebe `db` (não cria o seu) pra rodar na mesma sessão/transação de quem
+// chama.
+export async function getIdsInadimplentes(
+  db: ReturnType<typeof createServerClient>,
+  ids: string[]
+): Promise<Set<string>> {
+  if (ids.length === 0) return new Set()
+  const { data, error } = await db.from("proprietarios").select("id, inadimplente").in("id", ids)
+  if (error) throw new Error(error.message)
+  return new Set(
+    ((data ?? []) as { id: string; inadimplente: boolean }[])
+      .filter((p) => p.inadimplente)
+      .map((p) => p.id)
+  )
+}
+
 function rowToProprietario(row: JoinedProprietario): Proprietario {
   return {
     id: row.id,

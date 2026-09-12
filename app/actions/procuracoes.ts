@@ -10,6 +10,7 @@ import { getProprietariosSemVoto } from "@/services/assembleia-votos"
 import { getAssembleiaById } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
+import { isVotacaoAberta } from "@/lib/assembleia-status"
 import type { ProcuracaoComNomes } from "@/types"
 import type { ProprietarioSemVoto } from "@/services/assembleia-votos"
 
@@ -70,7 +71,7 @@ export async function createProcuracaoAction(
   try {
     const assembleia = await getAssembleiaById(assembleiaId)
     if (!assembleia) return { success: false, error: "Assembleia não encontrada." }
-    if (assembleia.status !== "aberta") {
+    if (!isVotacaoAberta(assembleia.status)) {
       return { success: false, error: "Só é possível registrar procuração enquanto a assembleia estiver aberta." }
     }
 

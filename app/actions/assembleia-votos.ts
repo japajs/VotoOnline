@@ -19,6 +19,7 @@ import { generateSurveyToken } from "@/lib/tokens"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { isVotacaoAberta } from "@/lib/assembleia-status"
 
 export interface EnviarAssembleiaResult {
   sent: number
@@ -244,7 +245,7 @@ export async function notificarNaoVotaramAction(
     const acesso = await requireAcessoCondominio(assembleia.condominio_id)
     if (!acesso.ok) return { success: false, sent: 0, failed: 0, error: acesso.error }
 
-    if (assembleia.status !== "aberta") {
+    if (!isVotacaoAberta(assembleia.status)) {
       return {
         success: false,
         sent: 0,
@@ -370,7 +371,7 @@ export async function iniciarVotoManualAction(
   try {
     const assembleia = await getAssembleiaById(assembleiaId)
     if (!assembleia) return { success: false, error: "Assembleia não encontrada." }
-    if (assembleia.status !== "aberta") {
+    if (!isVotacaoAberta(assembleia.status)) {
       return { success: false, error: "Só é possível registrar votos enquanto a assembleia estiver aberta." }
     }
 

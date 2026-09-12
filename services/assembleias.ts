@@ -440,8 +440,9 @@ export async function reabrirAssembleia(id: string): Promise<void> {
     .in("pauta_id", pautaIds)
   if (respostasError) throw new Error(respostasError.message)
 
-  const idsComVoto = [...new Set((respostas ?? []).map((r) => (r as { pauta_id: string }).pauta_id))]
-  const idsSemVoto = pautaIds.filter((pid) => !idsComVoto.includes(pid))
+  const idsComVotoSet = new Set((respostas ?? []).map((r) => (r as { pauta_id: string }).pauta_id))
+  const idsComVoto = [...idsComVotoSet]
+  const idsSemVoto = pautaIds.filter((pid) => !idsComVotoSet.has(pid))
 
   if (idsComVoto.length > 0) {
     const { error: emVotacaoError } = await db

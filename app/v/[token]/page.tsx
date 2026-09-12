@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
 import { CheckCircle2, Clock, PauseCircle } from "lucide-react"
+import { isVotacaoAberta } from "@/lib/assembleia-status"
 import {
   getAssembleiaSendByToken,
   getRespostasBySendId,
@@ -84,7 +85,7 @@ export default async function PublicVotoPage({ params }: Props) {
   let status = assembleia.status
 
   if (
-    status === "aberta" &&
+    isVotacaoAberta(status) &&
     assembleia.data_encerramento &&
     new Date(assembleia.data_encerramento) < new Date()
   ) {
