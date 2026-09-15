@@ -733,16 +733,21 @@ export async function getSendsJaVotaram(assembleiaId: string): Promise<SendJaVot
   }))
 }
 
+export interface SendNaoVotado extends SendJaVotado {
+  unidades: { numero: string; bloco: string | null; fracao_ideal: number | null }[]
+}
+
 // Auditoria de assembleias — Fase 6: quem ainda não registrou nenhum voto
 // nesta assembleia — usado pro lembrete manual (botão "notificar quem não
 // votou"). Sem snapshot ainda (não votou), então usa sempre o cadastro
 // atual do proprietário — nunca *_snapshot, que só existe a partir do 1º
-// voto (ver createAssembleiaRespostas).
-export async function getSendsNaoVotaram(assembleiaId: string): Promise<SendJaVotado[]> {
+// voto (ver createAssembleiaRespostas). Traz as unidades pra o lembrete
+// poder mostrar peso/unidade de cada um (ver services/email.ts).
+export async function getSendsNaoVotaram(assembleiaId: string): Promise<SendNaoVotado[]> {
   const db = createServerClient()
   const { data, error } = await db
     .from("assembleia_sends")
-    .select("id, token, proprietarios(nome, email)")
+    .select("id, token, proprietarios(nome, email, unidades(numero, bloco, fracao_ideal))")
     .eq("assembleia_id", assembleiaId)
     .is("votado_em", null)
 
@@ -751,7 +756,11 @@ export async function getSendsNaoVotaram(assembleiaId: string): Promise<SendJaVo
   type Row = {
     id: string
     token: string
-    proprietarios: { nome: string; email: string | null } | null
+    proprietarios: {
+      nome: string
+      email: string | null
+      unidades: { numero: string; bloco: string | null; fracao_ideal: number | null }[] | null
+    } | null
   }
 
   return ((data ?? []) as unknown as Row[]).map((r) => ({
@@ -759,6 +768,7 @@ export async function getSendsNaoVotaram(assembleiaId: string): Promise<SendJaVo
     token: r.token,
     proprietarioNome: r.proprietarios?.nome ?? "Proprietário",
     proprietarioEmail: r.proprietarios?.email ?? null,
+    unidades: r.proprietarios?.unidades ?? [],
   }))
 }
 

@@ -1,5 +1,6 @@
 import { Resend } from "resend"
 import { APP_NAME } from "@/lib/constants"
+import type { CriterioPeso } from "@/types"
 
 // Achado de auditoria LGPD: nome do proprietário, título/descrição da
 // assembleia e título da pauta vêm de campos de texto livre preenchidos por
@@ -43,6 +44,38 @@ interface AssembleiaTemplateInput {
   assembleiaDescricao: string | null
   pautas: { titulo: string }[]
   votoUrl: string
+  unidades: { numero: string; bloco: string | null }[]
+  peso: number
+  criterioPeso: CriterioPeso
+}
+
+// Formata "A102, B104, C401" — mesma convenção de exibição usada em toda a
+// aplicação (bloco-número quando há bloco, só o número quando não há).
+function formatUnidadeEmail(u: { numero: string; bloco: string | null }): string {
+  return u.bloco ? `${u.bloco}-${u.numero}` : u.numero
+}
+
+// Achado de usabilidade: nenhum e-mail dizia por qual(is) unidade(s) a
+// pessoa está votando nem qual o peso do voto — mostrar aqui ajuda a
+// pessoa a conferir o próprio cadastro antes de votar (pega cedo um erro
+// de unidade mal vinculada, por exemplo). Compartilhado entre o convite e
+// o lembrete — mesmo texto, pra não divergir entre os dois e-mails.
+function buildPesoUnidadesBloco(
+  unidades: { numero: string; bloco: string | null }[],
+  peso: number,
+  criterioPeso: CriterioPeso
+): string {
+  if (unidades.length === 0) return ""
+  const pesoTexto =
+    criterioPeso === "fracao_ideal"
+      ? `${(peso * 100).toFixed(4)}%`
+      : `${peso} ${peso === 1 ? "voto" : "votos"}`
+  const unidadesTexto = unidades.map(formatUnidadeEmail).map(escapeHtml).join(", ")
+  return `<p style="font-size:13px;color:#6b7280;margin:0 0 24px;line-height:1.6;">
+            Seu peso de voto: <strong style="color:#111827;">${pesoTexto}</strong>
+            &nbsp;·&nbsp; Unidade${unidades.length === 1 ? "" : "s"} vinculada${unidades.length === 1 ? "" : "s"} ao seu cadastro:
+            <strong style="color:#111827;">${unidadesTexto}</strong>
+          </p>`
 }
 
 function buildAssembleiaEmailHtml({
@@ -51,6 +84,9 @@ function buildAssembleiaEmailHtml({
   assembleiaDescricao,
   pautas,
   votoUrl,
+  unidades,
+  peso,
+  criterioPeso,
   temAnexo,
 }: AssembleiaTemplateInput & { temAnexo: boolean }): string {
   const accent = "#6366f1"
@@ -68,6 +104,8 @@ function buildAssembleiaEmailHtml({
         `<li style="font-size:14px;color:#374151;padding:4px 0;line-height:1.5;">${i + 1}. ${escapeHtml(p.titulo)}</li>`
     )
     .join("")
+
+  const pesoBloco = buildPesoUnidadesBloco(unidades, peso, criterioPeso)
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -103,6 +141,7 @@ function buildAssembleiaEmailHtml({
                 <strong>&ldquo;${assembleiaTitulo}&rdquo;</strong>.
               </p>
               ${description}
+              ${pesoBloco}
               <p style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 8px;">
                 Pautas
               </p>
@@ -293,6 +332,9 @@ interface LembreteVotoTemplateInput {
   assembleiaTitulo: string
   dataEncerramento: string | null
   votoUrl: string
+  unidades: { numero: string; bloco: string | null }[]
+  peso: number
+  criterioPeso: CriterioPeso
 }
 
 function buildLembreteVotoEmailHtml({
@@ -300,6 +342,9 @@ function buildLembreteVotoEmailHtml({
   assembleiaTitulo,
   dataEncerramento,
   votoUrl,
+  unidades,
+  peso,
+  criterioPeso,
 }: LembreteVotoTemplateInput): string {
   const accent = "#16233F"
   proprietarioNome = escapeHtml(proprietarioNome)
@@ -307,6 +352,7 @@ function buildLembreteVotoEmailHtml({
   const prazoTexto = dataEncerramento
     ? `O prazo para votar encerra em <strong>${new Date(dataEncerramento).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</strong>.`
     : "A votação continua aberta."
+  const pesoBloco = buildPesoUnidadesBloco(unidades, peso, criterioPeso)
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -341,6 +387,7 @@ function buildLembreteVotoEmailHtml({
               <p style="font-size:13px;color:#6b7280;margin:0 0 20px;line-height:1.5;">
                 ${prazoTexto}
               </p>
+              ${pesoBloco}
               <a href="${votoUrl}"
                  style="display:inline-block;background:${accent};color:#ffffff;font-size:15px;
                         font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none;
@@ -380,6 +427,9 @@ export interface LembreteVotoEmailInput {
   assembleiaTitulo: string
   dataEncerramento: string | null
   votoUrl: string
+  unidades: { numero: string; bloco: string | null }[]
+  peso: number
+  criterioPeso: CriterioPeso
 }
 
 export async function sendLembreteVotoEmailBatch(
@@ -403,6 +453,9 @@ export async function sendLembreteVotoEmailBatch(
           assembleiaTitulo: e.assembleiaTitulo,
           dataEncerramento: e.dataEncerramento,
           votoUrl: e.votoUrl,
+          unidades: e.unidades,
+          peso: e.peso,
+          criterioPeso: e.criterioPeso,
         }),
       }))
       // Achado de auditoria: resend.batch.send nunca rejeita em falha de
@@ -427,6 +480,9 @@ export interface AssembleiaEmailInput {
   assembleiaDescricao: string | null
   pautas: { titulo: string }[]
   votoUrl: string
+  unidades: { numero: string; bloco: string | null }[]
+  peso: number
+  criterioPeso: CriterioPeso
 }
 
 // Item 5: PDF opcional (edital, orçamento, memorial descritivo, convocação)
@@ -475,6 +531,9 @@ export async function sendAssembleiaEmailBatch(
             assembleiaDescricao: e.assembleiaDescricao,
             pautas: e.pautas,
             votoUrl: e.votoUrl,
+            unidades: e.unidades,
+            peso: e.peso,
+            criterioPeso: e.criterioPeso,
             temAnexo: true,
           }),
           attachments: [{ filename: anexo.filename, content: anexo.content }],
@@ -503,6 +562,9 @@ export async function sendAssembleiaEmailBatch(
           assembleiaDescricao: e.assembleiaDescricao,
           pautas: e.pautas,
           votoUrl: e.votoUrl,
+          unidades: e.unidades,
+          peso: e.peso,
+          criterioPeso: e.criterioPeso,
           temAnexo: false,
         }),
       }))

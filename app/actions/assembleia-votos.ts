@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { getAssembleiaById } from "@/services/assembleias"
+import { getCondominioById } from "@/services/condominios"
 import { getProprietarioById } from "@/services/proprietarios"
+import { getPesoParticipante } from "@/lib/peso"
 import {
   upsertAssembleiaSend,
   updateAssembleiaSendStatus,
@@ -102,6 +104,16 @@ export async function enviarAssembleiaAction(
 
   const pautas = (assembleia.pautas ?? []).map((p) => ({ titulo: p.titulo }))
 
+  // Achado de usabilidade: o e-mail de convite não dizia por qual(is)
+  // unidade(s) a pessoa está votando nem qual o peso do voto dela — quem
+  // recebia não tinha como conferir se o cadastro está certo antes de
+  // votar (e, como vimos hoje com unidades mal vinculadas na importação,
+  // essa conferência é justamente o que ajudaria a pegar um erro cedo).
+  // criterio_peso é do condomínio inteiro, não muda por proprietário — busca
+  // uma vez só, fora do loop por destinatário.
+  const condominio = await getCondominioById(assembleia.condominio_id).catch(() => null)
+  const criterioPeso = condominio?.criterio_peso ?? "unidade"
+
   const emailInputs: Parameters<typeof sendAssembleiaEmailBatch>[0] = []
   const failedIds: string[] = []
 
@@ -118,6 +130,7 @@ export async function enviarAssembleiaAction(
           token,
         })
 
+        const unidades = proprietario.unidades ?? []
         emailInputs.push({
           sendId: send.id,
           to: proprietario.email,
@@ -126,6 +139,9 @@ export async function enviarAssembleiaAction(
           assembleiaDescricao: assembleia!.descricao,
           pautas,
           votoUrl: `${appUrl}${ROUTES.publicCondoVoto(token)}`,
+          unidades: unidades.map((u) => ({ numero: u.numero, bloco: u.bloco })),
+          peso: getPesoParticipante({ unidades }, criterioPeso),
+          criterioPeso,
         })
       } catch {
         failedIds.push(proprietarioId)
@@ -259,6 +275,8 @@ export async function notificarNaoVotaramAction(
     if (comEmail.length === 0) return { success: true, sent: 0, failed: 0 }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    const condominio = await getCondominioById(assembleia.condominio_id).catch(() => null)
+    const criterioPeso = condominio?.criterio_peso ?? "unidade"
 
     const { sent, failed } = await sendLembreteVotoEmailBatch(
       comEmail.map((s) => ({
@@ -268,6 +286,9 @@ export async function notificarNaoVotaramAction(
         assembleiaTitulo: assembleia.titulo,
         dataEncerramento: assembleia.data_encerramento,
         votoUrl: `${appUrl}${ROUTES.publicCondoVoto(s.token)}`,
+        unidades: s.unidades,
+        peso: getPesoParticipante({ unidades: s.unidades }, criterioPeso),
+        criterioPeso,
       }))
     )
 
