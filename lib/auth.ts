@@ -58,6 +58,22 @@ export async function getSession(): Promise<SessionUser | null> {
     ) {
       return null
     }
+
+    // Achado de auditoria: desativar um usuário (updateUsuarioAtivoAction)
+    // só bloqueava um LOGIN NOVO (findUsuarioByEmail já filtra ativo=true) —
+    // quem já estava logado continuava com sessão válida e acesso total até
+    // o cookie expirar sozinho, até AUTH_COOKIE_MAX_AGE (7 dias), porque o
+    // JWT nunca carregou `ativo` e nada revalidava contra o banco depois do
+    // login. Reconsultar aqui é o único jeito de "desativar" surtir efeito
+    // imediato numa sessão já aberta.
+    const db = createServerClient()
+    const { data: usuario, error } = await db
+      .from("usuarios")
+      .select("ativo")
+      .eq("id", userId)
+      .maybeSingle()
+    if (error || !usuario || usuario.ativo === false) return null
+
     // Sessões emitidas antes desta claim existir não têm `acessoTotal` no
     // token — trata como acesso total (mesmo comportamento de sempre) até o
     // usuário logar de novo, em vez de derrubar todo mundo no deploy.
