@@ -14,7 +14,7 @@ import {
   getUnidadeById,
   updateUnidade,
 } from "@/services/unidades"
-import { hasAssembleiaAberta } from "@/services/assembleias"
+import { hasProprietarioVotadoEmAssembleiaAtiva } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { normalizarCelular, validarEmailFormato } from "@/lib/format"
@@ -328,20 +328,31 @@ export async function transferUnidadeAction(input: {
   }
 
   try {
-    // Auditoria funcional: transferir unidade com assembleia aberta pode
-    // fazer o peso dela ser contado duas vezes (no voto do dono antigo e no
-    // do novo dono, na mesma apuração). Só permite a correção fora de uma
-    // votação em andamento neste condomínio.
-    if (await hasAssembleiaAberta(input.condominioId)) {
+    const unidade = await getUnidadeById(input.unidadeId)
+    if (!unidade) return { success: false, error: "Unidade não encontrada." }
+
+    // Auditoria funcional: transferir unidade com assembleia aberta só é
+    // arriscado (peso contado duas vezes) se o dono atual ou o de destino já
+    // tiver votado numa assembleia em andamento — sem isso, o peso é
+    // recalculado "ao vivo" a partir do dono corrente e a transferência é
+    // segura mesmo com votação em curso.
+    if (await hasProprietarioVotadoEmAssembleiaAtiva(input.condominioId, unidade.proprietario_id)) {
       return {
         success: false,
         error:
-          "Não é possível transferir unidades enquanto houver uma assembleia aberta ou pausada neste condomínio. Aguarde o encerramento da votação.",
+          "O proprietário atual desta unidade já votou em uma assembleia em andamento neste condomínio. Aguarde o encerramento ou pause a assembleia antes de transferir.",
       }
     }
-
-    const unidade = await getUnidadeById(input.unidadeId)
-    if (!unidade) return { success: false, error: "Unidade não encontrada." }
+    if (
+      input.novoProprietarioId &&
+      (await hasProprietarioVotadoEmAssembleiaAtiva(input.condominioId, input.novoProprietarioId))
+    ) {
+      return {
+        success: false,
+        error:
+          "O proprietário de destino já votou em uma assembleia em andamento neste condomínio. Aguarde o encerramento ou pause a assembleia antes de transferir.",
+      }
+    }
 
     const proprietarioAntigo = await getProprietarioById(unidade.proprietario_id)
 

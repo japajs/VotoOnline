@@ -305,6 +305,41 @@ export async function hasAssembleiaAberta(condominioId: string): Promise<boolean
   return (data ?? []).length > 0
 }
 
+// Auditoria funcional: a trava de transferência de unidade usava
+// hasAssembleiaAberta (bloqueia SEMPRE que há assembleia em andamento no
+// condomínio, mesmo que ninguém tenha votado ainda), impedindo até uma
+// simples correção de cadastro. O risco real de contar peso duas vezes só
+// existe se o proprietário atual OU o de destino já tiver um voto
+// registrado numa dessas assembleias — sem isso, o peso é recalculado "ao
+// vivo" a partir do dono corrente no momento do voto, e a transferência não
+// afeta nenhuma apuração já congelada.
+export async function hasProprietarioVotadoEmAssembleiaAtiva(
+  condominioId: string,
+  proprietarioId: string
+): Promise<boolean> {
+  const db = createServerClient()
+  const { data: assembleias, error: errAssembleias } = await db
+    .from("assembleias")
+    .select("id")
+    .eq("condominio_id", condominioId)
+    .in("status", STATUS_EM_ANDAMENTO)
+
+  if (errAssembleias) throw new Error(errAssembleias.message)
+  const assembleiaIds = (assembleias ?? []).map((a) => a.id as string)
+  if (assembleiaIds.length === 0) return false
+
+  const { data: sends, error: errSends } = await db
+    .from("assembleia_sends")
+    .select("id")
+    .in("assembleia_id", assembleiaIds)
+    .eq("proprietario_id", proprietarioId)
+    .not("votado_em", "is", null)
+    .limit(1)
+
+  if (errSends) throw new Error(errSends.message)
+  return (sends ?? []).length > 0
+}
+
 export async function updateAssembleiaStatus(
   id: string,
   status: AssembleiaStatus
