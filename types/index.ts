@@ -63,6 +63,20 @@ export interface AssembleiaRecente {
   total_respondidos: number
 }
 
+// Visão de calendário (todos os condomínios do escopo do usuário) — usa
+// data_1a_convocacao e data_encerramento porque as duas já são configuradas
+// na criação da assembleia (ver criar-assembleia-dialog.tsx), então aparecem
+// mesmo pra uma assembleia ainda em rascunho, antes de ser aberta pra voto.
+export interface AssembleiaCalendario {
+  id: string
+  titulo: string
+  status: AssembleiaStatus
+  condominio_id: string
+  condominio_nome: string
+  data_1a_convocacao: string | null
+  data_encerramento: string | null
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T = unknown> {

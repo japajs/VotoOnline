@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Building2,
+  Calendar,
   FileSpreadsheet,
   FileText,
   Gavel,
@@ -31,6 +32,7 @@ type NavItem = {
 const NAV_OPERACAO: NavItem[] = [
   { href: "/dashboard",   label: "Dashboard",   icon: BarChart3       },
   { href: "/condominios", label: "Condomínios", icon: Building2       },
+  { href: "/calendario",  label: "Calendário",  icon: Calendar        },
   { href: "/importacao",  label: "Importação",  icon: FileSpreadsheet },
   { href: "/relatorios",  label: "Relatórios",  icon: FileText        },
 ]

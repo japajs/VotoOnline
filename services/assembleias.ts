@@ -1,7 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { createPautasBatch } from "@/services/pautas"
 import { STATUS_EM_ANDAMENTO } from "@/lib/assembleia-status"
-import type { Assembleia, AssembleiaStatus, Pauta, PautaOpcao, PautaStatus } from "@/types"
+import type { Assembleia, AssembleiaCalendario, AssembleiaStatus, Pauta, PautaOpcao, PautaStatus } from "@/types"
 
 type JoinedPautaOpcao = {
   id: string
@@ -509,4 +509,38 @@ export async function contarParticipantesJaVotaram(assembleiaId: string): Promis
 
   if (error) throw new Error(error.message)
   return count ?? 0
+}
+
+// Lista todas as assembleias do escopo (todos os condomínios, se
+// condominioIds vier undefined) com as datas de 1ª convocação e
+// encerramento — usado pela visão de calendário. As duas datas já são
+// configuradas na criação da assembleia (ver criar-assembleia-dialog.tsx),
+// então aparecem mesmo pra uma assembleia ainda em rascunho, antes de ser
+// aberta pra voto — diferente de data_abertura, que só existe depois que
+// alguém clica em "Abrir".
+export async function getAssembleiasParaCalendario(
+  condominioIds?: string[]
+): Promise<AssembleiaCalendario[]> {
+  const db = createServerClient()
+
+  if (condominioIds && condominioIds.length === 0) return []
+
+  let query = db
+    .from("assembleias")
+    .select("id, titulo, status, condominio_id, data_1a_convocacao, data_encerramento, condominios(nome)")
+
+  if (condominioIds) query = query.in("condominio_id", condominioIds)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    titulo: row.titulo,
+    status: row.status as AssembleiaStatus,
+    condominio_id: row.condominio_id,
+    condominio_nome: (row.condominios as unknown as { nome: string } | null)?.nome ?? "—",
+    data_1a_convocacao: row.data_1a_convocacao,
+    data_encerramento: row.data_encerramento,
+  }))
 }
