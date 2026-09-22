@@ -153,4 +153,23 @@
   .rounded-xl {
     border-radius: 8px;
   }
+
+  /* Achado funcional: o botão "Imprimir" (window.print(), na apuração da
+     assembleia) só saía com o pedaço do relatório que cabia numa tela — o
+     layout do painel (DashboardShell) usa h-screen + overflow-hidden no
+     contêiner externo e overflow-y-auto no miolo pra manter a barra lateral
+     fixa enquanto só o conteúdo rola; window.print() imprime a árvore DOM
+     como está, então tudo que só aparecia rolando ficava fora do papel
+     (nenhuma pauta é omitida do DOM — é puramente um corte visual). Libera
+     altura/rolagem só na impressão: o conteúdo passa a fluir por quantas
+     páginas o navegador precisar, em vez de cortar na primeira tela. */
+  html,
+  body,
+  .h-screen {
+    height: auto !important;
+  }
+  .overflow-hidden,
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
 }
