@@ -19,3 +19,11 @@ export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 
 export const RATE_LIMIT_WINDOW_MS = 60_000
 export const RATE_LIMIT_MAX_REQUESTS = 20
+
+// Segurança: qualquer "administrador" pode redefinir a senha de qualquer
+// outro usuário, inclusive de outro administrador, sem aviso nenhum pro dono
+// da conta (ver redefinirSenhaUsuarioAction/updateSenhaAction) — decisão de
+// design que faz sentido pra dois admins que operam juntos (ver
+// services/email.ts, sendSenhaAlteradaEmail). Por pedido explícito, o aviso
+// por e-mail quando a senha muda só dispara pra esta conta, não pra todas.
+export const EMAIL_ALERTA_SENHA_ALTERADA = "cleitonsalazargomes@gmail.com"

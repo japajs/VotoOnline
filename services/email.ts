@@ -580,3 +580,28 @@ export async function sendAssembleiaEmailBatch(
   return { sent, failed }
 }
 
+// ─── Alerta de segurança: senha alterada ───────────────────────────────────────
+
+// Auditoria funcional: qualquer "administrador" pode redefinir a senha de
+// qualquer outro usuário, inclusive de outro administrador, sem aviso nenhum
+// pro dono da conta (ver redefinirSenhaUsuarioAction/updateSenhaAction) — e
+// os dois administradores deste sistema legitimamente precisam poder fazer
+// isso um pro outro. Este e-mail não impede a troca, só garante que quem tem
+// a senha alterada saiba na hora, mesmo que não tenha sido ela mesma. Só
+// dispara pra EMAIL_ALERTA_SENHA_ALTERADA (lib/constants.ts), por pedido
+// explícito — não é uma notificação geral pra todo usuário.
+export async function sendSenhaAlteradaEmail(email: string): Promise<void> {
+  const resend = getResend()
+  const from = getFromEmail()
+
+  await resend.emails.send({
+    from,
+    to: email,
+    subject: `[${APP_NAME}] Sua senha foi alterada`,
+    html: `
+      <p>A senha da sua conta no <strong>${APP_NAME}</strong> foi alterada agora.</p>
+      <p>Se foi você, pode ignorar este e-mail. Se não foi, entre em contato imediatamente.</p>
+    `,
+  })
+}
+

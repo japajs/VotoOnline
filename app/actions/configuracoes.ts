@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache"
 import { Resend } from "resend"
 import { compare, hash } from "bcryptjs"
-import { APP_NAME, ROUTES } from "@/lib/constants"
+import { APP_NAME, EMAIL_ALERTA_SENHA_ALTERADA, ROUTES } from "@/lib/constants"
 import { getConfiguracao, setConfiguracao } from "@/services/configuracoes"
 import { getSession, requirePerfil } from "@/lib/auth"
 import { findUsuarioByEmail } from "@/services/usuarios"
 import { updateUsuarioSenha } from "@/services/usuarios"
+import { sendSenhaAlteradaEmail } from "@/services/email"
 
 // ─── Conta ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,15 @@ export async function updateSenhaAction(
   try {
     const novaSenhaHash = await hash(novaSenha, 12)
     await updateUsuarioSenha(user.id, novaSenhaHash)
+
+    if (user.email === EMAIL_ALERTA_SENHA_ALTERADA) {
+      try {
+        await sendSenhaAlteradaEmail(user.email)
+      } catch {
+        // Best-effort: a senha já foi trocada, uma falha no aviso não desfaz isso.
+      }
+    }
+
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar." }

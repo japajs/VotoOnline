@@ -4,14 +4,16 @@ import { revalidatePath } from "next/cache"
 import { hash } from "bcryptjs"
 import {
   createUsuario,
+  getUsuarioById,
   updateUsuario,
   updateUsuarioSenha,
   getCondominiosAutorizados,
   setCondominiosAutorizados,
 } from "@/services/usuarios"
+import { sendSenhaAlteradaEmail } from "@/services/email"
 import { requirePerfil } from "@/lib/auth"
 import { normalizarCelular, validarEmailFormato } from "@/lib/format"
-import { ROUTES } from "@/lib/constants"
+import { EMAIL_ALERTA_SENHA_ALTERADA, ROUTES } from "@/lib/constants"
 import type { UserPerfil } from "@/types"
 
 // Gestão de usuários (escopo MASTER/PESSOAL) é uma ação administrativa —
@@ -143,6 +145,16 @@ export async function redefinirSenhaUsuarioAction(
   try {
     const senha_hash = await hash(novaSenha, 12)
     await updateUsuarioSenha(id, senha_hash)
+
+    const usuario = await getUsuarioById(id)
+    if (usuario?.email === EMAIL_ALERTA_SENHA_ALTERADA) {
+      try {
+        await sendSenhaAlteradaEmail(usuario.email)
+      } catch {
+        // Best-effort: a senha já foi trocada, uma falha no aviso não desfaz isso.
+      }
+    }
+
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao redefinir senha." }
