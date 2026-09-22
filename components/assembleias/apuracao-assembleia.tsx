@@ -405,7 +405,7 @@ function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
     <div className="rounded-xl border border-border/60 bg-card p-5 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Resultado ponderado (por unidade)
+          Resultado ponderado (por imóvel)
         </p>
         <span className="text-xs text-muted-foreground">
           {totalP} {totalP === 1 ? "participante" : "participantes"}
@@ -422,8 +422,8 @@ function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
               pct={pctW(opcao.ponderado)}
               colorBar={cor.bar}
               colorText={cor.text}
-              unit="unidade"
-              unitPlural="unidades"
+              unit="imóvel"
+              unitPlural="imóveis"
             />
           )
         })}
@@ -434,8 +434,8 @@ function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
             pct={pctW(ponderado.abstencao)}
             colorBar="bg-amber-500"
             colorText="text-amber-500"
-            unit="unidade"
-            unitPlural="unidades"
+            unit="imóvel"
+            unitPlural="imóveis"
           />
         )}
       </div>
@@ -516,12 +516,12 @@ function SimNaoApuracao({ item }: { item: PautaApuracao }) {
             <DonutChart
               segments={segmentsW}
               centerLabel={rotuloAprovacao}
-              centerSub={`${total_apartamentos_representados} apts`}
+              centerSub={`${total_apartamentos_representados} imóveis`}
             />
             <div className="flex-1 space-y-3">
-              <Bar label="SIM" count={ponderado.sim} pct={pctW(ponderado.sim)} colorBar="bg-emerald-500" colorText="text-emerald-500" unit="apt" unitPlural="apts" />
-              <Bar label="NÃO" count={ponderado.nao} pct={pctW(ponderado.nao)} colorBar="bg-rose-500" colorText="text-rose-500" unit="apt" unitPlural="apts" />
-              <Bar label="ABST." count={ponderado.abstencao} pct={pctW(ponderado.abstencao)} colorBar="bg-amber-500" colorText="text-amber-500" unit="apt" unitPlural="apts" />
+              <Bar label="SIM" count={ponderado.sim} pct={pctW(ponderado.sim)} colorBar="bg-emerald-500" colorText="text-emerald-500" unit="imóvel" unitPlural="imóveis" />
+              <Bar label="NÃO" count={ponderado.nao} pct={pctW(ponderado.nao)} colorBar="bg-rose-500" colorText="text-rose-500" unit="imóvel" unitPlural="imóveis" />
+              <Bar label="ABST." count={ponderado.abstencao} pct={pctW(ponderado.abstencao)} colorBar="bg-amber-500" colorText="text-amber-500" unit="imóvel" unitPlural="imóveis" />
             </div>
           </div>
         </div>

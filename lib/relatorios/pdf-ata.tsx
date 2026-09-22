@@ -195,7 +195,7 @@ export function AtaPDF({
           let resultadoTexto: string
           if (multiplaEscolha) {
             resultadoTexto = vencedora
-              ? `Opção mais votada: ${vencedora.label} (${vencedora.ponderado} unidade(s) ponderada(s)).`
+              ? `Opção mais votada: ${vencedora.label} (${vencedora.ponderado} ${vencedora.ponderado === 1 ? "imóvel ponderado" : "imóveis ponderados"}).`
               : "Sem votos registrados."
           } else if (item.aprovada === null) {
             resultadoTexto = "Sem votos registrados."

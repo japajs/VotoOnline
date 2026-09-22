@@ -122,7 +122,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Unidades (apartamentos)</Label>
+              <Label>Unidades (imóveis)</Label>
               <button
                 type="button"
                 onClick={addUnidade}

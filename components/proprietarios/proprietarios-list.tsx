@@ -275,7 +275,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
           espaço com nome, e-mail, celular ou peso. */}
       <div className="mt-1 flex flex-wrap items-center gap-1 pl-0.5">
         <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/60">
-          Apto
+          Imóvel
         </span>
         {unidades.map((u) => (
           <span

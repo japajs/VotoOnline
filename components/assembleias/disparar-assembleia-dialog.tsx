@@ -219,7 +219,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
                           </p>
                         </div>
                         <span className="shrink-0 text-xs text-muted-foreground">
-                          {peso} {peso === 1 ? "apto" : "aptos"}
+                          {peso} {peso === 1 ? "imóvel" : "imóveis"}
                         </span>
                       </label>
                     )
@@ -231,7 +231,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
             {selectedIds.size > 0 && (
               <p className="text-right text-xs text-muted-foreground">
                 {selectedIds.size} proprietário{selectedIds.size !== 1 ? "s" : ""} ·{" "}
-                {totalApartamentos} apartamento{totalApartamentos !== 1 ? "s" : ""} representados
+                {totalApartamentos} imóve{totalApartamentos !== 1 ? "is" : "l"} representado{totalApartamentos !== 1 ? "s" : ""}
               </p>
             )}
 

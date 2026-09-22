@@ -346,7 +346,7 @@ function PautaMultiplaEscolha({
           <Text style={thText}>PARTIC.</Text>
         </View>
         <View style={narrow}>
-          <Text style={thText}>UNID.</Text>
+          <Text style={thText}>IMÓV.</Text>
         </View>
         <View style={narrow}>
           <Text style={thText}>%</Text>
@@ -390,7 +390,7 @@ function PautaMultiplaEscolha({
         <View style={[s.verdict, { backgroundColor: CORES_OPCOES[opcoes.indexOf(vencedora) % CORES_OPCOES.length] }, full ? { paddingVertical: 8 } : {}]}>
           <Text style={full ? { ...s.verdictText, fontSize: 11 } : s.verdictText}>{vencedora.label.toUpperCase()}</Text>
           <Text style={s.verdictSub}>
-            {vencedora.ponderado} unid. · {tp} participante{tp === 1 ? "" : "s"}
+            {vencedora.ponderado} imóv. · {tp} participante{tp === 1 ? "" : "s"}
           </Text>
         </View>
       ) : (
@@ -429,7 +429,7 @@ function DetalhamentoVotos({ votos, sigiloso }: { votos: VotoDetalhado[]; sigilo
       <View style={s.detTable}>
         <View style={s.detRowHeader} fixed>
           <View style={s.detCellUnidade}>
-            <Text style={s.detThText}>UNIDADE</Text>
+            <Text style={s.detThText}>IMÓVEL</Text>
           </View>
           <View style={s.detCellNome}>
             <Text style={s.detThText}>NOME</Text>
@@ -668,8 +668,8 @@ export function ApuracaoPDF({
                     />
                     <View style={{ marginTop: 10 }}>
                       <BlocoResultadoSimNao
-                        titulo="PONDERADO POR UNIDADES"
-                        colUnidade="APTS"
+                        titulo="PONDERADO POR IMÓVEIS"
+                        colUnidade="IMÓVEIS"
                         sim={ponderado.sim}
                         nao={ponderado.nao}
                         abstencao={ponderado.abstencao}
@@ -677,7 +677,7 @@ export function ApuracaoPDF({
                         verdict={vW}
                         verdictSub={
                           total_apartamentos_representados > 0
-                            ? `${total_apartamentos_representados} apt(s) representado(s) · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
+                            ? `${total_apartamentos_representados} ${total_apartamentos_representados === 1 ? "imóvel representado" : "imóveis representados"} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                             : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                         }
                         full
@@ -700,8 +700,8 @@ export function ApuracaoPDF({
                     </View>
                     <View style={[s.tableHalf, { marginLeft: 6 }]}>
                       <BlocoResultadoSimNao
-                        titulo="PONDERADO POR UNIDADES"
-                        colUnidade="APTS"
+                        titulo="PONDERADO POR IMÓVEIS"
+                        colUnidade="IMÓVEIS"
                         sim={ponderado.sim}
                         nao={ponderado.nao}
                         abstencao={ponderado.abstencao}
@@ -709,7 +709,7 @@ export function ApuracaoPDF({
                         verdict={vW}
                         verdictSub={
                           total_apartamentos_representados > 0
-                            ? `${total_apartamentos_representados} apt(s) representado(s) · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
+                            ? `${total_apartamentos_representados} ${total_apartamentos_representados === 1 ? "imóvel representado" : "imóveis representados"} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                             : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                         }
                         full={false}

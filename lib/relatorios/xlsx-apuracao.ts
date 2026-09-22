@@ -142,13 +142,13 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
     "% SIM",
     "% NÃO",
     "% Abst.",
-    "SIM (unid.)",
-    "NÃO (unid.)",
-    "Abst. (unid.)",
-    "Total unid.",
-    "% SIM (unid.)",
-    "% NÃO (unid.)",
-    "% Abst. (unid.)",
+    "SIM (imóv.)",
+    "NÃO (imóv.)",
+    "Abst. (imóv.)",
+    "Total imóv.",
+    "% SIM (imóv.)",
+    "% NÃO (imóv.)",
+    "% Abst. (imóv.)",
     "Resultado (part.)",
     "Quórum exigido",
     "Resultado (ponderado)",
@@ -228,7 +228,7 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
      Só é adicionada quando existe ao menos uma pauta desse tipo — uma
      assembleia só com pautas Sim/Não gera o mesmo workbook de sempre. */
   if (pautasMultiplaEscolha.length > 0) {
-    const meHeader = ["Pauta", "Opção", "Participantes", "% part.", "Unidades (ponderado)", "% ponderado"]
+    const meHeader = ["Pauta", "Opção", "Participantes", "% part.", "Imóveis (ponderado)", "% ponderado"]
     const meRows: (string | number)[][] = []
 
     pautasMultiplaEscolha.forEach((p) => {
@@ -286,14 +286,14 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
   boldRow(wsPart, 0, partHeader.length)
   XLSX.utils.book_append_sheet(wb, wsPart, "Participantes")
 
-  /* ── Tab 4: Unidades ─────────────────────────────────────────────────── */
-  const unidHeader = ["Nº Unidade", "Bloco", "Proprietário", "E-mail"]
+  /* ── Tab 4: Imóveis ──────────────────────────────────────────────────── */
+  const unidHeader = ["Nº Imóvel", "Bloco", "Proprietário", "E-mail"]
   const unidRows = unidades.map((u) => [u.numero, u.bloco ?? "", u.proprietario, u.email ?? ""])
 
   const wsUnid = XLSX.utils.aoa_to_sheet(sanitizarLinhas([unidHeader, ...unidRows]))
   wsUnid["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 36 }, { wch: 30 }]
   boldRow(wsUnid, 0, unidHeader.length)
-  XLSX.utils.book_append_sheet(wb, wsUnid, "Unidades")
+  XLSX.utils.book_append_sheet(wb, wsUnid, "Imóveis")
 
   /* ── Tab 5: Detalhamento de Votos (Unidade/Nome/E-mail/Resposta) ──────
      Substitui o que seria uma coluna de Endereço IP — o IP continua só no
@@ -305,7 +305,7 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
   const tituloPorPauta = new Map(apuracao.pautas.map((p) => [p.pauta.id, p.pauta.titulo]))
   const pautasSigilosas = apuracao.pautas.filter((p) => p.pauta.sigiloso)
   const idsSigilosos = new Set(pautasSigilosas.map((p) => p.pauta.id))
-  const detHeader = ["Pauta", "Unidade(s)", "Nome", "E-mail", "Resposta"]
+  const detHeader = ["Pauta", "Imóvel(is)", "Nome", "E-mail", "Resposta"]
   const detRows = votosDetalhados
     .filter((v) => !idsSigilosos.has(v.pauta_id))
     .map((v) => [

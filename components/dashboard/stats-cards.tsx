@@ -27,7 +27,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     {
       title: "Unidades",
       value: stats.total_unidades,
-      description: "apartamentos cadastrados",
+      description: "imóveis cadastrados",
       icon: Home,
       color: "text-violet-400",
       bg: "bg-violet-400/10",

@@ -33,7 +33,7 @@ function formatDataHoraVoto(iso: string | null): string {
 
 function formatPesoValor(valor: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(valor * 100).toFixed(2)}%`
-  return `${valor} ${valor === 1 ? "unidade" : "unidades"}`
+  return `${valor} ${valor === 1 ? "imóvel" : "imóveis"}`
 }
 
 function formatDate(iso: string | null): string {
@@ -195,10 +195,10 @@ export function ResultadoAssembleia({
           <h2 className="text-sm font-semibold">Participação</h2>
         </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Aptos a votar" value={aptosAVotar} />
+          <Stat label="Imóveis a votar" value={aptosAVotar} />
           <Stat label="Votaram" value={total_respondidos} />
           <Stat label="Participação" value={`${participacaoPct}%`} highlight={participacaoPct >= 50} />
-          <Stat label="Unidades repr." value={formatPesoValor(totalUnidades, criterioPeso)} />
+          <Stat label="Imóveis repr." value={formatPesoValor(totalUnidades, criterioPeso)} />
         </div>
 
         {/* Auditoria de assembleias — Fase 1: quórum mínimo é sobre o peso do
@@ -389,7 +389,7 @@ export function ResultadoAssembleia({
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b border-border/40 text-left text-muted-foreground">
-                            <th className="py-1.5 pr-3 font-medium">Unidade</th>
+                            <th className="py-1.5 pr-3 font-medium">Imóvel</th>
                             <th className="py-1.5 pr-3 font-medium">Nome</th>
                             <th className="py-1.5 pr-3 font-medium">Resposta</th>
                             <th className="py-1.5 font-medium">Voto registrado em</th>
