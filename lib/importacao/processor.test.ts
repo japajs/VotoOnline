@@ -182,6 +182,25 @@ describe("processarLinhas — Restrição/inadimplente (planilha real: condomín
     expect(resultado.totalProprietarios).toBe(1)
     expect(resultado.proprietarios[0].inadimplente).toBe(true)
   })
+
+  it('coluna chamada literalmente "Inadimplente" com "Não" não marca como inadimplente', () => {
+    // Achado de revisão: a 1ª versão tratava QUALQUER célula não vazia como
+    // inadimplente — mas o dicionário de sinônimos também casa uma coluna
+    // chamada "Inadimplente" (não só "Restrição"), e essas costumam vir
+    // preenchidas com "Sim"/"Não" em toda linha. Sem reconhecer "Não" como
+    // negativo, todo proprietário em dia ficava bloqueado de votar.
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 62, nome: "Pessoa em Dia (coluna Sim/Não)", imovel: "A103", inadimplente: "Não" }),
+    ])
+    expect(resultado.proprietarios[0].inadimplente).toBe(false)
+  })
+
+  it('"Sim" na coluna Inadimplente marca como inadimplente', () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 63, nome: "Pessoa Devedora (coluna Sim/Não)", imovel: "A104", inadimplente: "Sim" }),
+    ])
+    expect(resultado.proprietarios[0].inadimplente).toBe(true)
+  })
 })
 
 describe("processarLinhas — Fração ideal", () => {

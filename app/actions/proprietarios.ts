@@ -14,7 +14,7 @@ import {
   getUnidadeById,
   updateUnidade,
 } from "@/services/unidades"
-import { hasProprietarioVotadoEmAssembleiaAtiva } from "@/services/assembleias"
+import { getAssembleiaIdsEmAndamento, pesoJaFoiCongeladoEmAssembleiaAtiva } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { normalizarCelular, validarEmailFormato } from "@/lib/format"
@@ -332,25 +332,31 @@ export async function transferUnidadeAction(input: {
     if (!unidade) return { success: false, error: "Unidade não encontrada." }
 
     // Auditoria funcional: transferir unidade com assembleia aberta só é
-    // arriscado (peso contado duas vezes) se o dono atual ou o de destino já
-    // tiver votado numa assembleia em andamento — sem isso, o peso é
+    // arriscado (peso contado duas vezes) se o peso do dono atual ou o de
+    // destino já estiver congelado em algum voto — sem isso, o peso é
     // recalculado "ao vivo" a partir do dono corrente e a transferência é
-    // segura mesmo com votação em curso.
-    if (await hasProprietarioVotadoEmAssembleiaAtiva(input.condominioId, unidade.proprietario_id)) {
+    // segura mesmo com votação em curso. "Congelado" inclui ter votado
+    // diretamente OU ter outorgado procuração pra alguém que já votou (ver
+    // pesoJaFoiCongeladoEmAssembleiaAtiva).
+    const assembleiaIdsEmAndamento = await getAssembleiaIdsEmAndamento(input.condominioId)
+    const [donoAtualCongelado, donoDestinoCongelado] = await Promise.all([
+      pesoJaFoiCongeladoEmAssembleiaAtiva(assembleiaIdsEmAndamento, unidade.proprietario_id),
+      input.novoProprietarioId
+        ? pesoJaFoiCongeladoEmAssembleiaAtiva(assembleiaIdsEmAndamento, input.novoProprietarioId)
+        : Promise.resolve(false),
+    ])
+    if (donoAtualCongelado) {
       return {
         success: false,
         error:
-          "O proprietário atual desta unidade já votou em uma assembleia em andamento neste condomínio. Aguarde o encerramento ou pause a assembleia antes de transferir.",
+          "O proprietário atual desta unidade já votou (ou outorgou procuração a alguém que já votou) em uma assembleia em andamento neste condomínio. Aguarde o encerramento ou pause a assembleia antes de transferir.",
       }
     }
-    if (
-      input.novoProprietarioId &&
-      (await hasProprietarioVotadoEmAssembleiaAtiva(input.condominioId, input.novoProprietarioId))
-    ) {
+    if (donoDestinoCongelado) {
       return {
         success: false,
         error:
-          "O proprietário de destino já votou em uma assembleia em andamento neste condomínio. Aguarde o encerramento ou pause a assembleia antes de transferir.",
+          "O proprietário de destino já votou (ou outorgou procuração a alguém que já votou) em uma assembleia em andamento neste condomínio. Aguarde o encerramento ou pause a assembleia antes de transferir.",
       }
     }
 

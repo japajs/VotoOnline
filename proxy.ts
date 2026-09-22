@@ -11,7 +11,7 @@ const PUBLIC_PREFIXES = ["/login", "/setup", "/v/"]
 // si já tinha seu próprio getSession()+checagem de perfil, então nunca
 // esteve realmente exposta, mas quebrava a camada de defesa que todas as
 // outras páginas administrativas têm aqui no proxy.
-const PROTECTED_PREFIXES = ["/dashboard", "/condominios", "/configuracoes", "/importacao", "/relatorios", "/usuarios"]
+const PROTECTED_PREFIXES = ["/dashboard", "/condominios", "/calendario", "/configuracoes", "/importacao", "/relatorios", "/usuarios"]
 
 function getSecret(): Uint8Array | null {
   const password = process.env.AUTH_PASSWORD

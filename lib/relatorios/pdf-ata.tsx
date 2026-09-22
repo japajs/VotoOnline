@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import { APP_NAME, APP_VERSION } from "@/lib/constants"
+import { pluralImovel } from "@/lib/format"
 import type { Assembleia, AssembleiaApuracao, Condominio } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
 import { formatDateTimeBR, formatDateBR } from "./utils"
@@ -195,7 +196,7 @@ export function AtaPDF({
           let resultadoTexto: string
           if (multiplaEscolha) {
             resultadoTexto = vencedora
-              ? `Opção mais votada: ${vencedora.label} (${vencedora.ponderado} ${vencedora.ponderado === 1 ? "imóvel ponderado" : "imóveis ponderados"}).`
+              ? `Opção mais votada: ${vencedora.label} (${vencedora.ponderado} ${pluralImovel(vencedora.ponderado, "ponderado")}).`
               : "Sem votos registrados."
           } else if (item.aprovada === null) {
             resultadoTexto = "Sem votos registrados."

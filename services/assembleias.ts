@@ -305,28 +305,44 @@ export async function hasAssembleiaAberta(condominioId: string): Promise<boolean
   return (data ?? []).length > 0
 }
 
-// Auditoria funcional: a trava de transferência de unidade usava
-// hasAssembleiaAberta (bloqueia SEMPRE que há assembleia em andamento no
-// condomínio, mesmo que ninguém tenha votado ainda), impedindo até uma
-// simples correção de cadastro. O risco real de contar peso duas vezes só
-// existe se o proprietário atual OU o de destino já tiver um voto
-// registrado numa dessas assembleias — sem isso, o peso é recalculado "ao
-// vivo" a partir do dono corrente no momento do voto, e a transferência não
-// afeta nenhuma apuração já congelada.
-export async function hasProprietarioVotadoEmAssembleiaAtiva(
-  condominioId: string,
-  proprietarioId: string
-): Promise<boolean> {
+// Ids das assembleias em andamento (aberta/pausada) deste condomínio —
+// separado da checagem de peso abaixo pra quem precisa rodar a mesma
+// checagem pra mais de um proprietário sem refazer esta consulta a cada vez
+// (ver transferUnidadeAction, que checa o dono atual E o de destino).
+export async function getAssembleiaIdsEmAndamento(condominioId: string): Promise<string[]> {
   const db = createServerClient()
-  const { data: assembleias, error: errAssembleias } = await db
+  const { data, error } = await db
     .from("assembleias")
     .select("id")
     .eq("condominio_id", condominioId)
     .in("status", STATUS_EM_ANDAMENTO)
 
-  if (errAssembleias) throw new Error(errAssembleias.message)
-  const assembleiaIds = (assembleias ?? []).map((a) => a.id as string)
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((a) => a.id as string)
+}
+
+// Auditoria funcional: a trava de transferência de unidade usava
+// hasAssembleiaAberta (bloqueia SEMPRE que há assembleia em andamento no
+// condomínio, mesmo que ninguém tenha votado ainda), impedindo até uma
+// simples correção de cadastro. O risco real de contar peso duas vezes só
+// existe se o peso do proprietário atual OU do de destino já estiver
+// congelado em algum voto — sem isso, o peso é recalculado "ao vivo" a
+// partir do dono corrente no momento do voto, e a transferência não afeta
+// nenhuma apuração já congelada.
+//
+// Revisão pós-implementação: checar só assembleia_sends.votado_em do próprio
+// proprietário não bastava — quem OUTORGA procuração nunca vota diretamente
+// (validarVotoOuFalhar bloqueia), então se ele já delegou pra alguém que JÁ
+// VOTOU, o peso da unidade dele já está congelado no snapshot do outorgado
+// mesmo sem nenhum assembleia_sends próprio com votado_em. Sem este segundo
+// caso, a transferência era liberada e o mesmo peso podia ser contado de
+// novo no voto do novo dono.
+export async function pesoJaFoiCongeladoEmAssembleiaAtiva(
+  assembleiaIds: string[],
+  proprietarioId: string
+): Promise<boolean> {
   if (assembleiaIds.length === 0) return false
+  const db = createServerClient()
 
   const { data: sends, error: errSends } = await db
     .from("assembleia_sends")
@@ -337,7 +353,30 @@ export async function hasProprietarioVotadoEmAssembleiaAtiva(
     .limit(1)
 
   if (errSends) throw new Error(errSends.message)
-  return (sends ?? []).length > 0
+  if ((sends ?? []).length > 0) return true
+
+  const { data: procuracoes, error: errProc } = await db
+    .from("procuracoes")
+    .select("outorgado_id, assembleia_id")
+    .in("assembleia_id", assembleiaIds)
+    .eq("outorgante_id", proprietarioId)
+
+  if (errProc) throw new Error(errProc.message)
+
+  for (const p of (procuracoes ?? []) as { outorgado_id: string; assembleia_id: string }[]) {
+    const { data: outorgadoVotou, error: errOutorgado } = await db
+      .from("assembleia_sends")
+      .select("id")
+      .eq("assembleia_id", p.assembleia_id)
+      .eq("proprietario_id", p.outorgado_id)
+      .not("votado_em", "is", null)
+      .limit(1)
+
+    if (errOutorgado) throw new Error(errOutorgado.message)
+    if ((outorgadoVotou ?? []).length > 0) return true
+  }
+
+  return false
 }
 
 export async function updateAssembleiaStatus(

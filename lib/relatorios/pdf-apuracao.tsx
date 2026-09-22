@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import { APP_NAME, APP_VERSION } from "@/lib/constants"
+import { pluralImovel } from "@/lib/format"
 import type { Assembleia, AssembleiaApuracao, Condominio } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
 import { formatDateTimeBR, pctStr, statusLabelPT } from "./utils"
@@ -677,7 +678,7 @@ export function ApuracaoPDF({
                         verdict={vW}
                         verdictSub={
                           total_apartamentos_representados > 0
-                            ? `${total_apartamentos_representados} ${total_apartamentos_representados === 1 ? "imóvel representado" : "imóveis representados"} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
+                            ? `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                             : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                         }
                         full
@@ -709,7 +710,7 @@ export function ApuracaoPDF({
                         verdict={vW}
                         verdictSub={
                           total_apartamentos_representados > 0
-                            ? `${total_apartamentos_representados} ${total_apartamentos_representados === 1 ? "imóvel representado" : "imóveis representados"} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
+                            ? `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                             : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                         }
                         full={false}

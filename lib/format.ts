@@ -75,3 +75,14 @@ export function normalizarBusca(texto: string): string {
     .replace(/[-\s]/g, "")
     .toLowerCase()
 }
+
+// "imóvel"/"imóveis" (opcionalmente seguido de um adjetivo que pluraliza de
+// forma regular, ex.: "representado"/"representados") — extraído porque a
+// mesma conta (singular/plural na tela de resultado, no disparo de
+// assembleia e nos PDFs de apuração/ata) tinha virado o mesmo ternário
+// copiado em 5 lugares diferentes.
+export function pluralImovel(quantidade: number, adjetivo?: string): string {
+  const imovel = quantidade === 1 ? "imóvel" : "imóveis"
+  if (!adjetivo) return imovel
+  return `${imovel} ${quantidade === 1 ? adjetivo : `${adjetivo}s`}`
+}

@@ -14,7 +14,10 @@ function PasswordInput({ className, ...props }: React.ComponentProps<"input">) {
 
   return (
     <div className="relative">
-      <Input type={visible ? "text" : "password"} className={cn("pr-10", className)} {...props} />
+      {/* `type` vem depois do spread de propósito — assim nenhum `type`
+          passado por um chamador (permitido pelo tipo ComponentProps<"input">)
+          consegue desativar o mascaramento da senha. */}
+      <Input {...props} className={cn("pr-10", className)} type={visible ? "text" : "password"} />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}

@@ -1,4 +1,5 @@
 import { CheckCircle2, XCircle, Building2, CalendarDays, Users, Scale, Lock } from "lucide-react"
+import { pluralImovel } from "@/lib/format"
 import type { AssembleiaApuracao, CriterioPeso } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
 
@@ -33,7 +34,7 @@ function formatDataHoraVoto(iso: string | null): string {
 
 function formatPesoValor(valor: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(valor * 100).toFixed(2)}%`
-  return `${valor} ${valor === 1 ? "imóvel" : "imóveis"}`
+  return `${valor} ${pluralImovel(valor)}`
 }
 
 function formatDate(iso: string | null): string {

@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { enviarAssembleiaAction, type EnviarAssembleiaResult } from "@/app/actions/assembleia-votos"
-import { normalizarBusca } from "@/lib/format"
+import { normalizarBusca, pluralImovel } from "@/lib/format"
 import { formatUnidade } from "@/lib/unidade-format"
 import type { Assembleia, Proprietario } from "@/types"
 
@@ -219,7 +219,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
                           </p>
                         </div>
                         <span className="shrink-0 text-xs text-muted-foreground">
-                          {peso} {peso === 1 ? "imóvel" : "imóveis"}
+                          {peso} {pluralImovel(peso)}
                         </span>
                       </label>
                     )
@@ -231,7 +231,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
             {selectedIds.size > 0 && (
               <p className="text-right text-xs text-muted-foreground">
                 {selectedIds.size} proprietário{selectedIds.size !== 1 ? "s" : ""} ·{" "}
-                {totalApartamentos} imóve{totalApartamentos !== 1 ? "is" : "l"} representado{totalApartamentos !== 1 ? "s" : ""}
+                {totalApartamentos} {pluralImovel(totalApartamentos, "representado")}
               </p>
             )}
 

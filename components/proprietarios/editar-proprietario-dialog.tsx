@@ -35,8 +35,9 @@ interface Props {
   todosProprietarios: Proprietario[]
   jaVotou: boolean
   isAdmin: boolean
-  // Só mostra o campo de fração ideal quando o condomínio realmente usa
-  // esse critério de peso — evita confundir quem vota por unidade.
+  // Usado pra decidir o rótulo/hint do campo de fração ideal (sempre visível
+  // — ver nota no JSX da seção "Transferência de unidade" sobre o catch-22
+  // que isso resolveu) e o formato do peso exibido em outras seções.
   criterioPeso: CriterioPeso
 }
 

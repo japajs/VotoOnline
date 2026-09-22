@@ -55,14 +55,26 @@ function resolverFracaoIdeal(valorBruto: string | null): { valor: number | null;
   return { valor: numero }
 }
 
-// Auditoria funcional: a coluna costuma se chamar "Restrição" e trazer só
-// "inadimplente" quando preenchida (ou vazia quando não há restrição) — trata
-// qualquer célula não vazia como inadimplente em vez de tentar reconhecer só
-// a palavra exata, porque deixar passar uma restrição com texto diferente
-// (erro de digitação, outra palavra) sem marcar seria pior do que marcar
-// alguém que precisava só de revisão manual depois.
+// Revisão pós-implementação: a coluna "Restrição" costuma trazer só
+// "inadimplente" quando preenchida (vazia quando não há restrição) — mas o
+// dicionário de sinônimos (ver ALIASES em mapper.ts) também casa uma coluna
+// chamada literalmente "Inadimplente", e essa costuma vir preenchida em toda
+// linha com "Sim"/"Não". Tratar qualquer célula não vazia como inadimplente
+// (1ª versão desta função) marcava até quem tinha "Não" escrito — o oposto
+// do pretendido. Reconhece os negativos comuns e só trata como inadimplente
+// o que sobra; um texto não reconhecido (erro de digitação, outra palavra)
+// ainda cai como inadimplente de propósito, pra exigir revisão manual em vez
+// de silenciosamente deixar alguém com uma restrição real passar batido.
+const INADIMPLENTE_NEGATIVOS = new Set(["nao", "n", "0", "false", "-", "regular", "adimplente", "ok"])
+
 function resolverInadimplente(valorBruto: string | null): boolean {
-  return !!valorBruto?.trim()
+  const v = valorBruto
+    ?.normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase()
+  if (!v) return false
+  return !INADIMPLENTE_NEGATIVOS.has(v)
 }
 
 // ─── Chave de agrupamento ─────────────────────────────────────────────────────
