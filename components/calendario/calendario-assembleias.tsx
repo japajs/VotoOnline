@@ -162,58 +162,66 @@ export function CalendarioAssembleias({ assembleias }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-border/60 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {DIAS_SEMANA.map((d) => (
-          <div key={d} className="py-2">
-            {d}
+      {/* Rolagem horizontal em telas estreitas — mesma solução já usada nas
+          tabelas largas do sistema (ex.: detalhamento de votos em
+          resultado-assembleia.tsx) — em vez de espremer 7 colunas até
+          ficarem ilegíveis num celular. */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[640px]">
+          <div className="grid grid-cols-7 border-b border-border/60 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {DIAS_SEMANA.map((d) => (
+              <div key={d} className="py-2">
+                {d}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="grid grid-cols-7">
-        {dias.map(({ date, chave, noMes }) => {
-          const eventos = eventosPorDia.get(chave) ?? []
-          const isHoje = chave === chaveHoje
-          return (
-            <div
-              key={chave}
-              className={cn(
-                "min-h-24 border-b border-r border-border/40 p-1.5 sm:min-h-28",
-                !noMes && "bg-muted/20"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px]",
-                  isHoje ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground",
-                  !noMes && "opacity-40"
-                )}
-              >
-                {date.getDate()}
-              </span>
-              <div className="mt-1 space-y-1">
-                {eventos.map((ev, i) => (
-                  <Link
-                    key={`${ev.assembleiaId}-${ev.tipo}-${i}`}
-                    href={`/condominios/${ev.condominioId}/assembleias/${ev.assembleiaId}`}
-                    title={`${ev.tipo === "convocacao" ? "1ª convocação" : "Encerramento da votação"} · ${ev.titulo} (${ev.condominioNome}) · ${ASSEMBLEIA_STATUS_LABEL[ev.status]}`}
+          <div className="grid grid-cols-7">
+            {dias.map(({ date, chave, noMes }) => {
+              const eventos = eventosPorDia.get(chave) ?? []
+              const isHoje = chave === chaveHoje
+              return (
+                <div
+                  key={chave}
+                  className={cn(
+                    "min-h-24 border-b border-r border-border/40 p-1.5 sm:min-h-28",
+                    !noMes && "bg-muted/20"
+                  )}
+                >
+                  <span
                     className={cn(
-                      "flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium leading-tight hover:opacity-80",
-                      ASSEMBLEIA_STATUS_CLASS[ev.status]
+                      "inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px]",
+                      isHoje ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground",
+                      !noMes && "opacity-40"
                     )}
                   >
-                    {ev.tipo === "convocacao" ? (
-                      <CalendarClock className="h-2.5 w-2.5 shrink-0" />
-                    ) : (
-                      <Flag className="h-2.5 w-2.5 shrink-0" />
-                    )}
-                    <span className="truncate">{ev.titulo}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )
-        })}
+                    {date.getDate()}
+                  </span>
+                  <div className="mt-1 space-y-1">
+                    {eventos.map((ev, i) => (
+                      <Link
+                        key={`${ev.assembleiaId}-${ev.tipo}-${i}`}
+                        href={`/condominios/${ev.condominioId}/assembleias/${ev.assembleiaId}`}
+                        title={`${ev.tipo === "convocacao" ? "1ª convocação" : "Encerramento da votação"} · ${ev.titulo} (${ev.condominioNome}) · ${ASSEMBLEIA_STATUS_LABEL[ev.status]}`}
+                        className={cn(
+                          "flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium leading-tight hover:opacity-80",
+                          ASSEMBLEIA_STATUS_CLASS[ev.status]
+                        )}
+                      >
+                        {ev.tipo === "convocacao" ? (
+                          <CalendarClock className="h-2.5 w-2.5 shrink-0" />
+                        ) : (
+                          <Flag className="h-2.5 w-2.5 shrink-0" />
+                        )}
+                        <span className="truncate">{ev.titulo}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {semEventos && (
