@@ -55,6 +55,9 @@ const CAMPO_LABELS: Record<CampoImportacao, string> = {
   nome: "Nome",
   whatsapp: "WhatsApp / Telefone",
   email: "E-mail",
+  inadimplente: "Restrição / Inadimplente",
+  fracaoIdeal: "Fração ideal",
+  cpf: "CPF/CNPJ",
   ignorar: "Ignorar coluna",
 }
 
@@ -303,11 +306,17 @@ function MapeamentoTable({
 // ─── Cards de resumo ──────────────────────────────────────────────────────────
 
 function SummaryCards({ preview }: { preview: ImportacaoPreview }) {
+  const inadimplentes = preview.proprietarios.filter((p) => p.inadimplente).length
   const cards = [
     { label: "Linhas", value: preview.totalLinhas, color: "text-foreground" },
     { label: "Proprietários", value: preview.totalProprietarios, color: "text-blue-500" },
     { label: "Unidades", value: preview.totalUnidades, color: "text-violet-500" },
     { label: "Agrupadas", value: preview.duplicidades, color: "text-amber-500" },
+    {
+      label: "Inadimplentes",
+      value: inadimplentes,
+      color: inadimplentes > 0 ? "text-rose-500" : "text-muted-foreground",
+    },
     {
       label: "Avisos",
       value: preview.erros.length,
@@ -315,7 +324,7 @@ function SummaryCards({ preview }: { preview: ImportacaoPreview }) {
     },
   ]
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {cards.map(({ label, value, color }) => (
         <div
           key={label}
@@ -397,7 +406,19 @@ function ProprietariosTable({
           <tbody className="divide-y divide-border/30">
             {preview.proprietarios.map((p, i) => (
               <tr key={i} className="transition-colors hover:bg-accent/30">
-                <td className="px-4 py-2.5 font-medium">{p.nome}</td>
+                <td className="px-4 py-2.5 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    {p.nome}
+                    {p.inadimplente && (
+                      <span
+                        className="inline-flex items-center rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 dark:text-rose-400"
+                        title="Vem marcado como inadimplente na planilha — não poderá votar (Código Civil, art. 1.335)"
+                      >
+                        Inadimplente
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="hidden max-w-[200px] px-4 py-2.5 text-muted-foreground md:table-cell">
                   <div className="truncate">{p.email ?? "—"}</div>
                   {p.emailCandidatos && (
@@ -420,7 +441,7 @@ function ProprietariosTable({
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-muted-foreground">
-                  {p.unidades.join(", ")}
+                  {p.unidades.map((u) => u.numero).join(", ")}
                 </td>
                 <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
                   {p.unidades.length}

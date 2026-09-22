@@ -88,6 +88,7 @@ export async function createProprietario(
     email?: string | null
     cpf?: string | null
     telefone?: string | null
+    inadimplente?: boolean
   }
 ): Promise<Proprietario> {
   const db = createServerClient()
@@ -99,6 +100,7 @@ export async function createProprietario(
       ...(input.email ? { email: input.email } : {}),
       ...(input.cpf ? { cpf: input.cpf } : {}),
       ...(input.telefone ? { telefone: input.telefone } : {}),
+      ...(input.inadimplente ? { inadimplente: input.inadimplente } : {}),
     })
     .select(SELECT_WITH_UNIDADES)
     .single()

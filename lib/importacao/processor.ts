@@ -41,6 +41,30 @@ function resolverTelefone(valorBruto: string | null): ResultadoCampoContato {
   return { valor: normalizados[0], candidatos: normalizados }
 }
 
+// ─── Fração ideal / Restrição ───────────────────────────────────────────────
+
+// Mesma tolerância a vírgula decimal usada na edição manual (ver
+// handleSalvarFracaoIdeal em editar-proprietario-dialog.tsx) — planilha
+// exportada em pt-BR frequentemente usa "0,364" em vez de "0.364".
+function resolverFracaoIdeal(valorBruto: string | null): { valor: number | null; erro?: string } {
+  if (!valorBruto) return { valor: null }
+  const numero = Number(valorBruto.trim().replace(",", "."))
+  if (Number.isNaN(numero) || numero < 0) {
+    return { valor: null, erro: `Fração ideal inválida — "${valorBruto}" será ignorada` }
+  }
+  return { valor: numero }
+}
+
+// Auditoria funcional: a coluna costuma se chamar "Restrição" e trazer só
+// "inadimplente" quando preenchida (ou vazia quando não há restrição) — trata
+// qualquer célula não vazia como inadimplente em vez de tentar reconhecer só
+// a palavra exata, porque deixar passar uma restrição com texto diferente
+// (erro de digitação, outra palavra) sem marcar seria pior do que marcar
+// alguém que precisava só de revisão manual depois.
+function resolverInadimplente(valorBruto: string | null): boolean {
+  return !!valorBruto?.trim()
+}
+
 // ─── Chave de agrupamento ─────────────────────────────────────────────────────
 // Remove acentos (case/espaço já eram tratados) — sem isso, "José Silva" e
 // "Jose Silva" (mesma pessoa, mesma célula de e-mail, só a grafia do nome
@@ -151,6 +175,15 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
       nomesPorEmail.set(email, porNome)
     }
 
+    // Fração ideal (por unidade) e Restrição/inadimplente (por proprietário)
+    // — ver resolverFracaoIdeal/resolverInadimplente acima.
+    const { valor: fracaoIdeal, erro: erroFracao } = resolverFracaoIdeal(linha.fracaoIdeal)
+    if (erroFracao) {
+      erros.push({ linha: linha._linhaOriginal, campo: "Fração ideal", mensagem: erroFracao })
+    }
+    const inadimplente = resolverInadimplente(linha.inadimplente)
+    const cpf = linha.cpf?.trim() || null
+
     const chave = chaveProprietario(email, nome)
 
     if (mapa.has(chave)) {
@@ -158,7 +191,7 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
       // unidade.
       const prop = mapa.get(chave)!
 
-      if (prop.unidades.includes(imovel)) {
+      if (prop.unidades.some((u) => u.numero === imovel)) {
         erros.push({
           linha: linha._linhaOriginal,
           campo: "Imóvel",
@@ -169,15 +202,32 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
         continue
       }
 
-      prop.unidades.push(imovel)
+      prop.unidades.push({ numero: imovel, fracaoIdeal })
       prop.linhasOrigem.push(linha._linhaOriginal)
+      // OR: se qualquer linha deste proprietário (uma unidade dele) veio
+      // marcada como inadimplente, o cadastro inteiro fica inadimplente —
+      // mesmo modelo de proprietarios.inadimplente (flag por pessoa, não por
+      // unidade) já usado no resto do sistema.
+      if (inadimplente) prop.inadimplente = true
+      if (cpf && prop.cpf && cpf !== prop.cpf) {
+        erros.push({
+          linha: linha._linhaOriginal,
+          campo: "CPF",
+          mensagem: `CPF "${cpf}" diverge do já visto para ${prop.nome} ("${prop.cpf}") — mantendo o primeiro`,
+          dados: cpf,
+        })
+      } else if (cpf && !prop.cpf) {
+        prop.cpf = cpf
+      }
       duplicidades++
     } else {
       mapa.set(chave, {
         nome,
         email,
         telefone,
-        unidades: [imovel],
+        cpf,
+        inadimplente,
+        unidades: [{ numero: imovel, fracaoIdeal }],
         linhasOrigem: [linha._linhaOriginal],
         ...(emailCandidatos ? { emailCandidatos } : {}),
         ...(telefoneCandidatos ? { telefoneCandidatos } : {}),

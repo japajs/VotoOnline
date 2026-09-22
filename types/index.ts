@@ -369,7 +369,15 @@ export interface AssembleiaApuracao {
 
 // ─── Importação de planilha ────────────────────────────────────────────────
 
-export type CampoImportacao = "imovel" | "nome" | "whatsapp" | "email" | "ignorar"
+export type CampoImportacao =
+  | "imovel"
+  | "nome"
+  | "whatsapp"
+  | "email"
+  | "inadimplente"
+  | "fracaoIdeal"
+  | "cpf"
+  | "ignorar"
 
 export interface DeteccaoColuna {
   colIdx: number
@@ -388,6 +396,11 @@ export interface ImportacaoLinha {
   nome: string
   whatsapp: string | null
   email: string | null
+  // Célula bruta da planilha (ex.: "inadimplente", "0.364") — o parsing pra
+  // boolean/número acontece em processarLinhas, não aqui.
+  inadimplente: string | null
+  fracaoIdeal: string | null
+  cpf: string | null
   _linhaOriginal: number
 }
 
@@ -398,11 +411,23 @@ export interface ImportacaoErro {
   dados?: string
 }
 
+export interface UnidadeImport {
+  numero: string
+  fracaoIdeal: number | null
+}
+
 export interface ProprietarioImport {
   nome: string
   email: string | null
   telefone: string | null
-  unidades: string[]
+  cpf: string | null
+  // Auditoria funcional: se a planilha de cadastro tem uma coluna de
+  // restrição/inadimplência e ela for ignorada, um proprietário realmente
+  // inadimplente entraria como adimplente por padrão e poderia votar
+  // (Código Civil art. 1.335, §único) — ver validarVotoOuFalhar em
+  // services/assembleia-votos.ts.
+  inadimplente: boolean
+  unidades: UnidadeImport[]
   linhasOrigem: number[]
   // Preenchidos só quando a célula de e-mail/celular da planilha trazia mais
   // de um valor (ex.: "a@x.com; b@x.com") — `email`/`telefone` já vêm com o

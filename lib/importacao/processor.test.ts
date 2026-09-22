@@ -10,8 +10,17 @@ function linha(overrides: Partial<ImportacaoLinha> & { _linhaOriginal: number })
     nome: "Fulano de Tal",
     whatsapp: null,
     email: null,
+    inadimplente: null,
+    fracaoIdeal: null,
+    cpf: null,
     ...overrides,
   }
+}
+
+// Números das unidades de um proprietário, na ordem — a maioria dos testes
+// só se importa com quais unidades entraram, não com a fração de cada uma.
+function numeros(unidades: { numero: string }[]): string[] {
+  return unidades.map((u) => u.numero)
 }
 
 describe("processarLinhas — casos básicos", () => {
@@ -21,7 +30,8 @@ describe("processarLinhas — casos básicos", () => {
     ])
     expect(resultado.totalProprietarios).toBe(1)
     expect(resultado.totalUnidades).toBe(1)
-    expect(resultado.proprietarios[0]).toMatchObject({ nome: "Maria Silva", unidades: ["A101"] })
+    expect(resultado.proprietarios[0]).toMatchObject({ nome: "Maria Silva", inadimplente: false })
+    expect(numeros(resultado.proprietarios[0].unidades)).toEqual(["A101"])
     expect(resultado.erros).toHaveLength(0)
   })
 
@@ -55,7 +65,7 @@ describe("processarLinhas — casos básicos", () => {
       linha({ _linhaOriginal: 7, nome: "Ana Costa", imovel: "B201", email: "ana@example.com" }),
     ])
     expect(resultado.totalProprietarios).toBe(1)
-    expect(resultado.proprietarios[0].unidades).toEqual(["B201"])
+    expect(numeros(resultado.proprietarios[0].unidades)).toEqual(["B201"])
     expect(resultado.linhasIgnoradas).toBe(1)
     expect(resultado.erros).toContainEqual(
       expect.objectContaining({ campo: "Imóvel", mensagem: expect.stringContaining("duplicada") })
@@ -71,7 +81,7 @@ describe("processarLinhas — agrupamento de proprietário com mais de uma unida
     ])
     expect(resultado.totalProprietarios).toBe(1)
     expect(resultado.duplicidades).toBe(1)
-    expect(resultado.proprietarios[0].unidades).toEqual(["C101", "C102"])
+    expect(numeros(resultado.proprietarios[0].unidades)).toEqual(["C101", "C102"])
   })
 
   it("mesma pessoa com variação de acento no nome entre as linhas: ainda funde num só cadastro", () => {
@@ -84,7 +94,7 @@ describe("processarLinhas — agrupamento de proprietário com mais de uma unida
       linha({ _linhaOriginal: 21, nome: "Jose Silva", imovel: "D102", email: "jose@example.com" }),
     ])
     expect(resultado.totalProprietarios).toBe(1)
-    expect(resultado.proprietarios[0].unidades).toEqual(["D101", "D102"])
+    expect(numeros(resultado.proprietarios[0].unidades)).toEqual(["D101", "D102"])
     // Nomes diferentes só por acento não devem disparar o aviso de e-mail
     // compartilhado — são a mesma pessoa, não um caso suspeito.
     expect(resultado.erros).not.toContainEqual(
@@ -113,7 +123,9 @@ describe("processarLinhas — e-mail compartilhado por donos diferentes (bug rea
     expect(resultado.totalProprietarios).toBe(4)
     expect(resultado.totalUnidades).toBe(5)
 
-    const porNome = Object.fromEntries(resultado.proprietarios.map((p) => [p.nome, p.unidades]))
+    const porNome = Object.fromEntries(
+      resultado.proprietarios.map((p) => [p.nome, numeros(p.unidades)])
+    )
     expect(porNome["Maria Calixta de F Goncalves"]).toEqual(["C0404", "D0703"])
     expect(porNome["Damiao Vieira da Silva"]).toEqual(["C0806"])
     expect(porNome["Maria Lucia G Vieira"]).toEqual(["D0606"])
@@ -141,6 +153,90 @@ describe("processarLinhas — e-mail compartilhado por donos diferentes (bug rea
       linha({ _linhaOriginal: 41, nome: "Jose Reis Oliveira Santos", imovel: "C0906", email: "jr@example.com" }),
     ])
     expect(resultado.totalProprietarios).toBe(1)
-    expect(resultado.proprietarios[0].unidades).toEqual(["A0501", "C0906"])
+    expect(numeros(resultado.proprietarios[0].unidades)).toEqual(["A0501", "C0906"])
+  })
+})
+
+describe("processarLinhas — Restrição/inadimplente (planilha real: condomínio com 33% das unidades marcadas)", () => {
+  it("célula de Restrição preenchida vira proprietário inadimplente", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 50, nome: "Pessoa Devedora", imovel: "A101", inadimplente: "inadimplente" }),
+    ])
+    expect(resultado.proprietarios[0].inadimplente).toBe(true)
+  })
+
+  it("célula de Restrição vazia vira proprietário adimplente (não bloqueado)", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 51, nome: "Pessoa em Dia", imovel: "A102", inadimplente: null }),
+    ])
+    expect(resultado.proprietarios[0].inadimplente).toBe(false)
+  })
+
+  it("proprietário com 2 unidades, só uma marcada inadimplente: o cadastro inteiro fica inadimplente", () => {
+    // proprietarios.inadimplente é uma flag por PESSOA, não por unidade —
+    // se qualquer uma das unidades dele veio marcada, ele não pode votar.
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 60, nome: "Dono Misto", imovel: "A101", email: "misto@example.com", inadimplente: "inadimplente" }),
+      linha({ _linhaOriginal: 61, nome: "Dono Misto", imovel: "A102", email: "misto@example.com", inadimplente: null }),
+    ])
+    expect(resultado.totalProprietarios).toBe(1)
+    expect(resultado.proprietarios[0].inadimplente).toBe(true)
+  })
+})
+
+describe("processarLinhas — Fração ideal", () => {
+  it("fração com ponto decimal é lida corretamente", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 70, nome: "Dona Fração", imovel: "A101", fracaoIdeal: "0.364" }),
+    ])
+    expect(resultado.proprietarios[0].unidades[0]).toMatchObject({ numero: "A101", fracaoIdeal: 0.364 })
+  })
+
+  it("fração com vírgula decimal (planilha exportada em pt-BR) também é lida", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 71, nome: "Dona Fração BR", imovel: "A102", fracaoIdeal: "0,492" }),
+    ])
+    expect(resultado.proprietarios[0].unidades[0].fracaoIdeal).toBe(0.492)
+  })
+
+  it("fração inválida (texto não numérico): unidade entra com fração nula e gera aviso, sem bloquear a linha", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 72, nome: "Fração Ruim", imovel: "A103", fracaoIdeal: "abc" }),
+    ])
+    expect(resultado.proprietarios[0].unidades[0].fracaoIdeal).toBeNull()
+    expect(resultado.erros).toContainEqual(
+      expect.objectContaining({ campo: "Fração ideal", mensagem: expect.stringContaining("inválida") })
+    )
+  })
+
+  it("cada unidade guarda sua própria fração, mesmo fundidas no mesmo proprietário", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 80, nome: "Dois Aptos", imovel: "A101", email: "dois@example.com", fracaoIdeal: "0.364" }),
+      linha({ _linhaOriginal: 81, nome: "Dois Aptos", imovel: "B201", email: "dois@example.com", fracaoIdeal: "0.492" }),
+    ])
+    expect(resultado.proprietarios[0].unidades).toEqual([
+      { numero: "A101", fracaoIdeal: 0.364 },
+      { numero: "B201", fracaoIdeal: 0.492 },
+    ])
+  })
+})
+
+describe("processarLinhas — CPF", () => {
+  it("CPF da planilha é atribuído ao proprietário", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 90, nome: "Dono com CPF", imovel: "A101", cpf: "123.456.789-00" }),
+    ])
+    expect(resultado.proprietarios[0].cpf).toBe("123.456.789-00")
+  })
+
+  it("CPF divergente entre linhas fundidas no mesmo proprietário: mantém o primeiro e gera aviso", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 91, nome: "Dono Duplo", imovel: "A101", email: "duplo@example.com", cpf: "111.111.111-11" }),
+      linha({ _linhaOriginal: 92, nome: "Dono Duplo", imovel: "A102", email: "duplo@example.com", cpf: "222.222.222-22" }),
+    ])
+    expect(resultado.proprietarios[0].cpf).toBe("111.111.111-11")
+    expect(resultado.erros).toContainEqual(
+      expect.objectContaining({ campo: "CPF", mensagem: expect.stringContaining("diverge") })
+    )
   })
 })

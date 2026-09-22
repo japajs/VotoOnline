@@ -65,10 +65,16 @@ async function processarProprietario(
         nome: prop.nome,
         email: prop.email,
         telefone: prop.telefone,
+        cpf: prop.cpf,
+        inadimplente: prop.inadimplente,
       })
       proprietarioId = novo.id
       criado = true
     }
+    // Auditoria funcional: CPF/inadimplente só são aplicados na CRIAÇÃO do
+    // proprietário, nunca sobrescrevendo um já existente — mesmo
+    // comportamento que email/telefone já tinham aqui. Uma reimportação não
+    // deve apagar uma correção manual feita depois pela tela de edição.
 
     const db = createServerClient()
     const { data: existentes } = await db
@@ -86,14 +92,14 @@ async function processarProprietario(
       (existentes ?? []).map((u: { numero: string; bloco: string | null }) => normalizarChaveUnidade(u))
     )
 
-    for (const numero of prop.unidades) {
+    for (const { numero, fracaoIdeal } of prop.unidades) {
       const chave = normalizarChaveUnidade({ numero, bloco: null })
       if (chavesExistentes.has(chave)) {
         unidadesIgnoradas++
         continue
       }
       try {
-        await createUnidade({ proprietario_id: proprietarioId, numero, bloco: null })
+        await createUnidade({ proprietario_id: proprietarioId, numero, bloco: null, fracao_ideal: fracaoIdeal })
         unidadesCriadas++
         chavesExistentes.add(chave)
       } catch (err) {

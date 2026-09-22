@@ -54,6 +54,9 @@ export const ALIASES: Record<CampoMapeavel, string[]> = {
     "enderecoeletronico",
     "emaillabel",
   ],
+  inadimplente: ["restricao", "inadimplente"],
+  fracaoIdeal: ["fracao", "fracaoideal"],
+  cpf: ["cpf", "cpfcnpj"],
 }
 
 // ─── Normalização ─────────────────────────────────────────────────────────────
@@ -114,6 +117,9 @@ export function aplicarMapeamento(
       nome,
       whatsapp: campos.whatsapp ?? null,
       email: campos.email ?? null,
+      inadimplente: campos.inadimplente ?? null,
+      fracaoIdeal: campos.fracaoIdeal ?? null,
+      cpf: campos.cpf ?? null,
       _linhaOriginal: rowIdx + 2, // +1 para 1-index, +1 pelo cabeçalho
     })
   })
