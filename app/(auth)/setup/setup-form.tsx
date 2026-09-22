@@ -1,15 +1,15 @@
 "use client"
 
-import { useActionState, useState } from "react"
-import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
+import { useActionState } from "react"
+import { Loader2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { setupAction, type SetupState } from "./actions"
 
 export function SetupForm() {
   const [state, action, isPending] = useActionState<SetupState, FormData>(setupAction, null)
-  const [showPw, setShowPw] = useState(false)
 
   return (
     <form action={action} className="space-y-4">
@@ -25,32 +25,20 @@ export function SetupForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor="password">Senha</Label>
-        <div className="relative">
-          <Input
-            id="password"
-            name="password"
-            type={showPw ? "text" : "password"}
-            placeholder="Mínimo 8 caracteres"
-            required
-            disabled={isPending}
-            className="pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPw((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
+        <PasswordInput
+          id="password"
+          name="password"
+          placeholder="Mínimo 8 caracteres"
+          required
+          disabled={isPending}
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="confirmPassword">Confirmar senha</Label>
-        <Input
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type={showPw ? "text" : "password"}
           placeholder="Repita a senha"
           required
           disabled={isPending}

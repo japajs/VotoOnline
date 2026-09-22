@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { createUsuarioAction, updateUsuarioAction } from "@/app/actions/usuarios"
 import type { Condominio, Usuario, UserPerfil } from "@/types"
@@ -162,9 +163,8 @@ export function UsuarioDialog({ condominios, usuario, condominiosAutorizadosInic
             {!editando && (
               <div className="col-span-2 space-y-1.5">
                 <Label htmlFor="usr-senha">Senha</Label>
-                <Input
+                <PasswordInput
                   id="usr-senha"
-                  type="password"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   placeholder="Mínimo 8 caracteres"

@@ -1,10 +1,11 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Eye, EyeOff, Loader2, LogIn, Mail, Lock } from "lucide-react"
+import { Loader2, LogIn, Mail, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { loginAction, type LoginState } from "./actions"
 
@@ -12,7 +13,6 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const from = searchParams.get("from") ?? ""
   const [state, action, isPending] = useActionState<LoginState, FormData>(loginAction, null)
-  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <form action={action} className="space-y-4">
@@ -44,25 +44,15 @@ export function LoginForm() {
         </Label>
         <div className="relative">
           <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type={showPassword ? "text" : "password"}
             placeholder="••••••••"
             autoComplete="current-password"
             required
             disabled={isPending}
-            className="pr-10 pl-10"
+            className="pl-10"
           />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            disabled={isPending}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-          >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
         </div>
       </div>
 

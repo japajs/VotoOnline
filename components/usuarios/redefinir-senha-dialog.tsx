@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { redefinirSenhaUsuarioAction } from "@/app/actions/usuarios"
 
@@ -50,9 +50,8 @@ export function RedefinirSenhaDialog({ usuarioId }: { usuarioId: string }) {
         </DialogHeader>
         <div className="space-y-1.5">
           <Label htmlFor="nova-senha">Nova senha</Label>
-          <Input
+          <PasswordInput
             id="nova-senha"
-            type="password"
             placeholder="Mínimo 8 caracteres"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}

@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { Loader2, Save } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import {
@@ -151,9 +152,8 @@ function SenhaForm() {
       <div className="grid gap-3 sm:max-w-sm">
         <div className="space-y-1.5">
           <Label htmlFor="senha-atual" className="text-xs">Senha atual</Label>
-          <Input
+          <PasswordInput
             id="senha-atual"
-            type="password"
             value={senhaAtual}
             onChange={(e) => setSenhaAtual(e.target.value)}
             placeholder="••••••••"
@@ -161,9 +161,8 @@ function SenhaForm() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="nova-senha" className="text-xs">Nova senha</Label>
-          <Input
+          <PasswordInput
             id="nova-senha"
-            type="password"
             value={novaSenha}
             onChange={(e) => setNovaSenha(e.target.value)}
             placeholder="••••••••"
@@ -171,9 +170,8 @@ function SenhaForm() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="confirma-senha" className="text-xs">Confirmar nova senha</Label>
-          <Input
+          <PasswordInput
             id="confirma-senha"
-            type="password"
             value={confirmaSenha}
             onChange={(e) => setConfirmaSenha(e.target.value)}
             placeholder="••••••••"
