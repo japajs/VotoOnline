@@ -506,30 +506,43 @@ export function EditarProprietarioDialog({
                     </button>
                   </div>
 
-                  {criterioPeso === "fracao_ideal" && (
-                    <div className="flex items-center gap-1.5">
-                      <Label htmlFor={`fracao-${u.id}`} className="text-xs text-muted-foreground shrink-0">
-                        Fração ideal
-                      </Label>
-                      <Input
-                        id={`fracao-${u.id}`}
-                        inputMode="decimal"
-                        placeholder="ex.: 0.014235"
-                        className="h-7 text-xs"
-                        value={fracaoIdealPorUnidade[u.id] ?? ""}
-                        onChange={(e) =>
-                          setFracaoIdealPorUnidade((prev) => ({ ...prev, [u.id]: e.target.value }))
+                  {/* Auditoria funcional: este campo antes só aparecia quando
+                      criterioPeso já era "fracao_ideal" — mas o condomínio só
+                      pode mudar para esse critério depois que TODA unidade já
+                      tem fração preenchida (ver updateCondominioInfoAction).
+                      Isso criava um catch-22: o campo pra preencher nunca
+                      aparecia a tempo. Agora fica sempre visível, pra dar
+                      pra pré-cadastrar as frações antes de trocar o critério. */}
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor={`fracao-${u.id}`} className="text-xs text-muted-foreground shrink-0">
+                      Fração ideal
+                    </Label>
+                    <Input
+                      id={`fracao-${u.id}`}
+                      inputMode="decimal"
+                      placeholder="ex.: 0.014235"
+                      className="h-7 text-xs"
+                      value={fracaoIdealPorUnidade[u.id] ?? ""}
+                      onChange={(e) =>
+                        setFracaoIdealPorUnidade((prev) => ({ ...prev, [u.id]: e.target.value }))
+                      }
+                      onBlur={() => {
+                        const original = u.fracao_ideal?.toString() ?? ""
+                        if ((fracaoIdealPorUnidade[u.id] ?? "") !== original) {
+                          handleSalvarFracaoIdeal(u.id)
                         }
-                        onBlur={() => {
-                          const original = u.fracao_ideal?.toString() ?? ""
-                          if ((fracaoIdealPorUnidade[u.id] ?? "") !== original) {
-                            handleSalvarFracaoIdeal(u.id)
-                          }
-                        }}
-                        disabled={salvandoFracaoId === u.id}
-                      />
-                    </div>
-                  )}
+                      }}
+                      disabled={salvandoFracaoId === u.id}
+                    />
+                    {criterioPeso !== "fracao_ideal" && (
+                      <span
+                        className="shrink-0 text-[10px] text-muted-foreground/60"
+                        title="Só é usada se o critério de peso do condomínio for trocado para 'Fração ideal'."
+                      >
+                        (opcional)
+                      </span>
+                    )}
+                  </div>
 
                   {transferindoUnidadeId === u.id && (
                     <div className="space-y-2 rounded-md bg-muted/30 p-2">
