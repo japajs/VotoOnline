@@ -4,11 +4,33 @@ import type { CampoImportacao } from "@/types"
 
 // ─── Leitura bruta do arquivo ─────────────────────────────────────────────────
 
+// Auditoria funcional: CSV é texto puro, sem nenhuma informação de
+// codificação embutida (diferente de .xlsx, que é um ZIP com XML já em
+// UTF-8) — passar os bytes crus pro XLSX.read (type "array"/"buffer") faz a
+// própria lib adivinhar a codificação, e ela adivinha errado: todo acento
+// vira mojibake ("Proprietário" → "ProprietÃ¡rio"), ou seja, praticamente
+// todo nome brasileiro. Decodifica explicitamente aqui: tenta UTF-8 (o mais
+// comum hoje, inclusive com BOM — TextDecoder já ignora o BOM sozinho) e,
+// só se os bytes não formarem UTF-8 válido, cai pra Windows-1252 (o "ANSI"
+// que o Excel no Windows ainda usa por padrão ao salvar "CSV" em vez de
+// "CSV UTF-8"). .xlsx/.xls continuam indo como bytes crus — são binários,
+// decodificar como texto quebraria o arquivo.
+function decodeCsvText(buffer: ArrayBuffer): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buffer)
+  } catch {
+    return new TextDecoder("windows-1252").decode(buffer)
+  }
+}
+
 export async function parseFileRaw(file: File): Promise<LeituraArquivo> {
   const XLSX = await import("xlsx")
 
   const buffer = await file.arrayBuffer()
-  const workbook = XLSX.read(buffer, { type: "array", raw: false })
+  const isCsv = file.name.toLowerCase().endsWith(".csv")
+  const workbook = isCsv
+    ? XLSX.read(decodeCsvText(buffer), { type: "string", raw: false })
+    : XLSX.read(buffer, { type: "array", raw: false })
 
   const sheetName = workbook.SheetNames[0]
   if (!sheetName) return { headers: [], rows: [], totalLinhas: 0 }
