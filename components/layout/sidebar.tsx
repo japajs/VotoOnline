@@ -129,7 +129,10 @@ export function Sidebar({ user, open, onClose }: Props) {
   }
 
   return (
-    <aside className="flex h-screen w-56 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+    // h-full (não h-screen): o wrapper do DashboardShell já tem a altura
+    // certa (fixed inset-y-0 no celular, esticado pelo flex no desktop);
+    // 100vh no celular passava da área visível e escondia o "Sair".
+    <aside className="flex h-full w-56 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
       {/* Brand */}
       <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-3.5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary/15 ring-1 ring-sidebar-primary/25">

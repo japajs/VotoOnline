@@ -41,7 +41,10 @@ export function DashboardShell({ user, children }: Props) {
     // eram cortados pela rolagem interna do <main> nem por este
     // overflow-hidden, e esticavam a rolagem do documento até o fim da
     // lista (vão em branco ao rolar a página com ~175 proprietários).
-    <div className="relative flex h-screen overflow-hidden bg-background">
+    // Altura dinâmica (dvh, com 100vh de reserva): em celular 100vh é MAIOR que a área
+    // visível (a barra do navegador cobre a parte de baixo), então o rodapé
+    // do painel ficava escondido e fora do alcance da rolagem interna.
+    <div className="relative flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-background">
       {/* Mobile backdrop */}
       {open && (
         <div
