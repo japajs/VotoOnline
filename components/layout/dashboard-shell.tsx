@@ -35,7 +35,13 @@ export function DashboardShell({ user, children }: Props) {
   }, [open])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    // `relative`: sem isso, elementos com position:absolute dentro do painel
+    // (ex.: os <span className="sr-only"> de cada linha da lista de
+    // proprietários) tinham como bloco de contenção a página inteira — não
+    // eram cortados pela rolagem interna do <main> nem por este
+    // overflow-hidden, e esticavam a rolagem do documento até o fim da
+    // lista (vão em branco ao rolar a página com ~175 proprietários).
+    <div className="relative flex h-screen overflow-hidden bg-background">
       {/* Mobile backdrop */}
       {open && (
         <div
