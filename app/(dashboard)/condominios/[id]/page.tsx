@@ -13,6 +13,8 @@ import { CriarAssembleiaDialog } from "@/components/assembleias/criar-assembleia
 import { AssembleiasList } from "@/components/assembleias/assembleias-list"
 import { CondominioInfoCard } from "@/components/condominios/condominio-info-card"
 import { ExportarProprietariosButton } from "@/components/condominios/exportar-proprietarios-button"
+import { FracaoEscalaAviso } from "@/components/condominios/fracao-escala-aviso"
+import { detectarDivisorEscalaFracaoIdeal } from "@/lib/peso"
 import { ROUTES } from "@/lib/constants"
 
 interface Props {
@@ -48,6 +50,14 @@ export default async function CondominioDetailPage({ params }: Props) {
     getSession(),
   ])
 
+  // Escala das frações ideais cadastradas (ver FracaoEscalaAviso).
+  const fracoesCadastradas = proprietarios
+    .flatMap((p) => p.unidades ?? [])
+    .map((u) => u.fracao_ideal)
+    .filter((f): f is number => f !== null && f !== undefined)
+  const somaFracoes = fracoesCadastradas.reduce((acc, f) => acc + f, 0)
+  const divisorEscalaFracao = detectarDivisorEscalaFracaoIdeal(somaFracoes)
+
   return (
     <div className="flex flex-col gap-6 p-6 pt-8">
       {/* Back */}
@@ -66,6 +76,10 @@ export default async function CondominioDetailPage({ params }: Props) {
 
       {/* Informações do condomínio */}
       <CondominioInfoCard condominio={condominio} />
+
+      {fracoesCadastradas.length > 0 && divisorEscalaFracao !== 1 && (
+        <FracaoEscalaAviso condominioId={id} soma={somaFracoes} divisor={divisorEscalaFracao} />
+      )}
 
       {/* Assembleias */}
       <section className="space-y-4">

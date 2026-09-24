@@ -196,10 +196,18 @@ export function ResultadoAssembleia({
           <h2 className="text-sm font-semibold">Participação</h2>
         </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Imóveis a votar" value={aptosAVotar} />
+          {/* Por fração ideal, aptosAVotar é a soma bruta das frações (ex.:
+              0,9288) — mostrar isso como "imóveis" seria número sem sentido. */}
+          <Stat
+            label={criterioPeso === "fracao_ideal" ? "Fração ideal total" : "Imóveis a votar"}
+            value={criterioPeso === "fracao_ideal" ? formatPesoValor(aptosAVotar, criterioPeso) : aptosAVotar}
+          />
           <Stat label="Votaram" value={total_respondidos} />
           <Stat label="Participação" value={`${participacaoPct}%`} highlight={participacaoPct >= 50} />
-          <Stat label="Imóveis repr." value={formatPesoValor(totalUnidades, criterioPeso)} />
+          <Stat
+            label={criterioPeso === "fracao_ideal" ? "Fração repr." : "Imóveis repr."}
+            value={formatPesoValor(totalUnidades, criterioPeso)}
+          />
         </div>
 
         {/* Auditoria de assembleias — Fase 1: quórum mínimo é sobre o peso do

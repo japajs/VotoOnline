@@ -1,9 +1,9 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import { APP_NAME, APP_VERSION } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
-import type { Assembleia, AssembleiaApuracao, Condominio } from "@/types"
+import type { Assembleia, AssembleiaApuracao, Condominio, CriterioPeso } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
-import { formatDateTimeBR, pctStr, statusLabelPT } from "./utils"
+import { fmtPonderado, formatDateTimeBR, pctStr, statusLabelPT } from "./utils"
 
 export interface ApuracaoPDFProps {
   assembleia: Assembleia
@@ -240,6 +240,7 @@ function BlocoResultadoSimNao({
   verdict,
   verdictSub,
   full,
+  fmt = String,
 }: {
   titulo: string
   colUnidade: string
@@ -250,6 +251,7 @@ function BlocoResultadoSimNao({
   verdict: string
   verdictSub?: string
   full: boolean
+  fmt?: (n: number) => string
 }) {
   const wide = full ? { ...s.tcWide, paddingVertical: 8, paddingHorizontal: 10 } : s.tcWide
   const narrow = full ? { ...s.tcNarrow, paddingVertical: 8, paddingHorizontal: 10 } : s.tcNarrow
@@ -279,7 +281,7 @@ function BlocoResultadoSimNao({
             <Text style={tdSim}>SIM</Text>
           </View>
           <View style={narrow}>
-            <Text style={tdText}>{sim}</Text>
+            <Text style={tdText}>{fmt(sim)}</Text>
           </View>
           <View style={narrow}>
             <Text style={tdText}>{pctStr(sim, total)}</Text>
@@ -290,7 +292,7 @@ function BlocoResultadoSimNao({
             <Text style={tdNao}>NÃO</Text>
           </View>
           <View style={narrow}>
-            <Text style={tdText}>{nao}</Text>
+            <Text style={tdText}>{fmt(nao)}</Text>
           </View>
           <View style={narrow}>
             <Text style={tdText}>{pctStr(nao, total)}</Text>
@@ -301,7 +303,7 @@ function BlocoResultadoSimNao({
             <Text style={tdAbst}>ABSTENÇÃO</Text>
           </View>
           <View style={narrow}>
-            <Text style={tdText}>{abstencao}</Text>
+            <Text style={tdText}>{fmt(abstencao)}</Text>
           </View>
           <View style={narrow}>
             <Text style={tdText}>{pctStr(abstencao, total)}</Text>
@@ -321,10 +323,13 @@ function BlocoResultadoSimNao({
 function PautaMultiplaEscolha({
   item,
   full,
+  criterio,
 }: {
   item: AssembleiaApuracao["pautas"][number]
   full: boolean
+  criterio: CriterioPeso
 }) {
+  const fracao = criterio === "fracao_ideal"
   const { ponderado, por_participantes, opcoes_resultado = [] } = item
   const opcoes = [...opcoes_resultado].sort((a, b) => b.ponderado - a.ponderado)
   const tw = opcoes.reduce((sum, o) => sum + o.ponderado, 0) + ponderado.abstencao
@@ -347,7 +352,7 @@ function PautaMultiplaEscolha({
           <Text style={thText}>PARTIC.</Text>
         </View>
         <View style={narrow}>
-          <Text style={thText}>IMÓV.</Text>
+          <Text style={thText}>{fracao ? "FRAÇÃO" : "IMÓV."}</Text>
         </View>
         <View style={narrow}>
           <Text style={thText}>%</Text>
@@ -364,7 +369,7 @@ function PautaMultiplaEscolha({
             <Text style={tdText}>{o.participantes}</Text>
           </View>
           <View style={narrow}>
-            <Text style={tdText}>{o.ponderado}</Text>
+            <Text style={tdText}>{fmtPonderado(o.ponderado, criterio)}</Text>
           </View>
           <View style={narrow}>
             <Text style={tdText}>{pctStr(o.ponderado, tw)}</Text>
@@ -380,7 +385,7 @@ function PautaMultiplaEscolha({
             <Text style={tdText}>{por_participantes.abstencao}</Text>
           </View>
           <View style={narrow}>
-            <Text style={tdText}>{ponderado.abstencao}</Text>
+            <Text style={tdText}>{fmtPonderado(ponderado.abstencao, criterio)}</Text>
           </View>
           <View style={narrow}>
             <Text style={tdText}>{pctStr(ponderado.abstencao, tw)}</Text>
@@ -391,7 +396,7 @@ function PautaMultiplaEscolha({
         <View style={[s.verdict, { backgroundColor: CORES_OPCOES[opcoes.indexOf(vencedora) % CORES_OPCOES.length] }, full ? { paddingVertical: 8 } : {}]}>
           <Text style={full ? { ...s.verdictText, fontSize: 11 } : s.verdictText}>{vencedora.label.toUpperCase()}</Text>
           <Text style={s.verdictSub}>
-            {vencedora.ponderado} imóv. · {tp} participante{tp === 1 ? "" : "s"}
+            {fracao ? `${fmtPonderado(vencedora.ponderado, criterio)} da fração` : `${vencedora.ponderado} imóv.`} · {tp} participante{tp === 1 ? "" : "s"}
           </Text>
         </View>
       ) : (
@@ -654,7 +659,7 @@ export function ApuracaoPDF({
                 ) : null}
 
                 {pauta.tipo === "multipla_escolha" ? (
-                  <PautaMultiplaEscolha item={item} full={layoutExpandido} />
+                  <PautaMultiplaEscolha item={item} full={layoutExpandido} criterio={condominio.criterio_peso} />
                 ) : layoutExpandido ? (
                   <View style={s.tableFull}>
                     <BlocoResultadoSimNao
@@ -669,8 +674,9 @@ export function ApuracaoPDF({
                     />
                     <View style={{ marginTop: 10 }}>
                       <BlocoResultadoSimNao
-                        titulo="PONDERADO POR IMÓVEIS"
-                        colUnidade="IMÓVEIS"
+                        titulo={condominio.criterio_peso === "fracao_ideal" ? "PONDERADO POR FRAÇÃO IDEAL" : "PONDERADO POR IMÓVEIS"}
+                        colUnidade={condominio.criterio_peso === "fracao_ideal" ? "FRAÇÃO" : "IMÓVEIS"}
+                        fmt={(n) => fmtPonderado(n, condominio.criterio_peso)}
                         sim={ponderado.sim}
                         nao={ponderado.nao}
                         abstencao={ponderado.abstencao}
@@ -678,7 +684,7 @@ export function ApuracaoPDF({
                         verdict={vW}
                         verdictSub={
                           total_apartamentos_representados > 0
-                            ? `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
+                            ? `${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(total_apartamentos_representados, condominio.criterio_peso)} da fração ideal representada` : `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")}`} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                             : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                         }
                         full
@@ -701,8 +707,9 @@ export function ApuracaoPDF({
                     </View>
                     <View style={[s.tableHalf, { marginLeft: 6 }]}>
                       <BlocoResultadoSimNao
-                        titulo="PONDERADO POR IMÓVEIS"
-                        colUnidade="IMÓVEIS"
+                        titulo={condominio.criterio_peso === "fracao_ideal" ? "PONDERADO POR FRAÇÃO IDEAL" : "PONDERADO POR IMÓVEIS"}
+                        colUnidade={condominio.criterio_peso === "fracao_ideal" ? "FRAÇÃO" : "IMÓVEIS"}
+                        fmt={(n) => fmtPonderado(n, condominio.criterio_peso)}
                         sim={ponderado.sim}
                         nao={ponderado.nao}
                         abstencao={ponderado.abstencao}
@@ -710,7 +717,7 @@ export function ApuracaoPDF({
                         verdict={vW}
                         verdictSub={
                           total_apartamentos_representados > 0
-                            ? `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
+                            ? `${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(total_apartamentos_representados, condominio.criterio_peso)} da fração ideal representada` : `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")}`} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                             : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
                         }
                         full={false}

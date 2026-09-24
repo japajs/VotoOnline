@@ -1,4 +1,5 @@
 import { ASSEMBLEIA_STATUS_LABEL } from "@/lib/assembleia-status"
+import type { CriterioPeso } from "@/types"
 
 export function safeFilename(str: string): string {
   return str
@@ -48,4 +49,15 @@ export function sendStatusLabelPT(status: string): string {
       failed: "Falhou",
     }[status] ?? status
   )
+}
+
+// Valor ponderado como aparece nos relatórios: no critério por unidade é a
+// contagem de imóveis; por fração ideal é a soma das frações (fração de 1) e
+// vira percentual do condomínio ("4,37%"). Antes os relatórios não sabiam o
+// critério e imprimiam a fração crua (0.04368) sob um cabeçalho "IMÓVEIS".
+export function fmtPonderado(valor: number, criterio: CriterioPeso): string {
+  if (criterio === "fracao_ideal") {
+    return `${(valor * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+  }
+  return String(valor)
 }

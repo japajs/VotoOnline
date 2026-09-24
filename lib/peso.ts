@@ -80,3 +80,31 @@ export function getQuorumEfetivo(input: QuorumEfetivoInput): QuorumEfetivo {
     ? { quorumAplicavel: quorum_minimo, convocacaoAplicada: 1 }
     : { quorumAplicavel: quorum_minimo_2a, convocacaoAplicada: 2 }
 }
+
+// ─── Escala da fração ideal ───────────────────────────────────────────────────
+// O sistema inteiro (e-mail de convite, lista de proprietários, resultado,
+// PDF) trata fracao_ideal como FRAÇÃO DE 1 — a soma das unidades do
+// condomínio dá ≈ 1 — e mostra × 100 como percentual (ex.: 0.00364 → 0,3640%).
+// Só que planilha de cadastro real costuma trazer a fração em PORCENTAGEM
+// (0.364 = 0,364%, somando ≈ 100) ou até por milésimo (364, somando ≈ 1000).
+// Sem converter, o e-mail de convite diria "Seu peso de voto: 36,4%" pra quem
+// tem 0,364% — e ninguém perceberia até 200 proprietários receberem.
+//
+// Retorna o divisor que leva a soma pra escala de fração de 1, ou null se a
+// soma não se parece com nenhuma escala conhecida (aí não adivinha — quem
+// chama avisa o usuário em vez de converter no chute). Faixas largas de
+// propósito: planilha de condomínio real muitas vezes não cobre 100% (áreas
+// comuns/lojas fora da lista) ou vem parcial.
+export function detectarDivisorEscalaFracaoIdeal(soma: number): number | null {
+  if (!Number.isFinite(soma) || soma <= 0) return 1
+  if (soma <= 1.5) return 1
+  if (soma >= 20 && soma <= 150) return 100
+  if (soma >= 200 && soma <= 1500) return 1000
+  if (soma >= 2000 && soma <= 15000) return 10000
+  return null
+}
+
+// Casas decimais: a coluna unidades.fracao_ideal é numeric(14,6).
+export function converterEscalaFracaoIdeal(valor: number, divisor: number): number {
+  return Math.round((valor / divisor) * 1e6) / 1e6
+}

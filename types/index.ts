@@ -445,4 +445,10 @@ export interface ImportacaoPreview {
   duplicidades: number
   erros: ImportacaoErro[]
   linhasIgnoradas: number
+  // Só quando a planilha trouxe fração ideal: soma bruta lida e o divisor
+  // aplicado pra levar à escala de fração de 1 (ver lib/peso.ts,
+  // detectarDivisorEscalaFracaoIdeal). divisor 1 = já estava em fração;
+  // 100 = estava em porcentagem; null = soma fora de qualquer escala
+  // conhecida (valores ficaram como vieram — a tela de revisão avisa).
+  fracaoIdealEscala?: { soma: number; divisor: number | null }
 }

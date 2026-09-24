@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { getPesoParticipante, getPesoTotalCondominio, getQuorumEfetivo } from "./peso"
+import {
+  converterEscalaFracaoIdeal,
+  detectarDivisorEscalaFracaoIdeal,
+  getPesoParticipante,
+  getPesoTotalCondominio,
+  getQuorumEfetivo,
+} from "./peso"
 
 describe("getPesoParticipante", () => {
   it("critério 'unidade' (padrão): peso é a quantidade de unidades", () => {
@@ -90,5 +96,57 @@ describe("getQuorumEfetivo", () => {
       dataReferencia: new Date("2026-09-12T09:00:00Z"),
     })
     expect(resultado).toEqual({ quorumAplicavel: null, convocacaoAplicada: 2 })
+  })
+})
+
+describe("detectarDivisorEscalaFracaoIdeal", () => {
+  it("planilha real do Caldas Novas Flat: 220 unidades (12×0,364 + 10×0,492 por andar, 10 andares) somam 92,88 → porcentagem, divisor 100", () => {
+    // Regressão do achado de escala: sem converter, o e-mail de convite
+    // diria "Seu peso de voto: 36,4000%" pra quem tem 0,364%.
+    const soma = 10 * (12 * 0.364 + 10 * 0.492)
+    expect(soma).toBeCloseTo(92.88, 6)
+    expect(detectarDivisorEscalaFracaoIdeal(soma)).toBe(100)
+  })
+
+  it("já em fração de 1 (soma ≈ 1): não converte", () => {
+    expect(detectarDivisorEscalaFracaoIdeal(1)).toBe(1)
+    expect(detectarDivisorEscalaFracaoIdeal(0.9288)).toBe(1)
+    expect(detectarDivisorEscalaFracaoIdeal(1.4)).toBe(1)
+  })
+
+  it("importação parcial em fração de 1 (soma pequena): não converte", () => {
+    expect(detectarDivisorEscalaFracaoIdeal(0.14)).toBe(1)
+  })
+
+  it("milésimos (soma ≈ 1000) e décimos de milésimo (soma ≈ 10000)", () => {
+    expect(detectarDivisorEscalaFracaoIdeal(1000)).toBe(1000)
+    expect(detectarDivisorEscalaFracaoIdeal(10000)).toBe(10000)
+  })
+
+  it("soma que não parece nenhuma escala: devolve null em vez de adivinhar", () => {
+    expect(detectarDivisorEscalaFracaoIdeal(3.2)).toBeNull()
+    expect(detectarDivisorEscalaFracaoIdeal(15)).toBeNull()
+    expect(detectarDivisorEscalaFracaoIdeal(180)).toBeNull()
+  })
+
+  it("sem valor nenhum (soma 0): nada a converter", () => {
+    expect(detectarDivisorEscalaFracaoIdeal(0)).toBe(1)
+  })
+})
+
+describe("converterEscalaFracaoIdeal", () => {
+  it("0,364 (%) → 0,00364 (fração de 1), respeitando as 6 casas da coluna numeric(14,6)", () => {
+    expect(converterEscalaFracaoIdeal(0.364, 100)).toBe(0.00364)
+    expect(converterEscalaFracaoIdeal(0.492, 100)).toBe(0.00492)
+  })
+
+  it("depois de converter, a soma do condomínio inteiro fica ≈ 0,9288 (peso e quórum continuam proporcionais)", () => {
+    const unidades = [
+      ...Array.from({ length: 120 }, () => 0.364),
+      ...Array.from({ length: 100 }, () => 0.492),
+    ].map((v) => converterEscalaFracaoIdeal(v, 100))
+    const soma = unidades.reduce((a, b) => a + b, 0)
+    expect(soma).toBeCloseTo(0.9288, 5)
+    expect(detectarDivisorEscalaFracaoIdeal(soma)).toBe(1)
   })
 })

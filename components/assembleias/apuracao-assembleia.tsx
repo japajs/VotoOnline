@@ -13,12 +13,13 @@ import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { excluirPautaAction } from "@/app/actions/assembleias"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { APP_NAME } from "@/lib/constants"
+import { pluralImovel } from "@/lib/format"
 import {
   STATUS_EXIBIDO_LABEL as STATUS_LABEL,
   STATUS_EXIBIDO_CLASS as STATUS_CLASS,
   type StatusExibido,
 } from "@/lib/assembleia-status"
-import type { Assembleia, AssembleiaApuracao, PautaApuracao, PautaStatus } from "@/types"
+import type { Assembleia, AssembleiaApuracao, CriterioPeso, PautaApuracao, PautaStatus } from "@/types"
 
 const PAUTA_STATUS_LABEL: Record<PautaStatus, string> = {
   rascunho: "Rascunho",
@@ -39,6 +40,20 @@ interface Props {
   condominioId: string
   apuracao: AssembleiaApuracao
   canExport?: boolean
+  // Critério do condomínio — define se o resultado ponderado é contado em
+  // imóveis ou em fração ideal (ver formatPesoResultado).
+  criterioPeso?: CriterioPeso
+}
+
+// Resultado ponderado: "N imóvel(is)" no critério por unidade; percentual da
+// fração ideal do condomínio (fração de 1 × 100) no critério por fração ideal.
+// Antes esta tela nem recebia o critério e mostrava "imóveis" sempre, mesmo
+// com o condomínio em fração ideal.
+function formatPesoResultado(valor: number, criterioPeso: CriterioPeso): string {
+  if (criterioPeso === "fracao_ideal") {
+    return `${(valor * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+  }
+  return `${valor} ${pluralImovel(valor)}`
 }
 
 function formatDateHora(dateString: string) {
@@ -62,7 +77,13 @@ function formatDate(dateString: string | null) {
   }).format(new Date(dateString))
 }
 
-export function ApuracaoAssembleia({ assembleia, condominioId, apuracao, canExport = false }: Props) {
+export function ApuracaoAssembleia({
+  assembleia,
+  condominioId,
+  apuracao,
+  canExport = false,
+  criterioPeso = "unidade",
+}: Props) {
   const { total_enviados, total_respondidos } = apuracao
   const participacao =
     total_enviados > 0 ? Math.round((total_respondidos / total_enviados) * 100) : 0
@@ -292,6 +313,7 @@ export function ApuracaoAssembleia({ assembleia, condominioId, apuracao, canExpo
           condominioId={condominioId}
           assembleiaId={assembleia.id}
           canEdit={canExport}
+          criterioPeso={criterioPeso}
         />
       ))}
 
@@ -320,12 +342,14 @@ function PautaApuracaoSection({
   condominioId,
   assembleiaId,
   canEdit,
+  criterioPeso,
 }: {
   index: number
   item: PautaApuracao
   condominioId: string
   assembleiaId: string
   canEdit: boolean
+  criterioPeso: CriterioPeso
 }) {
   const { pauta } = item
   const [isPendingExcluir, startExcluirTransition] = useTransition()
@@ -385,15 +409,15 @@ function PautaApuracaoSection({
       {pauta.descricao && <p className="whitespace-pre-line text-justify text-sm text-muted-foreground">{pauta.descricao}</p>}
 
       {pauta.tipo === "multipla_escolha" ? (
-        <MultiplaEscolhaApuracao item={item} />
+        <MultiplaEscolhaApuracao item={item} criterioPeso={criterioPeso} />
       ) : (
-        <SimNaoApuracao item={item} />
+        <SimNaoApuracao item={item} criterioPeso={criterioPeso} />
       )}
     </div>
   )
 }
 
-function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
+function MultiplaEscolhaApuracao({ item, criterioPeso }: { item: PautaApuracao; criterioPeso: CriterioPeso }) {
   const { ponderado, opcoes_resultado = [] } = item
 
   const ordenadas = [...opcoes_resultado].sort((a, b) => b.ponderado - a.ponderado)
@@ -405,7 +429,7 @@ function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
     <div className="rounded-xl border border-border/60 bg-card p-5 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Resultado ponderado (por imóvel)
+          {criterioPeso === "fracao_ideal" ? "Resultado ponderado (por fração ideal)" : "Resultado ponderado (por imóvel)"}
         </p>
         <span className="text-xs text-muted-foreground">
           {totalP} {totalP === 1 ? "participante" : "participantes"}
@@ -424,6 +448,7 @@ function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
               colorText={cor.text}
               unit="imóvel"
               unitPlural="imóveis"
+              formatCount={(n) => formatPesoResultado(n, criterioPeso)}
             />
           )
         })}
@@ -436,6 +461,7 @@ function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
             colorText="text-amber-500"
             unit="imóvel"
             unitPlural="imóveis"
+            formatCount={(n) => formatPesoResultado(n, criterioPeso)}
           />
         )}
       </div>
@@ -443,7 +469,7 @@ function MultiplaEscolhaApuracao({ item }: { item: PautaApuracao }) {
   )
 }
 
-function SimNaoApuracao({ item }: { item: PautaApuracao }) {
+function SimNaoApuracao({ item, criterioPeso }: { item: PautaApuracao; criterioPeso: CriterioPeso }) {
   const { por_participantes, ponderado, total_apartamentos_representados, aprovada } = item
 
   const totalP = por_participantes.sim + por_participantes.nao + por_participantes.abstencao
@@ -516,12 +542,12 @@ function SimNaoApuracao({ item }: { item: PautaApuracao }) {
             <DonutChart
               segments={segmentsW}
               centerLabel={rotuloAprovacao}
-              centerSub={`${total_apartamentos_representados} imóveis`}
+              centerSub={formatPesoResultado(total_apartamentos_representados, criterioPeso)}
             />
             <div className="flex-1 space-y-3">
-              <Bar label="SIM" count={ponderado.sim} pct={pctW(ponderado.sim)} colorBar="bg-emerald-500" colorText="text-emerald-500" unit="imóvel" unitPlural="imóveis" />
-              <Bar label="NÃO" count={ponderado.nao} pct={pctW(ponderado.nao)} colorBar="bg-rose-500" colorText="text-rose-500" unit="imóvel" unitPlural="imóveis" />
-              <Bar label="ABST." count={ponderado.abstencao} pct={pctW(ponderado.abstencao)} colorBar="bg-amber-500" colorText="text-amber-500" unit="imóvel" unitPlural="imóveis" />
+              <Bar label="SIM" count={ponderado.sim} pct={pctW(ponderado.sim)} colorBar="bg-emerald-500" colorText="text-emerald-500" unit="imóvel" unitPlural="imóveis" formatCount={(n) => formatPesoResultado(n, criterioPeso)} />
+              <Bar label="NÃO" count={ponderado.nao} pct={pctW(ponderado.nao)} colorBar="bg-rose-500" colorText="text-rose-500" unit="imóvel" unitPlural="imóveis" formatCount={(n) => formatPesoResultado(n, criterioPeso)} />
+              <Bar label="ABST." count={ponderado.abstencao} pct={pctW(ponderado.abstencao)} colorBar="bg-amber-500" colorText="text-amber-500" unit="imóvel" unitPlural="imóveis" formatCount={(n) => formatPesoResultado(n, criterioPeso)} />
             </div>
           </div>
         </div>
@@ -538,6 +564,7 @@ function Bar({
   colorText,
   unit,
   unitPlural,
+  formatCount,
 }: {
   label: string
   count: number
@@ -546,6 +573,7 @@ function Bar({
   colorText: string
   unit: string
   unitPlural: string
+  formatCount?: (n: number) => string
 }) {
   return (
     <div className="space-y-1">
@@ -554,7 +582,7 @@ function Bar({
           {label}
         </span>
         <span className="shrink-0 tabular-nums text-muted-foreground">
-          {count} {count === 1 ? unit : unitPlural}
+          {formatCount ? formatCount(count) : `${count} ${count === 1 ? unit : unitPlural}`}
           <span className="ml-1 text-xs">({pct}%)</span>
         </span>
       </div>

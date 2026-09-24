@@ -89,6 +89,7 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
         condominioId={condominioId}
         apuracao={apuracao}
         canExport={session?.perfil !== "visualizador"}
+        criterioPeso={condominio.criterio_peso}
       />
 
       <HistoricoParticipacao historico={historicoParticipacao} />

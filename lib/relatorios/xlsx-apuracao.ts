@@ -58,6 +58,13 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
   } = data
   const wb = XLSX.utils.book_new()
 
+  // Por fração ideal, o valor ponderado é a soma das frações (fração de 1) —
+  // na planilha vira percentual numérico (4.3680 = 4,368%) pra ainda poder
+  // somar/ordenar no Excel, em vez de a fração crua sob cabeçalho "imóv.".
+  const fracaoIdeal = condominio.criterio_peso === "fracao_ideal"
+  const pv = (n: number) => (fracaoIdeal ? Math.round(n * 100 * 10000) / 10000 : n)
+  const uPond = fracaoIdeal ? "fração %" : "imóv."
+
   /* ── Tab 1: Resumo Geral ─────────────────────────────────────────────── */
   const taxaPart = pctStr(apuracao.total_respondidos, apuracao.total_enviados)
 
@@ -142,13 +149,13 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
     "% SIM",
     "% NÃO",
     "% Abst.",
-    "SIM (imóv.)",
-    "NÃO (imóv.)",
-    "Abst. (imóv.)",
-    "Total imóv.",
-    "% SIM (imóv.)",
-    "% NÃO (imóv.)",
-    "% Abst. (imóv.)",
+    `SIM (${uPond})`,
+    `NÃO (${uPond})`,
+    `Abst. (${uPond})`,
+    `Total ${uPond}`,
+    `% SIM (${uPond})`,
+    `% NÃO (${uPond})`,
+    `% Abst. (${uPond})`,
     "Resultado (part.)",
     "Quórum exigido",
     "Resultado (ponderado)",
@@ -198,10 +205,10 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
       pctStr(p.por_participantes.sim, tp),
       pctStr(p.por_participantes.nao, tp),
       pctStr(p.por_participantes.abstencao, tp),
-      p.ponderado.sim,
-      p.ponderado.nao,
-      p.ponderado.abstencao,
-      tw,
+      pv(p.ponderado.sim),
+      pv(p.ponderado.nao),
+      pv(p.ponderado.abstencao),
+      pv(tw),
       pctStr(p.ponderado.sim, tw),
       pctStr(p.ponderado.nao, tw),
       pctStr(p.ponderado.abstencao, tw),
@@ -228,7 +235,7 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
      Só é adicionada quando existe ao menos uma pauta desse tipo — uma
      assembleia só com pautas Sim/Não gera o mesmo workbook de sempre. */
   if (pautasMultiplaEscolha.length > 0) {
-    const meHeader = ["Pauta", "Opção", "Participantes", "% part.", "Imóveis (ponderado)", "% ponderado"]
+    const meHeader = ["Pauta", "Opção", "Participantes", "% part.", fracaoIdeal ? "Fração ideal % (ponderado)" : "Imóveis (ponderado)", "% ponderado"]
     const meRows: (string | number)[][] = []
 
     pautasMultiplaEscolha.forEach((p) => {
@@ -245,7 +252,7 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
           o.label,
           o.participantes,
           pctStr(o.participantes, totalParticipantes),
-          o.ponderado,
+          pv(o.ponderado),
           pctStr(o.ponderado, totalPonderado),
         ])
       })
@@ -255,7 +262,7 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
           "Abstenção",
           p.por_participantes.abstencao,
           pctStr(p.por_participantes.abstencao, totalParticipantes),
-          p.ponderado.abstencao,
+          pv(p.ponderado.abstencao),
           pctStr(p.ponderado.abstencao, totalPonderado),
         ])
       }

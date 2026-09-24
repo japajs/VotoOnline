@@ -5,6 +5,7 @@ import type {
   ProprietarioImport,
 } from "@/types"
 import { dividirCandidatosContato, normalizarCelular, validarEmailFormato } from "@/lib/format"
+import { converterEscalaFracaoIdeal, detectarDivisorEscalaFracaoIdeal } from "@/lib/peso"
 
 // ─── E-mail / Celular ─────────────────────────────────────────────────────────
 // Validação de formato compartilhada com o cadastro manual/edição — ver
@@ -273,6 +274,28 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
 
   const proprietarios = Array.from(mapa.values())
 
+  // Escala da fração ideal: planilha real costuma trazer PORCENTAGEM (0.364 =
+  // 0,364%, soma ≈ 100) e o sistema trabalha com fração de 1 (ver
+  // detectarDivisorEscalaFracaoIdeal em lib/peso.ts) — a soma do arquivo
+  // inteiro decide se precisa converter. Sem isso o e-mail de convite
+  // mostraria "Seu peso de voto: 36,4%" pra quem tem 0,364%.
+  let fracaoIdealEscala: ImportacaoPreview["fracaoIdealEscala"]
+  const fracoes = proprietarios.flatMap((p) =>
+    p.unidades.map((u) => u.fracaoIdeal).filter((f): f is number => f !== null)
+  )
+  if (fracoes.length > 0) {
+    const soma = fracoes.reduce((a, b) => a + b, 0)
+    const divisor = detectarDivisorEscalaFracaoIdeal(soma)
+    fracaoIdealEscala = { soma, divisor }
+    if (divisor !== null && divisor !== 1) {
+      for (const p of proprietarios) {
+        for (const u of p.unidades) {
+          if (u.fracaoIdeal !== null) u.fracaoIdeal = converterEscalaFracaoIdeal(u.fracaoIdeal, divisor)
+        }
+      }
+    }
+  }
+
   return {
     proprietarios,
     totalLinhas: linhas.length,
@@ -281,5 +304,6 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
     duplicidades,
     erros,
     linhasIgnoradas,
+    ...(fracaoIdealEscala ? { fracaoIdealEscala } : {}),
   }
 }

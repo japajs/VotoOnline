@@ -259,3 +259,49 @@ describe("processarLinhas — CPF", () => {
     )
   })
 })
+
+describe("processarLinhas — escala da fração ideal (planilha em porcentagem)", () => {
+  it("frações somando ≈ 92,88 (porcentagem) são gravadas divididas por 100 e a escala é sinalizada no preview", () => {
+    // 22 unidades por andar × 10 andares no Caldas Novas Flat: 12 de 0,364 e 10 de 0,492.
+    const linhas = Array.from({ length: 220 }, (_, i) =>
+      linha({
+        _linhaOriginal: i + 2,
+        nome: `Dono ${i}`,
+        imovel: `U${i}`,
+        fracaoIdeal: i % 22 < 12 ? "0.364" : "0.492",
+      })
+    )
+    const resultado = processarLinhas(linhas)
+    const soma = resultado.proprietarios.reduce(
+      (acc, p) => acc + p.unidades.reduce((a, u) => a + (u.fracaoIdeal ?? 0), 0),
+      0
+    )
+    expect(resultado.fracaoIdealEscala?.divisor).toBe(100)
+    expect(resultado.fracaoIdealEscala?.soma).toBeCloseTo(92.88, 4)
+    expect(soma).toBeCloseTo(0.9288, 4)
+    expect(resultado.proprietarios[0].unidades[0].fracaoIdeal).toBe(0.00364)
+  })
+
+  it("frações já em fração de 1: não converte", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 2, nome: "A", imovel: "1", fracaoIdeal: "0.5" }),
+      linha({ _linhaOriginal: 3, nome: "B", imovel: "2", fracaoIdeal: "0.5" }),
+    ])
+    expect(resultado.fracaoIdealEscala?.divisor).toBe(1)
+    expect(resultado.proprietarios[0].unidades[0].fracaoIdeal).toBe(0.5)
+  })
+
+  it("soma fora de qualquer escala: mantém os valores como vieram e sinaliza divisor null", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 2, nome: "A", imovel: "1", fracaoIdeal: "7" }),
+      linha({ _linhaOriginal: 3, nome: "B", imovel: "2", fracaoIdeal: "8" }),
+    ])
+    expect(resultado.fracaoIdealEscala?.divisor).toBeNull()
+    expect(resultado.proprietarios[0].unidades[0].fracaoIdeal).toBe(7)
+  })
+
+  it("planilha sem coluna de fração: nenhuma informação de escala no preview", () => {
+    const resultado = processarLinhas([linha({ _linhaOriginal: 2, nome: "A", imovel: "1" })])
+    expect(resultado.fracaoIdealEscala).toBeUndefined()
+  })
+})

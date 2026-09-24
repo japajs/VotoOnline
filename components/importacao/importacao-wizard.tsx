@@ -338,6 +338,55 @@ function SummaryCards({ preview }: { preview: ImportacaoPreview }) {
   )
 }
 
+// ─── Aviso de escala da fração ideal ─────────────────────────────────────────
+
+// A planilha costuma trazer a fração ideal em PORCENTAGEM (0.364 = 0,364%) e o
+// sistema guarda como fração de 1 (0.00364) — o processamento já converteu (ver
+// processarLinhas); aqui só deixa isso visível antes de confirmar, pra ninguém
+// importar sem saber que o valor gravado difere do valor da célula.
+function FracaoEscalaAviso({ escala }: { escala: ImportacaoPreview["fracaoIdealEscala"] }) {
+  if (!escala) return null
+  const soma = escala.soma.toLocaleString("pt-BR", { maximumFractionDigits: 4 })
+
+  if (escala.divisor === null) {
+    return (
+      <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 text-xs text-rose-700 dark:text-rose-300">
+        <p className="mb-1 flex items-center gap-1.5 font-semibold">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Fração ideal: escala não reconhecida
+        </p>
+        As frações da planilha somam <strong>{soma}</strong>, que não parece nem fração (≈ 1), nem
+        porcentagem (≈ 100), nem milésimo (≈ 1000). Elas serão gravadas exatamente como vieram e o
+        condomínio não conseguirá usar o critério “fração ideal” até isso ser corrigido — confira a
+        coluna na planilha.
+      </div>
+    )
+  }
+
+  if (escala.divisor === 1) {
+    return (
+      <div className="rounded-xl border border-border/60 bg-muted/30 p-4 text-xs text-muted-foreground">
+        Fração ideal: as frações somam <strong>{soma}</strong> — já estão em fração (≈ 1), serão
+        gravadas como vieram.
+      </div>
+    )
+  }
+
+  const nome = escala.divisor === 100 ? "porcentagem" : escala.divisor === 1000 ? "milésimos" : "décimos de milésimo"
+  return (
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-800 dark:text-amber-300">
+      <p className="mb-1 flex items-center gap-1.5 font-semibold">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        Fração ideal convertida de {nome}
+      </p>
+      As frações da planilha somam <strong>{soma}</strong> — parecem estar em {nome}. Serão gravadas
+      divididas por <strong>{escala.divisor.toLocaleString("pt-BR")}</strong>, que é o formato que o
+      sistema usa para calcular peso e quórum (a soma do condomínio fica em torno de 1). Se você sabe
+      que a planilha já estava em fração de 1, cancele e me avise antes de confirmar.
+    </div>
+  )
+}
+
 // ─── Tabela de proprietários ──────────────────────────────────────────────────
 
 // Quando a célula da planilha trazia mais de um e-mail/celular, `p.email`/
@@ -883,6 +932,7 @@ export function ImportacaoWizard({ condominios }: Props) {
             </div>
 
             <SummaryCards preview={preview} />
+            <FracaoEscalaAviso escala={preview.fracaoIdealEscala} />
             <ProprietariosTable preview={preview} onEscolherCandidato={handleEscolherCandidato} />
             <AvisosList erros={preview.erros} />
 

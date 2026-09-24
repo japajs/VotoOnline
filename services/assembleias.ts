@@ -305,6 +305,32 @@ export async function hasAssembleiaAberta(condominioId: string): Promise<boolean
   return (data ?? []).length > 0
 }
 
+// Algum voto já foi registrado em QUALQUER assembleia deste condomínio (mesmo
+// as encerradas)? O peso de cada voto fica congelado em
+// assembleia_respostas.peso, mas o total do condomínio é recalculado "ao
+// vivo" das unidades — então mudar a escala das frações depois de existir
+// voto deixaria apurações antigas comparando peso congelado na escala velha
+// com total na escala nova.
+export async function condominioTemVotoRegistrado(condominioId: string): Promise<boolean> {
+  const db = createServerClient()
+  const { data: assembleias, error } = await db
+    .from("assembleias")
+    .select("id")
+    .eq("condominio_id", condominioId)
+  if (error) throw new Error(error.message)
+  const ids = (assembleias ?? []).map((a) => a.id as string)
+  if (ids.length === 0) return false
+
+  const { data: sends, error: errSends } = await db
+    .from("assembleia_sends")
+    .select("id")
+    .in("assembleia_id", ids)
+    .not("votado_em", "is", null)
+    .limit(1)
+  if (errSends) throw new Error(errSends.message)
+  return (sends ?? []).length > 0
+}
+
 // Ids das assembleias em andamento (aberta/pausada) deste condomínio —
 // separado da checagem de peso abaixo pra quem precisa rodar a mesma
 // checagem pra mais de um proprietário sem refazer esta consulta a cada vez

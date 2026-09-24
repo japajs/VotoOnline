@@ -3,7 +3,7 @@ import { APP_NAME, APP_VERSION } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
 import type { Assembleia, AssembleiaApuracao, Condominio } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
-import { formatDateTimeBR, formatDateBR } from "./utils"
+import { fmtPonderado, formatDateTimeBR, formatDateBR } from "./utils"
 
 // Auditoria de assembleias — Fase 3: Ata formal, documento narrativo pra
 // assinatura/registro — diferente do PDF de Apuração (lib/relatorios/
@@ -196,12 +196,12 @@ export function AtaPDF({
           let resultadoTexto: string
           if (multiplaEscolha) {
             resultadoTexto = vencedora
-              ? `Opção mais votada: ${vencedora.label} (${vencedora.ponderado} ${pluralImovel(vencedora.ponderado, "ponderado")}).`
+              ? `Opção mais votada: ${vencedora.label} (${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(vencedora.ponderado, condominio.criterio_peso)} da fração ideal` : `${vencedora.ponderado} ${pluralImovel(vencedora.ponderado, "ponderado")}`}).`
               : "Sem votos registrados."
           } else if (item.aprovada === null) {
             resultadoTexto = "Sem votos registrados."
           } else {
-            resultadoTexto = `${item.aprovada ? "APROVADA" : "REJEITADA"} — Sim: ${item.ponderado.sim} · Não: ${item.ponderado.nao} · Abstenção: ${item.ponderado.abstencao} (quórum de aprovação exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%).`
+            resultadoTexto = `${item.aprovada ? "APROVADA" : "REJEITADA"} — Sim: ${fmtPonderado(item.ponderado.sim, condominio.criterio_peso)} · Não: ${fmtPonderado(item.ponderado.nao, condominio.criterio_peso)} · Abstenção: ${fmtPonderado(item.ponderado.abstencao, condominio.criterio_peso)} (quórum de aprovação exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%).`
           }
 
           return (
