@@ -395,6 +395,63 @@ create policy "deny_all" on procuracoes           for all using (false) with che
 drop policy if exists "deny_all" on unidade_coproprietarios;
 create policy "deny_all" on unidade_coproprietarios for all using (false) with check (false);
 
+-- ─── Grants da Data API ─────────────────────────────────────────────────────
+-- Até aqui, toda tabela nova no schema public ganhava grant automático pra
+-- anon/authenticated/service_role nos projetos Supabase já existentes — é
+-- assim que a app sempre funcionou, sem nenhum "grant" explícito neste
+-- arquivo. A Supabase avisou que isso para de acontecer a partir de
+-- 30/10/2026: toda tabela criada (ou recriada, por um "supabase db reset" ou
+-- rodando este arquivo do zero num projeto novo) depois dessa data só fica
+-- acessível pela Data API (supabase-js/PostgREST) se tiver um GRANT
+-- explícito — mesmo pra service_role, que o RLS acima não cobre (RLS decide
+-- QUAIS LINHAS; GRANT decide se o role chega na tabela). Sem isso, rodar
+-- este schema.sql num projeto Supabase novo depois de 30/10/2026 criaria
+-- todas as 14 tabelas inacessíveis, com toda chamada ao banco retornando
+-- "permission denied" — quebra total, silenciosa até alguém tentar usar.
+-- Não muda nada no projeto já em produção (grant automático já aconteceu).
+grant select on public.usuarios              to anon;
+grant select on public.usuario_condominios   to anon;
+grant select on public.condominios           to anon;
+grant select on public.configuracoes         to anon;
+grant select on public.rate_limits           to anon;
+grant select on public.proprietarios         to anon;
+grant select on public.unidades              to anon;
+grant select on public.unidade_coproprietarios to anon;
+grant select on public.assembleias           to anon;
+grant select on public.pautas                to anon;
+grant select on public.pauta_opcoes          to anon;
+grant select on public.assembleia_sends      to anon;
+grant select on public.assembleia_respostas  to anon;
+grant select on public.procuracoes           to anon;
+grant select, insert, update, delete on public.usuarios              to authenticated;
+grant select, insert, update, delete on public.usuario_condominios   to authenticated;
+grant select, insert, update, delete on public.condominios           to authenticated;
+grant select, insert, update, delete on public.configuracoes         to authenticated;
+grant select, insert, update, delete on public.rate_limits           to authenticated;
+grant select, insert, update, delete on public.proprietarios         to authenticated;
+grant select, insert, update, delete on public.unidades              to authenticated;
+grant select, insert, update, delete on public.unidade_coproprietarios to authenticated;
+grant select, insert, update, delete on public.assembleias           to authenticated;
+grant select, insert, update, delete on public.pautas                to authenticated;
+grant select, insert, update, delete on public.pauta_opcoes          to authenticated;
+grant select, insert, update, delete on public.assembleia_sends      to authenticated;
+grant select, insert, update, delete on public.assembleia_respostas  to authenticated;
+grant select, insert, update, delete on public.procuracoes           to authenticated;
+grant select, insert, update, delete on public.usuarios              to service_role;
+grant select, insert, update, delete on public.usuario_condominios   to service_role;
+grant select, insert, update, delete on public.condominios           to service_role;
+grant select, insert, update, delete on public.configuracoes         to service_role;
+grant select, insert, update, delete on public.rate_limits           to service_role;
+grant select, insert, update, delete on public.proprietarios         to service_role;
+grant select, insert, update, delete on public.unidades              to service_role;
+grant select, insert, update, delete on public.unidade_coproprietarios to service_role;
+grant select, insert, update, delete on public.assembleias           to service_role;
+grant select, insert, update, delete on public.pautas                to service_role;
+grant select, insert, update, delete on public.pauta_opcoes          to service_role;
+grant select, insert, update, delete on public.assembleia_sends      to service_role;
+grant select, insert, update, delete on public.assembleia_respostas  to service_role;
+grant select, insert, update, delete on public.procuracoes           to service_role;
+
 -- ============================================================
 -- Migração — Fase 1 da auditoria de assembleias: fração ideal,
 -- quórum de aprovação por pauta, quórum mínimo por assembleia.
