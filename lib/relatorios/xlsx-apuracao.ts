@@ -5,6 +5,7 @@ import type { ParticipanteRelatorio, UnidadeRelatorio, VotoDetalhado } from "@/s
 import {
   formatDateTimeBR,
   pctStr,
+  sanitizarLinhas,
   sendStatusLabelPT,
   statusLabelPT,
 } from "./utils"
@@ -18,23 +19,6 @@ export interface XlsxApuracaoData {
   votosDetalhados: VotoDetalhado[]
   emitidoPor: string
   emitidoEm: string
-}
-
-// Auditoria de segurança: previne Formula/CSV Injection — um texto vindo do
-// cadastro (nome, e-mail, observações etc.) que comece com =, +, - ou @
-// seria interpretado como fórmula ao abrir a planilha no Excel. Prefixa com
-// apóstrofo para forçar leitura como texto literal, sem mudar o valor visto.
-const PREFIXOS_FORMULA = new Set(["=", "+", "-", "@"])
-
-function sanitizarCelula<T extends string | number>(valor: T): T {
-  if (typeof valor === "string" && valor.length > 0 && PREFIXOS_FORMULA.has(valor[0]!)) {
-    return (`'${valor}` as unknown) as T
-  }
-  return valor
-}
-
-function sanitizarLinhas<T extends (string | number)[]>(linhas: T[]): T[] {
-  return linhas.map((linha) => linha.map((c) => sanitizarCelula(c)) as T)
 }
 
 function boldRow(ws: XLSX.WorkSheet, rowIdx: number, colCount: number) {

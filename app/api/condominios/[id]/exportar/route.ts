@@ -3,6 +3,7 @@ import * as XLSX from "xlsx"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
 import { getCondominioById } from "@/services/condominios"
 import { getAllProprietarios } from "@/services/proprietarios"
+import { sanitizarLinhas } from "@/lib/relatorios/utils"
 import { APP_NAME } from "@/lib/constants"
 
 export async function GET(
@@ -51,7 +52,10 @@ export async function GET(
   }
 
   const header = ["Nome", "E-mail", "CPF", "Telefone / WhatsApp", "Unidade", "Bloco"]
-  const ws = XLSX.utils.aoa_to_sheet([header, ...rows])
+  // Auditoria de segurança: escapa células que começam com = + - @ (nome/
+  // e-mail/CPF vêm do cadastro e poderiam virar fórmula no Excel). Mesma
+  // defesa já usada na apuração (ver lib/relatorios/utils.ts:sanitizarLinhas).
+  const ws = XLSX.utils.aoa_to_sheet(sanitizarLinhas([header, ...rows]))
 
   // Larguras de coluna
   ws["!cols"] = [
