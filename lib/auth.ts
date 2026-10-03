@@ -54,7 +54,8 @@ export async function getSession(): Promise<SessionUser | null> {
       typeof userId !== "string" ||
       typeof email !== "string" ||
       typeof nome !== "string" ||
-      typeof perfil !== "string"
+      typeof perfil !== "string" ||
+      typeof acessoTotal !== "boolean"
     ) {
       return null
     }
@@ -74,15 +75,18 @@ export async function getSession(): Promise<SessionUser | null> {
       .maybeSingle()
     if (error || !usuario || usuario.ativo === false) return null
 
-    // Sessões emitidas antes desta claim existir não têm `acessoTotal` no
-    // token — trata como acesso total (mesmo comportamento de sempre) até o
-    // usuário logar de novo, em vez de derrubar todo mundo no deploy.
+    // `acessoTotal` agora é obrigatório no token (checado acima). Toda sessão
+    // emitida por createSession carrega a claim; a janela de graça para tokens
+    // antigos sem ela (no máximo AUTH_COOKIE_MAX_AGE, 7 dias) já passou. Um
+    // token sem a claim é tratado como inválido e força novo login — antes
+    // caía em `true` (acesso total), uma escalada de privilégio latente para
+    // um usuário PESSOAL que ainda tivesse um token pré-claim.
     return {
       userId,
       email,
       nome,
       perfil: perfil as UserPerfil,
-      acessoTotal: typeof acessoTotal === "boolean" ? acessoTotal : true,
+      acessoTotal,
     }
   } catch {
     return null

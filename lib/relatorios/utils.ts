@@ -36,6 +36,26 @@ export function pctStr(n: number, total: number): string {
   return total > 0 ? `${Math.round((n / total) * 100)}%` : "0%"
 }
 
+// Auditoria de segurança: previne Formula/CSV Injection — um texto vindo do
+// cadastro (nome, e-mail, observações etc.) que comece com =, +, - ou @
+// seria interpretado como fórmula ao abrir a planilha no Excel. Prefixa com
+// apóstrofo para forçar leitura como texto literal, sem mudar o valor visto.
+// Vive aqui (não mais privado em xlsx-apuracao.ts) porque TODA geração de
+// planilha precisa passar por isto — a apuração e a exportação de
+// proprietários (app/api/condominios/[id]/exportar) usam a mesma função.
+const PREFIXOS_FORMULA = new Set(["=", "+", "-", "@"])
+
+export function sanitizarCelula<T extends string | number>(valor: T): T {
+  if (typeof valor === "string" && valor.length > 0 && PREFIXOS_FORMULA.has(valor[0]!)) {
+    return (`'${valor}` as unknown) as T
+  }
+  return valor
+}
+
+export function sanitizarLinhas<T extends (string | number)[]>(linhas: T[]): T[] {
+  return linhas.map((linha) => linha.map((c) => sanitizarCelula(c)) as T)
+}
+
 export function statusLabelPT(status: string): string {
   return (ASSEMBLEIA_STATUS_LABEL as Record<string, string>)[status] ?? status
 }

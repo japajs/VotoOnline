@@ -14,6 +14,13 @@ const loginSchema = z.object({
   from: z.string().optional(),
 })
 
+// Hash bcrypt (custo 12, o mesmo dos hashes reais) de uma senha que não
+// corresponde a nenhuma conta. Serve só para gastar o mesmo tempo de CPU do
+// compare real quando o e-mail digitado não existe, fechando o canal de
+// enumeração de usuários por tempo de resposta (ver uso em loginAction).
+// Não é segredo nenhum — é proposital que nunca bata com senha de ninguém.
+const DUMMY_SENHA_HASH = "$2b$12$UEGYa2dodfUp96XMcKW6EO.P576Gultews2ulgXjiRqt8EWJAL1sW"
+
 export type LoginState = { error?: string } | null
 
 // Auditoria de segurança: "from" vem direto da URL (?from=...), então não
@@ -45,16 +52,31 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
 
   const { email, password, from } = result.data
 
+  // Throttle também por conta, não só por IP: sem isto, um ataque distribuído
+  // (muitos IPs, cada um abaixo do limite por IP) contra um e-mail conhecido
+  // não era limitado por conta nenhuma. Reusa de propósito a MESMA janela
+  // curta (60s) do limite por IP — corta o credential stuffing distribuído
+  // sem virar uma trava sustentada da conta (o bloqueio se renova a cada
+  // minuto, então não dá pra manter um admin fora durante uma assembleia ao
+  // vivo). Checado antes do lookup e com a mesma mensagem genérica: não
+  // revela se o e-mail existe.
+  if (!(await checkRateLimit(`login-email:${email.toLowerCase()}`))) {
+    return { error: "Muitas tentativas. Aguarde um momento e tente novamente." }
+  }
+
   // Delay artificial para dificultar enumeração de usuários por tempo de resposta
   await new Promise((r) => setTimeout(r, 400))
 
   const user = await findUsuarioByEmail(email)
-  if (!user) {
-    return { error: "E-mail ou senha incorretos." }
-  }
 
-  const senhaCorreta = await compare(password, user.senha_hash)
-  if (!senhaCorreta) {
+  // Enumeração por timing: sem usuário não havia bcrypt pra rodar, então a
+  // resposta voltava ~250ms mais rápido que pra um e-mail cadastrado — dava
+  // pra distinguir e-mails válidos apesar da mensagem genérica. Rodar o
+  // compare contra um hash fixo quando o usuário não existe iguala o tempo
+  // de resposta nos dois casos (o resultado contra o hash dummy é sempre
+  // descartado logo abaixo pelo `!user`).
+  const senhaCorreta = await compare(password, user?.senha_hash ?? DUMMY_SENHA_HASH)
+  if (!user || !senhaCorreta) {
     return { error: "E-mail ou senha incorretos." }
   }
 

@@ -74,6 +74,25 @@ export async function executarImportacaoAction(
     }
   }
 
+  // Defesa em profundidade: o parse do arquivo acontece no cliente e só a
+  // lista pronta chega aqui, então um operador autenticado poderia mandar um
+  // lote gigante (limitado só pelo bodySizeLimit do Next) e forçar uma
+  // enxurrada de escritas no banco. Um teto explícito corta isso — nenhum
+  // condomínio real chega perto de 5.000 proprietários num único import.
+  const MAX_PROPRIETARIOS_IMPORT = 5000
+  if (proprietarios.length > MAX_PROPRIETARIOS_IMPORT) {
+    return {
+      success: false,
+      condominioId,
+      proprietariosCriados: 0,
+      proprietariosAtualizados: 0,
+      unidadesCriadas: 0,
+      unidadesIgnoradas: 0,
+      erros: [],
+      error: `Importação muito grande (${proprietarios.length} linhas). O limite é ${MAX_PROPRIETARIOS_IMPORT} proprietários por vez — divida o arquivo e importe em partes.`,
+    }
+  }
+
   const resultado = await executarLoteImportacao(condominioId, proprietarios)
 
   revalidatePath(`${ROUTES.condominios}/${condominioId}`)
