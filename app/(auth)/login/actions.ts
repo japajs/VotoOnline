@@ -52,6 +52,18 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
 
   const { email, password, from } = result.data
 
+  // Throttle também por conta, não só por IP: sem isto, um ataque distribuído
+  // (muitos IPs, cada um abaixo do limite por IP) contra um e-mail conhecido
+  // não era limitado por conta nenhuma. Reusa de propósito a MESMA janela
+  // curta (60s) do limite por IP — corta o credential stuffing distribuído
+  // sem virar uma trava sustentada da conta (o bloqueio se renova a cada
+  // minuto, então não dá pra manter um admin fora durante uma assembleia ao
+  // vivo). Checado antes do lookup e com a mesma mensagem genérica: não
+  // revela se o e-mail existe.
+  if (!(await checkRateLimit(`login-email:${email.toLowerCase()}`))) {
+    return { error: "Muitas tentativas. Aguarde um momento e tente novamente." }
+  }
+
   // Delay artificial para dificultar enumeração de usuários por tempo de resposta
   await new Promise((r) => setTimeout(r, 400))
 

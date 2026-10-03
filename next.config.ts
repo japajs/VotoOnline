@@ -26,6 +26,10 @@ const csp = [
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
+  // Nenhum <object>/<embed>/<applet> — o app não usa plugins; o PDF é gerado
+  // no servidor e baixado como anexo, nunca embutido. Mais estrito que o
+  // fallback default-src 'self'.
+  "object-src 'none'",
 ].join("; ")
 
 const securityHeaders = [
@@ -33,7 +37,11 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-XSS-Protection", value: "1; mode=block" },
+  // Desabilitado (0) de propósito: o filtro XSS legado do navegador foi
+  // removido do Chrome/Edge e, quando ativo, já introduziu problemas próprios.
+  // A CSP acima é a proteção real; o header fica só pra documentar a escolha
+  // (scanners recomendam "0", não "1; mode=block").
+  { key: "X-XSS-Protection", value: "0" },
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
