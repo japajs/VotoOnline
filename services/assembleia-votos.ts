@@ -743,13 +743,23 @@ export interface SendNaoVotado extends SendJaVotado {
 // atual do proprietário — nunca *_snapshot, que só existe a partir do 1º
 // voto (ver createAssembleiaRespostas). Traz as unidades pra o lembrete
 // poder mostrar peso/unidade de cada um (ver services/email.ts).
-export async function getSendsNaoVotaram(assembleiaId: string): Promise<SendNaoVotado[]> {
+export async function getSendsNaoVotaram(
+  assembleiaId: string,
+  opts?: { apenasPresentes?: boolean }
+): Promise<SendNaoVotado[]> {
   const db = createServerClient()
-  const { data, error } = await db
+  let query = db
     .from("assembleia_sends")
     .select("id, token, proprietarios(nome, email, unidades(numero, bloco, fracao_ideal))")
     .eq("assembleia_id", assembleiaId)
     .is("votado_em", null)
+
+  // Presença online: restringe a quem ENTROU pelo link (presente_em
+  // preenchido) — garante "e-mail só pros presentes" mesmo numa assembleia
+  // que também teve convite por e-mail.
+  if (opts?.apenasPresentes) query = query.not("presente_em", "is", null)
+
+  const { data, error } = await query
 
   if (error) throw new Error(error.message)
 

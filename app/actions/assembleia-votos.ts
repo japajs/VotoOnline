@@ -249,7 +249,11 @@ export interface NotificarNaoVotaramResult {
 // da assembleia (não existe cron/agendamento neste projeto). Reaproveita o
 // token já existente de cada send, sem rotacionar.
 export async function notificarNaoVotaramAction(
-  assembleiaId: string
+  assembleiaId: string,
+  // Presença online: quando true, lembra SÓ quem entrou pelo link (presentes)
+  // e não votou — garante "e-mail só pros presentes" (ver PresencaDialog).
+  // Default false mantém o comportamento do botão de sempre (todos os sends).
+  apenasPresentes = false
 ): Promise<NotificarNaoVotaramResult> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, sent: 0, failed: 0, error: auth.error }
@@ -270,7 +274,7 @@ export async function notificarNaoVotaramAction(
       }
     }
 
-    const sends = await getSendsNaoVotaram(assembleiaId)
+    const sends = await getSendsNaoVotaram(assembleiaId, { apenasPresentes })
     const comEmail = sends.filter((s) => s.proprietarioEmail)
     if (comEmail.length === 0) return { success: true, sent: 0, failed: 0 }
 

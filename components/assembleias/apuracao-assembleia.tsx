@@ -10,6 +10,7 @@ import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-d
 import { EditarPautaDialog } from "@/components/assembleias/editar-pauta-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
+import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { excluirPautaAction } from "@/app/actions/assembleias"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { APP_NAME } from "@/lib/constants"
@@ -198,6 +199,13 @@ export function ApuracaoAssembleia({
                   <DoorOpen className="h-3.5 w-3.5" />
                   Link de entrada
                 </Button>
+              )}
+              {canExport && assembleia.status !== "rascunho" && (
+                <PresencaDialog
+                  assembleiaId={assembleia.id}
+                  condominioId={condominioId}
+                  podeLembrar={assembleia.status === "aberta"}
+                />
               )}
               {canExport && assembleia.status === "aberta" && (
                 <ProcuracoesDialog assembleiaId={assembleia.id} condominioId={condominioId} />

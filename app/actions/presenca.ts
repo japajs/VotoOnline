@@ -2,7 +2,8 @@
 
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
-import { registrarPresenca } from "@/services/presenca"
+import { registrarPresenca, getPresencaAssembleia, type PresenteItem } from "@/services/presenca"
+import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { ROUTES } from "@/lib/constants"
 
@@ -34,4 +35,28 @@ export async function entrarAssembleiaAction(
 
   // redirect() lança NEXT_REDIRECT — fica fora de qualquer try/catch de propósito.
   redirect(ROUTES.publicCondoVoto(result.token))
+}
+
+// Lista de presença pro admin (read-only). Visualizador também pode ver (é só
+// leitura, como a apuração); o envio de lembrete é que exige admin/operador
+// (ver notificarNaoVotaramAction).
+export async function getPresencaAction(
+  assembleiaId: string,
+  condominioId: string
+): Promise<{ success: boolean; presentes: PresenteItem[]; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador", "visualizador"])
+  if (!auth.ok) return { success: false, presentes: [], error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, presentes: [], error: acesso.error }
+
+  try {
+    const presentes = await getPresencaAssembleia(assembleiaId)
+    return { success: true, presentes }
+  } catch (err) {
+    return {
+      success: false,
+      presentes: [],
+      error: err instanceof Error ? err.message : "Erro ao carregar a lista de presença.",
+    }
+  }
 }
