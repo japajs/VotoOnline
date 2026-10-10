@@ -23,12 +23,14 @@ interface ProprietariosListProps {
   // Quem já votou NA ASSEMBLEIA ABERTA agora (badge "votou/não votou" +
   // filtro). undefined = não há assembleia aberta → sem badge/filtro.
   votouNaAberta?: Set<string>
+  // Quem está marcado PRESENTE na assembleia aberta (filtro "Presentes").
+  presentesNaAberta?: Set<string>
   assembleiaAbertaTitulo?: string
   isAdmin?: boolean
   criterioPeso?: CriterioPeso
 }
 
-type FiltroVoto = "todos" | "votaram" | "nao"
+type FiltroVoto = "todos" | "presentes" | "votaram" | "nao"
 
 function formatPeso(peso: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(peso * 100).toFixed(4)}%`
@@ -47,6 +49,7 @@ export function ProprietariosList({
   condominioId,
   proprietariosQueJaVotaram,
   votouNaAberta,
+  presentesNaAberta,
   assembleiaAbertaTitulo,
   isAdmin = false,
   criterioPeso = "unidade",
@@ -58,9 +61,11 @@ export function ProprietariosList({
   const proprietariosExibidos = useMemo(() => {
     const porVoto =
       votouNaAberta && filtroVoto !== "todos"
-        ? proprietarios.filter((p) =>
-            filtroVoto === "votaram" ? votouNaAberta.has(p.id) : !votouNaAberta.has(p.id)
-          )
+        ? proprietarios.filter((p) => {
+            if (filtroVoto === "presentes") return presentesNaAberta?.has(p.id) ?? false
+            if (filtroVoto === "votaram") return votouNaAberta.has(p.id)
+            return !votouNaAberta.has(p.id) // "nao" — não votaram
+          })
         : proprietarios
 
     const termo = normalizarBusca(busca.trim())
@@ -90,12 +95,15 @@ export function ProprietariosList({
       })
     }
     return ordenados
-  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta])
+  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta, presentesNaAberta])
 
   const nVotaram = votouNaAberta
     ? proprietarios.reduce((n, p) => n + (votouNaAberta.has(p.id) ? 1 : 0), 0)
     : 0
   const nNao = proprietarios.length - nVotaram
+  const nPresentes = presentesNaAberta
+    ? proprietarios.reduce((n, p) => n + (presentesNaAberta.has(p.id) ? 1 : 0), 0)
+    : 0
 
   if (proprietarios.length === 0) {
     return (
@@ -146,10 +154,11 @@ export function ProprietariosList({
             <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — quem já
             votou nesta assembleia.
           </p>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {(
               [
-                ["todos", "Todos", proprietarios.length],
+                ["todos", "Geral", proprietarios.length],
+                ["presentes", "Presentes", nPresentes],
                 ["votaram", "Votaram", nVotaram],
                 ["nao", "Não votaram", nNao],
               ] as const
