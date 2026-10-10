@@ -113,3 +113,53 @@ export async function registrarPresenca(
   if (error) return { ok: false, error: error.message }
   return { ok: true, token }
 }
+
+export interface PresenteItem {
+  sendId: string
+  nome: string
+  email: string | null
+  unidades: { numero: string; bloco: string | null }[]
+  presenteEm: string
+  votou: boolean
+}
+
+// Lista de presença online: quem ENTROU nesta assembleia pelo link de entrada
+// (presente_em preenchido). Usa snapshot (nome/unidades congelados no voto)
+// quando já votou; senão o cadastro atual. Ordenado por ordem de chegada.
+export async function getPresencaAssembleia(assembleiaId: string): Promise<PresenteItem[]> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select(
+      "id, presente_em, votado_em, nome_snapshot, unidades_snapshot, email_snapshot, proprietarios(nome, email, unidades(numero, bloco))"
+    )
+    .eq("assembleia_id", assembleiaId)
+    .not("presente_em", "is", null)
+
+  if (error) throw new Error(error.message)
+
+  type Row = {
+    id: string
+    presente_em: string | null
+    votado_em: string | null
+    nome_snapshot: string | null
+    email_snapshot: string | null
+    unidades_snapshot: { numero: string; bloco: string | null }[] | null
+    proprietarios: {
+      nome: string
+      email: string | null
+      unidades: { numero: string; bloco: string | null }[] | null
+    } | null
+  }
+
+  return ((data ?? []) as unknown as Row[])
+    .map((r) => ({
+      sendId: r.id,
+      nome: r.nome_snapshot ?? r.proprietarios?.nome ?? "—",
+      email: r.email_snapshot ?? r.proprietarios?.email ?? null,
+      unidades: r.unidades_snapshot ?? r.proprietarios?.unidades ?? [],
+      presenteEm: r.presente_em as string,
+      votou: r.votado_em !== null,
+    }))
+    .sort((a, b) => a.presenteEm.localeCompare(b.presenteEm))
+}
