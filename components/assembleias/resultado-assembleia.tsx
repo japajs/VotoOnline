@@ -375,7 +375,9 @@ export function ResultadoAssembleia({
                 )}
                 <p className="pt-1 text-xs text-muted-foreground">
                   {totalParticipantes} {totalParticipantes === 1 ? "participante" : "participantes"} ·{" "}
-                  {formatPesoValor(total_apartamentos_representados, criterioPeso)} representada(s)
+                  {criterioPeso === "fracao_ideal"
+                    ? `${formatPesoValor(total_apartamentos_representados, criterioPeso)} da fração ideal representada`
+                    : `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")}`}
                   {!multiplaEscolha && (
                     <> · quórum de aprovação exigido: {Math.round(pauta.quorum_aprovacao * 100)}%</>
                   )}
