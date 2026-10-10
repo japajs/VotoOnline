@@ -5,7 +5,8 @@ import { ArrowLeft } from "lucide-react"
 import { getCondominioById } from "@/services/condominios"
 import { getAllProprietarios } from "@/services/proprietarios"
 import { getAllAssembleias } from "@/services/assembleias"
-import { getProprietariosQueJaVotaram } from "@/services/assembleia-votos"
+import { getProprietariosQueJaVotaram, getProprietarioIdsVotaram } from "@/services/assembleia-votos"
+import { isEmAndamento } from "@/lib/assembleia-status"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
 import { CriarProprietarioDialog } from "@/components/proprietarios/criar-proprietario-dialog"
 import { ProprietariosList } from "@/components/proprietarios/proprietarios-list"
@@ -49,6 +50,13 @@ export default async function CondominioDetailPage({ params }: Props) {
     getProprietariosQueJaVotaram(id).catch(() => new Set<string>()),
     getSession(),
   ])
+
+  // Marcar quem já votou NA ASSEMBLEIA ABERTA agora (não "em qualquer") direto
+  // na lista de proprietários, pra filtrar/cobrar sem precisar ir à apuração.
+  const assembleiaAberta = assembleias.find((a) => isEmAndamento(a.status))
+  const votouNaAberta = assembleiaAberta
+    ? await getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>())
+    : undefined
 
   // Escala das frações ideais cadastradas (ver FracaoEscalaAviso).
   const fracoesCadastradas = proprietarios
@@ -126,6 +134,8 @@ export default async function CondominioDetailPage({ params }: Props) {
           proprietarios={proprietarios}
           condominioId={id}
           proprietariosQueJaVotaram={proprietariosQueJaVotaram}
+          votouNaAberta={votouNaAberta}
+          assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           isAdmin={session?.perfil === "administrador"}
           criterioPeso={condominio.criterio_peso}
         />

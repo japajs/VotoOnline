@@ -20,9 +20,15 @@ interface ProprietariosListProps {
   proprietarios: Proprietario[]
   condominioId: string
   proprietariosQueJaVotaram?: Set<string>
+  // Quem já votou NA ASSEMBLEIA ABERTA agora (badge "votou/não votou" +
+  // filtro). undefined = não há assembleia aberta → sem badge/filtro.
+  votouNaAberta?: Set<string>
+  assembleiaAbertaTitulo?: string
   isAdmin?: boolean
   criterioPeso?: CriterioPeso
 }
+
+type FiltroVoto = "todos" | "votaram" | "nao"
 
 function formatPeso(peso: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(peso * 100).toFixed(4)}%`
@@ -40,17 +46,27 @@ export function ProprietariosList({
   proprietarios,
   condominioId,
   proprietariosQueJaVotaram,
+  votouNaAberta,
+  assembleiaAbertaTitulo,
   isAdmin = false,
   criterioPeso = "unidade",
 }: ProprietariosListProps) {
   const [busca, setBusca] = useState("")
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
+  const [filtroVoto, setFiltroVoto] = useState<FiltroVoto>("todos")
 
   const proprietariosExibidos = useMemo(() => {
+    const porVoto =
+      votouNaAberta && filtroVoto !== "todos"
+        ? proprietarios.filter((p) =>
+            filtroVoto === "votaram" ? votouNaAberta.has(p.id) : !votouNaAberta.has(p.id)
+          )
+        : proprietarios
+
     const termo = normalizarBusca(busca.trim())
     const filtrados = !termo
-      ? proprietarios
-      : proprietarios.filter((p) => {
+      ? porVoto
+      : porVoto.filter((p) => {
           const alvo = [
             p.nome,
             p.email ?? "",
@@ -74,7 +90,12 @@ export function ProprietariosList({
       })
     }
     return ordenados
-  }, [proprietarios, busca, ordenacao])
+  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta])
+
+  const nVotaram = votouNaAberta
+    ? proprietarios.reduce((n, p) => n + (votouNaAberta.has(p.id) ? 1 : 0), 0)
+    : 0
+  const nNao = proprietarios.length - nVotaram
 
   if (proprietarios.length === 0) {
     return (
@@ -116,6 +137,40 @@ export function ProprietariosList({
         </select>
       </div>
 
+      {/* Filtro por voto na assembleia aberta (pedido do Carlos): ver quem já
+          votou direto aqui, sem ir à apuração, pra cobrar quem falta. */}
+      {votouNaAberta && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            Votação de{" "}
+            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — quem já
+            votou nesta assembleia.
+          </p>
+          <div className="flex gap-1">
+            {(
+              [
+                ["todos", "Todos", proprietarios.length],
+                ["votaram", "Votaram", nVotaram],
+                ["nao", "Não votaram", nNao],
+              ] as const
+            ).map(([val, label, count]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setFiltroVoto(val)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  filtroVoto === val
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/60 text-muted-foreground hover:bg-accent/40"
+                }`}
+              >
+                {label} ({count})
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {proprietariosExibidos.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-10 text-center">
           <Search className="h-8 w-8 text-muted-foreground/40" />
@@ -144,6 +199,8 @@ export function ProprietariosList({
                 condominioId={condominioId}
                 todosProprietarios={proprietarios}
                 jaVotou={proprietariosQueJaVotaram?.has(p.id) ?? false}
+                mostrarVoto={!!votouNaAberta}
+                votou={votouNaAberta?.has(p.id) ?? false}
                 isAdmin={isAdmin}
                 criterioPeso={criterioPeso}
               />
@@ -160,6 +217,8 @@ const ProprietarioRow = memo(function ProprietarioRow({
   condominioId,
   todosProprietarios,
   jaVotou,
+  mostrarVoto,
+  votou,
   isAdmin,
   criterioPeso,
 }: {
@@ -167,6 +226,8 @@ const ProprietarioRow = memo(function ProprietarioRow({
   condominioId: string
   todosProprietarios: Proprietario[]
   jaVotou: boolean
+  mostrarVoto: boolean
+  votou: boolean
   isAdmin: boolean
   criterioPeso: CriterioPeso
 }) {
@@ -247,6 +308,16 @@ const ProprietarioRow = memo(function ProprietarioRow({
               Inadimplente
             </span>
           )}
+          {mostrarVoto &&
+            (votou ? (
+              <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                Votou
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                Não votou
+              </span>
+            ))}
         </p>
 
         {/* Sempre 3 filhos diretos (mesmo quando falta e-mail/celular) — com

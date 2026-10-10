@@ -719,6 +719,23 @@ export async function getProprietariosQueJaVotaram(condominioId: string): Promis
   )
 }
 
+// Proprietários que já votaram numa assembleia ESPECÍFICA (votado_em
+// preenchido) — usado pra marcar "votou / não votou" e filtrar a lista de
+// proprietários na tela do condomínio, em relação à assembleia aberta no
+// momento (diferente de getProprietariosQueJaVotaram, que é "em qualquer
+// assembleia" e serve pra travar a edição de CPF).
+export async function getProprietarioIdsVotaram(assembleiaId: string): Promise<Set<string>> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select("proprietario_id")
+    .eq("assembleia_id", assembleiaId)
+    .not("votado_em", "is", null)
+
+  if (error) throw new Error(error.message)
+  return new Set(((data ?? []) as { proprietario_id: string }[]).map((r) => r.proprietario_id))
+}
+
 export interface SendJaVotado {
   id: string
   token: string
