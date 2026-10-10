@@ -1,7 +1,7 @@
 "use client"
 
 import { useTransition } from "react"
-import { Download, FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, BellRing } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, BellRing, DoorOpen } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { DonutChart } from "@/components/ui/donut-chart"
@@ -177,6 +177,27 @@ export function ApuracaoAssembleia({
                   condominioId={condominioId}
                   pautas={assembleia.pautas ?? []}
                 />
+              )}
+              {canExport && (assembleia.status === "aberta" || assembleia.status === "pausada") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const url = `${window.location.origin}/entrar/${assembleia.id}`
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(url).then(
+                        () => toast.success("Link de entrada copiado — cole no grupo do WhatsApp."),
+                        () => toast.message(url)
+                      )
+                    } else {
+                      toast.message(url)
+                    }
+                  }}
+                  className="gap-1.5"
+                >
+                  <DoorOpen className="h-3.5 w-3.5" />
+                  Link de entrada
+                </Button>
               )}
               {canExport && assembleia.status === "aberta" && (
                 <ProcuracoesDialog assembleiaId={assembleia.id} condominioId={condominioId} />

@@ -580,3 +580,14 @@ delete from configuracoes
 alter table assembleias drop constraint if exists assembleias_status_check;
 alter table assembleias add constraint assembleias_status_check
   check (status in ('rascunho', 'aberta', 'pausada', 'encerrada'));
+
+-- ============================================================
+-- Migração — Presença online (check-in por link de entrada, "Opção A").
+-- O proprietário entra na assembleia por um link público (/entrar/[id]),
+-- se identificando por unidade + CPF. presente_em marca quando ele entrou —
+-- vira a lista de presença online e o filtro de quem recebe e-mail (envio
+-- só pra quem está participando). Aditivo e idempotente. Execute no SQL Editor.
+-- ============================================================
+alter table assembleia_sends add column if not exists presente_em timestamptz;
+create index if not exists idx_assembleia_sends_presente_em
+  on assembleia_sends(assembleia_id, presente_em);
