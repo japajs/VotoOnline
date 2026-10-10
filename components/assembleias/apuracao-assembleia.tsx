@@ -1,7 +1,7 @@
 "use client"
 
 import { useTransition } from "react"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, BellRing, DoorOpen } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, BellRing, DoorOpen, Tv } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { DonutChart } from "@/components/ui/donut-chart"
@@ -206,6 +206,17 @@ export function ApuracaoAssembleia({
                   condominioId={condominioId}
                   podeLembrar={assembleia.status === "aberta"}
                 />
+              )}
+              {canExport && assembleia.status !== "rascunho" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/telao/${assembleia.id}`, "_blank", "noopener")}
+                  className="gap-1.5"
+                >
+                  <Tv className="h-3.5 w-3.5" />
+                  Telão
+                </Button>
               )}
               {canExport && assembleia.status === "aberta" && (
                 <ProcuracoesDialog assembleiaId={assembleia.id} condominioId={condominioId} />
