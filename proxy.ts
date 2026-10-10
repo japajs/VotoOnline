@@ -4,7 +4,7 @@ import { jwtVerify } from "jose"
 import { AUTH_COOKIE_NAME } from "@/lib/constants"
 
 // Rotas que não exigem autenticação
-const PUBLIC_PREFIXES = ["/login", "/setup", "/v/"]
+const PUBLIC_PREFIXES = ["/login", "/setup", "/v/", "/entrar"]
 
 // Rotas que exigem autenticação
 // Achado de auditoria LGPD: /usuarios ficava fora desta lista — a página em

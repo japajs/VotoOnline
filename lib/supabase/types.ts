@@ -305,6 +305,7 @@ export type Database = {
           votado_em: string | null
           ip_snapshot: string | null
           user_agent_snapshot: string | null
+          presente_em: string | null
           created_at: string
         }
         Insert: {
@@ -324,6 +325,7 @@ export type Database = {
           votado_em?: string | null
           ip_snapshot?: string | null
           user_agent_snapshot?: string | null
+          presente_em?: string | null
           created_at?: string
         }
         Update: {
@@ -340,6 +342,7 @@ export type Database = {
           votado_em?: string | null
           ip_snapshot?: string | null
           user_agent_snapshot?: string | null
+          presente_em?: string | null
         }
         Relationships: []
       }
