@@ -452,6 +452,10 @@ export async function createAssembleiaRespostas(
       unidades_snapshot: unidades,
       peso_snapshot: peso,
       votado_em: send.votado_em ?? new Date().toISOString(),
+      // Quem vota passa a constar como presente (se já não estava): mantém a
+      // chamada/lista de presença consistente — cobre o voto manual do síndico
+      // (viaMesa) e o voto por e-mail, não só o check-in pelo link de entrada.
+      presente_em: send.presente_em ?? new Date().toISOString(),
       ip_snapshot: contexto.ip ?? null,
       user_agent_snapshot: contexto.userAgent ?? null,
     })
