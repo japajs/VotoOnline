@@ -18,6 +18,7 @@ import {
 } from "@/services/assembleia-votos"
 import { sendAssembleiaEmailBatch, sendNovaPautaEmailBatch, sendLembreteVotoEmailBatch } from "@/services/email"
 import { generateSurveyToken } from "@/lib/tokens"
+import { marcarPresenca } from "@/services/presenca"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { checkRateLimit } from "@/lib/rate-limit"
@@ -413,6 +414,10 @@ export async function iniciarVotoManualAction(
       proprietario_id: proprietarioId,
       token: generateSurveyToken(),
     })
+    // Presença controlada pela mesa: lançar voto manual = a mesa contabilizando
+    // quem está presente — marca presença pra constar na chamada e passar pela
+    // trava de voto.
+    await marcarPresenca(assembleiaId, proprietarioId, true)
     return { success: true, sendId: send.id }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao iniciar registro." }
@@ -445,10 +450,15 @@ export async function registrarVotoManualAction(
   }
 
   try {
-    await createAssembleiaRespostas(sendId, respostas, {
-      ip: null,
-      userAgent: `Registrado manualmente por ${auth.session.nome} <${auth.session.email}>`,
-    })
+    await createAssembleiaRespostas(
+      sendId,
+      respostas,
+      {
+        ip: null,
+        userAgent: `Registrado manualmente por ${auth.session.nome} <${auth.session.email}>`,
+      },
+      { viaMesa: true }
+    )
     revalidatePath(ROUTES.condominioAssembleia(condominioId, assembleiaId))
     return { success: true }
   } catch (err) {

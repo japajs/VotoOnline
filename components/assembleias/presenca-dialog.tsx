@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { Users, Loader2, BellRing, CheckCircle2 } from "lucide-react"
+import { useState, useTransition, useCallback } from "react"
+import { Users, Loader2, BellRing, CheckCircle2, Search, Circle } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -13,20 +13,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { getPresencaAction } from "@/app/actions/presenca"
+import { Input } from "@/components/ui/input"
+import {
+  getChamadaAction,
+  marcarPresencaAction,
+  setExigePresencaAction,
+} from "@/app/actions/presenca"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { formatUnidade } from "@/lib/unidade-format"
-import type { PresenteItem } from "@/services/presenca"
-
-function formatHora(iso: string): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(iso))
-}
+import type { ChamadaItem } from "@/services/presenca"
 
 interface Props {
   assembleiaId: string
@@ -36,26 +31,72 @@ interface Props {
   podeLembrar: boolean
 }
 
-// Lista de presença online (Opção A): quem entrou pelo link de entrada
-// (identificado por unidade + CPF). Serve de lista de presença pra ata e de
-// base pro lembrete "só pros presentes".
+// Chamada / Lista de presença (presença controlada pela mesa). A secretária
+// marca quem está presente conforme assina a lista; com "exigir presença"
+// ligado, só vota quem estiver marcado aqui.
 export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Props) {
   const [open, setOpen] = useState(false)
   const [carregando, setCarregando] = useState(false)
-  const [presentes, setPresentes] = useState<PresenteItem[]>([])
+  const [exigePresenca, setExigePresenca] = useState(false)
+  const [itens, setItens] = useState<ChamadaItem[]>([])
+  const [busca, setBusca] = useState("")
+  const [marcandoId, setMarcandoId] = useState<string | null>(null)
   const [isPendingLembrete, startLembreteTransition] = useTransition()
+
+  const carregar = useCallback(() => {
+    setCarregando(true)
+    getChamadaAction(assembleiaId, condominioId).then((r) => {
+      setCarregando(false)
+      if (r.success && r.data) {
+        setItens(r.data.itens)
+        setExigePresenca(r.data.exigePresenca)
+      } else {
+        toast.error(r.error)
+      }
+    })
+  }, [assembleiaId, condominioId])
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
-    if (next) {
-      setCarregando(true)
-      getPresencaAction(assembleiaId, condominioId).then((r) => {
-        setCarregando(false)
-        if (r.success) setPresentes(r.presentes)
-        else toast.error(r.error)
-      })
+    if (next) carregar()
+    else
+      setTimeout(() => {
+        setItens([])
+        setBusca("")
+      }, 200)
+  }
+
+  async function handleToggleExige() {
+    const novo = !exigePresenca
+    setExigePresenca(novo) // otimista
+    const r = await setExigePresencaAction(assembleiaId, condominioId, novo)
+    if (!r.success) {
+      setExigePresenca(!novo) // reverte
+      toast.error(r.error ?? "Erro ao atualizar a opção.")
     } else {
-      setTimeout(() => setPresentes([]), 200)
+      toast.success(
+        novo
+          ? "Agora só vota quem a mesa marcar como presente."
+          : "Voltou ao modo normal (sem exigir presença da mesa)."
+      )
+    }
+  }
+
+  async function handleMarcar(item: ChamadaItem) {
+    if (item.votou && item.presente) {
+      toast.message("Este proprietário já votou — não dá pra tirar da presença.")
+      return
+    }
+    const novo = !item.presente
+    setMarcandoId(item.proprietarioId)
+    const r = await marcarPresencaAction(assembleiaId, condominioId, item.proprietarioId, novo)
+    setMarcandoId(null)
+    if (r.success) {
+      setItens((prev) =>
+        prev.map((i) => (i.proprietarioId === item.proprietarioId ? { ...i, presente: novo } : i))
+      )
+    } else {
+      toast.error(r.error ?? "Erro ao marcar presença.")
     }
   }
 
@@ -68,31 +109,37 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
             ? `Lembrete enviado para ${r.sent} ${r.sent === 1 ? "presente" : "presentes"}.`
             : "Ninguém pendente com e-mail para lembrar."
         )
-        // Recarrega pra refletir quem já votou nesse meio-tempo.
-        getPresencaAction(assembleiaId, condominioId).then((res) => {
-          if (res.success) setPresentes(res.presentes)
-        })
+        carregar()
       } else {
         toast.error(r.error ?? "Erro ao enviar lembrete.")
       }
     })
   }
 
-  const totalVotaram = presentes.filter((p) => p.votou).length
-  const naoVotaramComEmail = presentes.filter((p) => !p.votou && p.email).length
+  const totalPresentes = itens.filter((i) => i.presente).length
+  const totalVotaram = itens.filter((i) => i.votou).length
+  const naoVotaramComEmail = itens.filter((i) => i.presente && !i.votou && i.email).length
+
+  const filtrados = itens.filter((i) => {
+    const q = busca.trim().toLowerCase()
+    if (!q) return true
+    const uni = i.unidades.map((u) => formatUnidade(u)).join(" ").toLowerCase()
+    return i.nome.toLowerCase().includes(q) || uni.includes(q)
+  })
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         <Users className="h-3.5 w-3.5" />
-        Lista de presença
+        Chamada / Presença
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Lista de presença online</DialogTitle>
+          <DialogTitle>Chamada / Lista de presença</DialogTitle>
           <DialogDescription>
-            Quem entrou nesta assembleia pelo link de entrada (identificado por unidade + CPF).
+            Marque quem está presente conforme assina a lista na mesa. Com &ldquo;exigir
+            presença&rdquo; ligado, só vota quem estiver marcado aqui.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,53 +149,99 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
           </div>
         ) : (
           <>
+            <button
+              type="button"
+              onClick={handleToggleExige}
+              className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                exigePresenca ? "border-primary/40 bg-primary/5" : "border-border/60 bg-muted/20"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="font-medium">Exigir presença pra votar</p>
+                <p className="text-xs text-muted-foreground">
+                  {exigePresenca
+                    ? "Ligado — só vota quem a mesa marcar presente."
+                    : "Desligado — vale o modo normal (CPF / e-mail)."}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  exigePresenca
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {exigePresenca ? "LIGADO" : "DESLIGADO"}
+              </span>
+            </button>
+
             <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm">
               <span className="font-medium">
-                {presentes.length} {presentes.length === 1 ? "presente" : "presentes"}
+                {totalPresentes} {totalPresentes === 1 ? "presente" : "presentes"}
               </span>
               <span className="text-muted-foreground">
-                {totalVotaram} já {totalVotaram === 1 ? "votou" : "votaram"}
+                {totalVotaram} {totalVotaram === 1 ? "votou" : "votaram"} · {itens.length} no cadastro
               </span>
             </div>
 
-            <div className="max-h-72 overflow-y-auto">
-              {presentes.length === 0 ? (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome ou unidade…"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <div className="max-h-72 space-y-1 overflow-y-auto">
+              {filtrados.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  Ninguém entrou pelo link ainda.
+                  Nenhum proprietário encontrado.
                 </p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/40 text-left text-xs text-muted-foreground">
-                      <th className="py-1.5 pr-3 font-medium">Imóvel</th>
-                      <th className="py-1.5 pr-3 font-medium">Nome</th>
-                      <th className="py-1.5 pr-3 font-medium">Entrou</th>
-                      <th className="py-1.5 font-medium">Votou?</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {presentes.map((p) => (
-                      <tr key={p.sendId} className="border-b border-border/20 last:border-0">
-                        <td className="whitespace-nowrap py-1.5 pr-3">
-                          {p.unidades.length ? p.unidades.map((u) => formatUnidade(u)).join(", ") : "—"}
-                        </td>
-                        <td className="py-1.5 pr-3">{p.nome}</td>
-                        <td className="whitespace-nowrap py-1.5 pr-3 text-muted-foreground">
-                          {formatHora(p.presenteEm)}
-                        </td>
-                        <td className="py-1.5">
-                          {p.votou ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Sim
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">Não</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                filtrados.map((i) => {
+                  const uni = i.unidades.length
+                    ? i.unidades.map((u) => formatUnidade(u)).join(", ")
+                    : "—"
+                  const marcando = marcandoId === i.proprietarioId
+                  return (
+                    <button
+                      key={i.proprietarioId}
+                      type="button"
+                      onClick={() => handleMarcar(i)}
+                      disabled={marcando}
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors disabled:opacity-60 ${
+                        i.presente
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : "border-border/60 hover:border-primary/40 hover:bg-accent/30"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          {uni} · {i.nome}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {i.votou ? "já votou" : i.email ? i.email : "sem e-mail"}
+                          {!i.temCpf && " · sem CPF (só voto manual)"}
+                        </p>
+                      </div>
+                      <span className="flex shrink-0 items-center text-xs font-medium">
+                        {marcando ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : i.presente ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="h-4 w-4" /> Presente
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <Circle className="h-4 w-4" /> Marcar
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  )
+                })
               )}
             </div>
 
@@ -166,7 +259,7 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
                   ) : (
                     <BellRing className="h-3.5 w-3.5" />
                   )}
-                  Lembrar os {naoVotaramComEmail} que não votaram
+                  Lembrar os {naoVotaramComEmail} presentes que não votaram
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={() => handleOpenChange(false)}>

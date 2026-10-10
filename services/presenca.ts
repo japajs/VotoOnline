@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { normalizarChaveUnidade } from "@/lib/unidade-format"
 import { generateSurveyToken } from "@/lib/tokens"
 import { isEmAndamento } from "@/lib/assembleia-status"
+import { getAllProprietarios } from "@/services/proprietarios"
 import type { AssembleiaStatus } from "@/types"
 
 function normalizarCpf(cpf: string): string {
@@ -32,7 +33,7 @@ export async function registrarPresenca(
 
   const { data: assembleia, error: aErr } = await db
     .from("assembleias")
-    .select("id, condominio_id, status")
+    .select("id, condominio_id, status, exige_presenca")
     .eq("id", assembleiaId)
     .maybeSingle()
   if (aErr) return { ok: false, error: aErr.message }
@@ -77,10 +78,6 @@ export async function registrarPresenca(
   }
   if (cpfInformado !== cpfCadastro) return { ok: false, error: erroGenerico }
 
-  // Reaproveita um send já existente (ex.: a pessoa também foi convidada por
-  // e-mail antes) SEM rotacionar o token — senão invalidaria um link que ela
-  // já possa ter. `presente_em` grava só a 1ª entrada (quando ela chegou),
-  // nunca é sobrescrito.
   const { data: existente, error: exErr } = await db
     .from("assembleia_sends")
     .select("id, token, presente_em")
@@ -89,6 +86,25 @@ export async function registrarPresenca(
     .maybeSingle()
   if (exErr) return { ok: false, error: exErr.message }
 
+  // Presença controlada pela mesa: quando a assembleia exige presença, o link
+  // NÃO libera o voto sozinho pelo CPF — a pessoa só vota se a MESA já a marcou
+  // como presente (presente_em preenchido via a tela de Chamada). Aqui só
+  // confirmamos a identidade (unidade+CPF, acima) e devolvemos o token de quem
+  // está na lista de presença; quem não está, recebe o aviso pra assinar.
+  if (assembleia.exige_presenca) {
+    if (existente && existente.presente_em) {
+      return { ok: true, token: existente.token }
+    }
+    return {
+      ok: false,
+      error:
+        "Você ainda não foi marcado como presente pela mesa. Assine a lista na mesa de entrada para poder votar.",
+    }
+  }
+
+  // Autoatendimento (exige_presenca = false): a própria entrada marca presença.
+  // Reaproveita um send já existente SEM rotacionar o token; `presente_em`
+  // grava só a 1ª entrada e nunca é sobrescrito.
   const agora = new Date().toISOString()
 
   if (existente) {
@@ -162,4 +178,132 @@ export async function getPresencaAssembleia(assembleiaId: string): Promise<Prese
       votou: r.votado_em !== null,
     }))
     .sort((a, b) => a.presenteEm.localeCompare(b.presenteEm))
+}
+
+export interface ChamadaItem {
+  proprietarioId: string
+  nome: string
+  email: string | null
+  temCpf: boolean
+  unidades: { numero: string; bloco: string | null }[]
+  presente: boolean
+  votou: boolean
+}
+
+export interface ChamadaData {
+  exigePresenca: boolean
+  itens: ChamadaItem[]
+}
+
+// Chamada: lista TODOS os condôminos pra a mesa marcar presença. Junta o
+// cadastro completo do condomínio com os sends desta assembleia (presente_em /
+// votado_em) e devolve também se a assembleia exige presença.
+export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
+  const db = createServerClient()
+
+  const { data: assembleia, error: aErr } = await db
+    .from("assembleias")
+    .select("condominio_id, exige_presenca")
+    .eq("id", assembleiaId)
+    .single()
+  if (aErr) throw new Error(aErr.message)
+
+  const proprietarios = await getAllProprietarios(assembleia.condominio_id)
+
+  const { data: sends, error: sErr } = await db
+    .from("assembleia_sends")
+    .select("proprietario_id, presente_em, votado_em")
+    .eq("assembleia_id", assembleiaId)
+  if (sErr) throw new Error(sErr.message)
+
+  const porProp = new Map<string, { presente: boolean; votou: boolean }>()
+  for (const s of (sends ?? []) as {
+    proprietario_id: string
+    presente_em: string | null
+    votado_em: string | null
+  }[]) {
+    porProp.set(s.proprietario_id, {
+      presente: s.presente_em !== null,
+      votou: s.votado_em !== null,
+    })
+  }
+
+  const itens: ChamadaItem[] = proprietarios.map((p) => {
+    const st = porProp.get(p.id)
+    return {
+      proprietarioId: p.id,
+      nome: p.nome,
+      email: p.email,
+      temCpf: (p.cpf ?? "").replace(/\D/g, "").length === 11,
+      unidades: (p.unidades ?? []).map((u) => ({ numero: u.numero, bloco: u.bloco })),
+      presente: st?.presente ?? false,
+      votou: st?.votou ?? false,
+    }
+  })
+
+  return { exigePresenca: assembleia.exige_presenca, itens }
+}
+
+// Marca/desmarca um proprietário como presente (a "chamada" da mesa). Marcar
+// cria o send se preciso (com token, pra pessoa conseguir votar pelo link) e
+// grava presente_em; desmarcar limpa presente_em — nunca de quem já votou.
+export async function marcarPresenca(
+  assembleiaId: string,
+  proprietarioId: string,
+  presente: boolean
+): Promise<void> {
+  const db = createServerClient()
+
+  const { data: existente, error } = await db
+    .from("assembleia_sends")
+    .select("id, presente_em, votado_em")
+    .eq("assembleia_id", assembleiaId)
+    .eq("proprietario_id", proprietarioId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+
+  if (presente) {
+    const agora = new Date().toISOString()
+    if (existente) {
+      if (!existente.presente_em) {
+        const { error: upErr } = await db
+          .from("assembleia_sends")
+          .update({ presente_em: agora })
+          .eq("id", existente.id)
+        if (upErr) throw new Error(upErr.message)
+      }
+    } else {
+      const { error: insErr } = await db.from("assembleia_sends").insert({
+        assembleia_id: assembleiaId,
+        proprietario_id: proprietarioId,
+        token: generateSurveyToken(),
+        status: "pending",
+        presente_em: agora,
+      })
+      if (insErr) throw new Error(insErr.message)
+    }
+    return
+  }
+
+  // Desmarcar presença — não dá pra "despresentar" quem já votou.
+  if (existente) {
+    if (existente.votado_em) {
+      throw new Error("Este proprietário já votou e não pode sair da lista de presença.")
+    }
+    const { error: upErr } = await db
+      .from("assembleia_sends")
+      .update({ presente_em: null })
+      .eq("id", existente.id)
+    if (upErr) throw new Error(upErr.message)
+  }
+}
+
+// Liga/desliga "exigir presença confirmada pela mesa" numa assembleia.
+export async function setExigePresenca(assembleiaId: string, value: boolean): Promise<void> {
+  const db = createServerClient()
+  const { error } = await db
+    .from("assembleias")
+    .update({ exige_presenca: value })
+    .eq("id", assembleiaId)
+  if (error) throw new Error(error.message)
 }

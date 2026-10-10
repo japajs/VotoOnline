@@ -2,7 +2,15 @@
 
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
-import { registrarPresenca, getPresencaAssembleia, type PresenteItem } from "@/services/presenca"
+import {
+  registrarPresenca,
+  getPresencaAssembleia,
+  getChamada,
+  marcarPresenca,
+  setExigePresenca,
+  type PresenteItem,
+  type ChamadaData,
+} from "@/services/presenca"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { ROUTES } from "@/lib/constants"
@@ -58,5 +66,58 @@ export async function getPresencaAction(
       presentes: [],
       error: err instanceof Error ? err.message : "Erro ao carregar a lista de presença.",
     }
+  }
+}
+
+// ── Chamada (presença controlada pela mesa) ───────────────────────────────────
+
+export async function getChamadaAction(
+  assembleiaId: string,
+  condominioId: string
+): Promise<{ success: boolean; data?: ChamadaData; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    const data = await getChamada(assembleiaId)
+    return { success: true, data }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao carregar a chamada." }
+  }
+}
+
+export async function marcarPresencaAction(
+  assembleiaId: string,
+  condominioId: string,
+  proprietarioId: string,
+  presente: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    await marcarPresenca(assembleiaId, proprietarioId, presente)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao marcar presença." }
+  }
+}
+
+export async function setExigePresencaAction(
+  assembleiaId: string,
+  condominioId: string,
+  value: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    await setExigePresenca(assembleiaId, value)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao atualizar a opção." }
   }
 }

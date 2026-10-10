@@ -591,3 +591,13 @@ alter table assembleias add constraint assembleias_status_check
 alter table assembleia_sends add column if not exists presente_em timestamptz;
 create index if not exists idx_assembleia_sends_presente_em
   on assembleia_sends(assembleia_id, presente_em);
+
+-- ============================================================
+-- Migração — Presença controlada pela mesa ("chamada").
+-- Quando exige_presenca = true, só vota quem a MESA marcou como presente
+-- (presente_em preenchido pela tela de Chamada) — o link de entrada deixa de
+-- liberar o voto sozinho pelo CPF e passa a só deixar votar quem está na lista
+-- de presença da mesa. Default false preserva o comportamento atual
+-- (autoatendimento / e-mail). Aditivo e idempotente. Execute no SQL Editor.
+-- ============================================================
+alter table assembleias add column if not exists exige_presenca boolean not null default false;
