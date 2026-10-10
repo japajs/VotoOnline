@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { notFound } from "next/navigation"
 import { Clock, CheckCircle2 } from "lucide-react"
 import { getAssembleiaById } from "@/services/assembleias"
+import { getExigePresenca } from "@/services/presenca"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { EntrarForm } from "@/components/assembleias/entrar-form"
 import { APP_NAME } from "@/lib/constants"
@@ -87,8 +88,16 @@ export default async function EntrarPage({ params }: Props) {
     )
   }
 
+  const exigePresenca = await getExigePresenca(assembleia.id).catch(() => false)
+
   return wrap(
     <div className="rounded-xl border border-border/60 bg-card px-6 py-8">
+      {exigePresenca && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+          Esta assembleia exige <strong>presença confirmada pela mesa</strong>. Você só consegue
+          votar depois de assinar a lista e ser marcado como presente na mesa de entrada.
+        </div>
+      )}
       <p className="mb-5 text-sm text-muted-foreground">
         Confirme sua identidade para entrar na assembleia e votar. Informe a sua unidade e o seu
         CPF cadastrado.

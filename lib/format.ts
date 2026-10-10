@@ -63,6 +63,20 @@ export function validarEmailFormato(valor: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor.trim())
 }
 
+// CPF só com dígitos (remove pontos/traços). Usado pra comparar o CPF digitado
+// na entrada com o do cadastro (ver services/presenca.ts) sem sofrer com
+// formatação diferente.
+export function normalizarCpf(valor: string): string {
+  return valor.replace(/\D/g, "")
+}
+
+// CPF tem os 11 dígitos (só confere o tamanho — não valida os dígitos
+// verificadores). Usado pra saber se um cadastro dá pra se autoidentificar no
+// link de entrada (quem não tem CPF cai no voto manual).
+export function cpfCompleto(valor: string | null | undefined): boolean {
+  return normalizarCpf(valor ?? "").length === 11
+}
+
 // Remove acentos, hífens e espaços, e baixa a caixa — assim buscar "joao",
 // "C0502", "C-0502" ou "c 0502" encontra "João" ou a unidade "C-0502"
 // independente de como foi digitado. Compartilhada entre toda busca de
