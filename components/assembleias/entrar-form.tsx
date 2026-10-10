@@ -16,13 +16,11 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="numero">Unidade (apartamento / casa)</Label>
-        <Input id="numero" name="numero" placeholder="Ex.: 0502 ou C-0502" autoComplete="off" required />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="bloco">Bloco (se houver)</Label>
-        <Input id="bloco" name="bloco" placeholder="Ex.: C" autoComplete="off" />
+        <Label htmlFor="numero">Unidade</Label>
+        <Input id="numero" name="numero" placeholder="Ex.: B108, 0502, Casa 5" autoComplete="off" required />
+        <p className="text-xs text-muted-foreground">
+          Digite como está no seu cadastro. Se tiver bloco, inclua junto (ex.: B108).
+        </p>
       </div>
 
       <div className="space-y-1.5">
