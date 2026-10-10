@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition, useCallback } from "react"
-import { Users, Loader2, BellRing, CheckCircle2, Search, Circle } from "lucide-react"
+import { Users, Loader2, BellRing, CheckCircle2, Search, Circle, Link2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -22,6 +22,18 @@ import {
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { formatUnidade } from "@/lib/unidade-format"
 import type { ChamadaItem } from "@/services/presenca"
+
+function copiarLinkVoto(token: string) {
+  const url = `${window.location.origin}/v/${token}`
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Link de voto copiado."),
+      () => toast.message(url)
+    )
+  } else {
+    toast.message(url)
+  }
+}
 
 interface Props {
   assembleiaId: string
@@ -206,40 +218,53 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
                     : "—"
                   const marcando = marcandoId === i.proprietarioId
                   return (
-                    <button
+                    <div
                       key={i.proprietarioId}
-                      type="button"
-                      onClick={() => handleMarcar(i)}
-                      disabled={marcando}
-                      className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors disabled:opacity-60 ${
-                        i.presente
-                          ? "border-emerald-500/30 bg-emerald-500/5"
-                          : "border-border/60 hover:border-primary/40 hover:bg-accent/30"
+                      className={`flex items-center gap-1 rounded-lg border pr-1 transition-colors ${
+                        i.presente ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/60"
                       }`}
                     >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">
-                          {uni} · {i.nome}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {i.votou ? "já votou" : i.email ? i.email : "sem e-mail"}
-                          {!i.temCpf && " · sem CPF (só voto manual)"}
-                        </p>
-                      </div>
-                      <span className="flex shrink-0 items-center text-xs font-medium">
-                        {marcando ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        ) : i.presente ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle2 className="h-4 w-4" /> Presente
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-muted-foreground">
-                            <Circle className="h-4 w-4" /> Marcar
-                          </span>
-                        )}
-                      </span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMarcar(i)}
+                        disabled={marcando}
+                        className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm disabled:opacity-60"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {uni} · {i.nome}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {i.votou ? "já votou" : i.email ? i.email : "sem e-mail"}
+                            {!i.temCpf && " · sem CPF (só voto manual)"}
+                          </p>
+                        </div>
+                        <span className="flex shrink-0 items-center text-xs font-medium">
+                          {marcando ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : i.presente ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="h-4 w-4" /> Presente
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-muted-foreground">
+                              <Circle className="h-4 w-4" /> Marcar
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                      {i.presente && i.token && (
+                        <button
+                          type="button"
+                          onClick={() => copiarLinkVoto(i.token!)}
+                          title="Copiar o link de voto desta pessoa (pra mandar direto, ex.: quem não tem CPF)"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                          <span className="sr-only">Copiar link de voto</span>
+                        </button>
+                      )}
+                    </div>
                   )
                 })
               )}

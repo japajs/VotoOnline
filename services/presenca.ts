@@ -3,11 +3,8 @@ import { normalizarChaveUnidade } from "@/lib/unidade-format"
 import { generateSurveyToken } from "@/lib/tokens"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { getAllProprietarios } from "@/services/proprietarios"
+import { normalizarCpf, cpfCompleto } from "@/lib/format"
 import type { AssembleiaStatus } from "@/types"
-
-function normalizarCpf(cpf: string): string {
-  return cpf.replace(/\D/g, "")
-}
 
 export type RegistrarPresencaResult =
   | { ok: true; token: string }
@@ -188,6 +185,9 @@ export interface ChamadaItem {
   unidades: { numero: string; bloco: string | null }[]
   presente: boolean
   votou: boolean
+  // Token de voto — existe só pra quem tem send (presente/convidado). Permite
+  // a mesa copiar o link direto de voto da pessoa (útil pra quem não tem CPF).
+  token: string | null
 }
 
 export interface ChamadaData {
@@ -212,19 +212,21 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
 
   const { data: sends, error: sErr } = await db
     .from("assembleia_sends")
-    .select("proprietario_id, presente_em, votado_em")
+    .select("proprietario_id, token, presente_em, votado_em")
     .eq("assembleia_id", assembleiaId)
   if (sErr) throw new Error(sErr.message)
 
-  const porProp = new Map<string, { presente: boolean; votou: boolean }>()
+  const porProp = new Map<string, { presente: boolean; votou: boolean; token: string }>()
   for (const s of (sends ?? []) as {
     proprietario_id: string
+    token: string
     presente_em: string | null
     votado_em: string | null
   }[]) {
     porProp.set(s.proprietario_id, {
       presente: s.presente_em !== null,
       votou: s.votado_em !== null,
+      token: s.token,
     })
   }
 
@@ -234,10 +236,11 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
       proprietarioId: p.id,
       nome: p.nome,
       email: p.email,
-      temCpf: (p.cpf ?? "").replace(/\D/g, "").length === 11,
+      temCpf: cpfCompleto(p.cpf),
       unidades: (p.unidades ?? []).map((u) => ({ numero: u.numero, bloco: u.bloco })),
       presente: st?.presente ?? false,
       votou: st?.votou ?? false,
+      token: st?.token ?? null,
     }
   })
 
@@ -306,4 +309,17 @@ export async function setExigePresenca(assembleiaId: string, value: boolean): Pr
     .update({ exige_presenca: value })
     .eq("id", assembleiaId)
   if (error) throw new Error(error.message)
+}
+
+// Lê só a flag exige_presenca de uma assembleia — pra a página de entrada
+// avisar o morador, de antemão, que precisa estar na lista de presença da mesa.
+export async function getExigePresenca(assembleiaId: string): Promise<boolean> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleias")
+    .select("exige_presenca")
+    .eq("id", assembleiaId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data?.exige_presenca ?? false
 }
