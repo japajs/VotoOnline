@@ -245,6 +245,7 @@ type SendComProprietarioCompleto = {
   assembleia_id: string
   proprietario_id: string
   votado_em: string | null
+  presente_em: string | null
   proprietarios: {
     nome: string
     cpf: string | null
@@ -253,7 +254,11 @@ type SendComProprietarioCompleto = {
     inadimplente: boolean
     unidades: { numero: string; bloco: string | null; fracao_ideal: number | null }[] | null
   } | null
-  assembleias: { status: AssembleiaStatus; condominios: { criterio_peso: CriterioPeso } | null } | null
+  assembleias: {
+    status: AssembleiaStatus
+    exige_presenca: boolean
+    condominios: { criterio_peso: CriterioPeso } | null
+  } | null
 }
 
 export interface ContextoVoto {
@@ -281,13 +286,27 @@ async function validarVotoOuFalhar(
   proprietarioId: string,
   status: AssembleiaStatus,
   pautaIds: string[],
-  inadimplente: boolean
+  inadimplente: boolean,
+  exigePresenca: boolean,
+  presenteEm: string | null,
+  viaMesa: boolean
 ): Promise<void> {
   if (!isVotacaoAberta(status)) {
     throw new Error("Esta assembleia não está aberta para votação.")
   }
   if (pautaIds.length === 0) {
     throw new Error("Nenhuma pauta para registrar.")
+  }
+
+  // Presença controlada pela mesa: quando a assembleia exige presença, só vota
+  // quem a mesa marcou como presente (presente_em). A trava fica aqui no
+  // núcleo do registro — nem pelo link direto passa um voto de ausente. O
+  // lançamento manual do síndico (viaMesa) está isento: é a própria mesa
+  // registrando o voto de quem está no salão.
+  if (exigePresenca && !presenteEm && !viaMesa) {
+    throw new Error(
+      "Você ainda não foi marcado como presente pela mesa. Assine a lista na mesa de entrada para poder votar."
+    )
   }
 
   // Código Civil, art. 1.335, §único / convenções condominiais: proprietário
@@ -340,14 +359,15 @@ async function validarVotoOuFalhar(
 export async function createAssembleiaRespostas(
   sendId: string,
   respostas: RespostaInput[],
-  contexto: ContextoVoto = {}
+  contexto: ContextoVoto = {},
+  opts: { viaMesa?: boolean } = {}
 ): Promise<void> {
   const db = createServerClient()
 
   const { data: sendRow, error: sendError } = await db
     .from("assembleia_sends")
     .select(
-      "assembleia_id, proprietario_id, votado_em, proprietarios(nome, cpf, email, telefone, inadimplente, unidades(numero, bloco, fracao_ideal)), assembleias(status, condominios(criterio_peso))"
+      "assembleia_id, proprietario_id, votado_em, presente_em, proprietarios(nome, cpf, email, telefone, inadimplente, unidades(numero, bloco, fracao_ideal)), assembleias(status, exige_presenca, condominios(criterio_peso))"
     )
     .eq("id", sendId)
     .single()
@@ -363,7 +383,10 @@ export async function createAssembleiaRespostas(
     send.proprietario_id,
     send.assembleias?.status ?? "encerrada",
     respostas.map((r) => r.pauta_id),
-    proprietario?.inadimplente ?? false
+    proprietario?.inadimplente ?? false,
+    send.assembleias?.exige_presenca ?? false,
+    send.presente_em,
+    opts.viaMesa ?? false
   )
 
   const unidadesProprias = proprietario?.unidades ?? []

@@ -194,6 +194,7 @@ export type Database = {
           quorum_minimo: number | null
           data_1a_convocacao: string | null
           quorum_minimo_2a: number | null
+          exige_presenca: boolean
           created_at: string
           updated_at: string
         }
@@ -208,6 +209,7 @@ export type Database = {
           quorum_minimo?: number | null
           data_1a_convocacao?: string | null
           quorum_minimo_2a?: number | null
+          exige_presenca?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -220,6 +222,7 @@ export type Database = {
           quorum_minimo?: number | null
           data_1a_convocacao?: string | null
           quorum_minimo_2a?: number | null
+          exige_presenca?: boolean
           updated_at?: string
         }
         Relationships: []

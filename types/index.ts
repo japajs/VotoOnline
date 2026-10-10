@@ -193,6 +193,12 @@ export interface Assembleia {
   // quorum_minimo, comportamento único). Ver getQuorumEfetivo em lib/peso.ts.
   data_1a_convocacao: string | null
   quorum_minimo_2a: number | null
+  // Presença controlada pela mesa: quando true, só vota quem a mesa marcou
+  // como presente (ver services/presenca.ts e a trava em validarVotoOuFalhar).
+  // Default false = comportamento de sempre (autoatendimento / e-mail).
+  // Opcional no tipo porque é lido direto do banco onde importa (chamada,
+  // registro de presença, trava de voto) — nem toda query de Assembleia traz.
+  exige_presenca?: boolean
   created_at: string
   updated_at: string
   // joined
