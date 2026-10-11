@@ -9,6 +9,7 @@ export const ROUTES = {
   configuracoes: "/configuracoes",
   importacao: "/importacao",
   relatorios: "/relatorios",
+  ajuda: "/ajuda",
   publicCondoVoto: (token: string) => `/v/${token}`,
   condominioAssembleia: (condominioId: string, assembleiaId: string) =>
     `/condominios/${condominioId}/assembleias/${assembleiaId}`,

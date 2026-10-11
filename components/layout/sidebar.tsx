@@ -10,6 +10,7 @@ import {
   FileSpreadsheet,
   FileText,
   Gavel,
+  HelpCircle,
   LogOut,
   Settings,
   Users,
@@ -40,7 +41,8 @@ const NAV_OPERACAO: NavItem[] = [
 // "Usuários" só aparece para administrador — mesma tela que gerencia perfil
 // e escopo por condomínio (MASTER/PESSOAL) dos demais usuários.
 const NAV_SISTEMA: NavItem[] = [
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/ajuda",         label: "Ajuda",         icon: HelpCircle },
+  { href: "/configuracoes", label: "Configurações", icon: Settings   },
 ]
 const NAV_ITEM_USUARIOS: NavItem = { href: "/usuarios", label: "Usuários", icon: Users }
 
