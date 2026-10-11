@@ -207,7 +207,10 @@ export function ApuracaoAssembleia({
                   podeLembrar={assembleia.status === "aberta"}
                 />
               )}
-              {canExport && assembleia.status !== "rascunho" && (
+              {/* Telão liberado pra todos os perfis (inclusive visualizador/
+                  "advogado" que acompanha): é tela ao vivo só de leitura, e a
+                  própria página /telao e a action já permitem visualizador. */}
+              {assembleia.status !== "rascunho" && (
                 <Button
                   variant="outline"
                   size="sm"

@@ -4,7 +4,6 @@ import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import {
   ClipboardList,
-  BarChart3,
   Trash2,
   LockKeyhole,
   Unlock,
@@ -44,7 +43,8 @@ interface AssembleiasListProps {
   condominioId: string
   proprietarios: Proprietario[]
   // Visualizador = só leitura: esconde operar (abrir/pausar/encerrar/disparar/
-  // excluir). Mantém a Apuração (visualização).
+  // excluir). Mantém o acesso à assembleia (rótulo "Acompanhar" em vez de
+  // "Gerenciar") e ao Telão.
   podeOperar?: boolean
 }
 
@@ -254,9 +254,11 @@ function AssembleiaRow({
             "text-muted-foreground"
           )}
         >
-          <BarChart3 className="h-4 w-4" />
-          <span className="hidden sm:inline">Apuração</span>
-          <span className="sm:hidden sr-only">Ver apuração</span>
+          <ClipboardList className="h-4 w-4" />
+          <span className="hidden sm:inline">{podeOperar ? "Gerenciar" : "Acompanhar"}</span>
+          <span className="sm:hidden sr-only">
+            {podeOperar ? "Gerenciar assembleia" : "Acompanhar assembleia"}
+          </span>
         </Link>
 
         {podeOperar && (
