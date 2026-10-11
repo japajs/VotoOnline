@@ -144,6 +144,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           proprietariosQueJaVotaram={proprietariosQueJaVotaram}
           votouNaAberta={votouNaAberta}
           presentesNaAberta={presentesNaAberta}
+          assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           isAdmin={session?.perfil === "administrador"}
           podeEditar={session?.perfil !== "visualizador"}

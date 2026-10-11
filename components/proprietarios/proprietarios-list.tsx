@@ -1,7 +1,17 @@
 "use client"
 
 import { memo, useMemo, useState, useTransition } from "react"
-import { Users, Trash2, Plus, X, Search, SlidersHorizontal } from "lucide-react"
+import {
+  Users,
+  Trash2,
+  Plus,
+  X,
+  Search,
+  SlidersHorizontal,
+  CheckCircle2,
+  Circle,
+  Loader2,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +20,7 @@ import {
   addUnidadeAction,
   removeUnidadeAction,
 } from "@/app/actions/proprietarios"
+import { marcarPresencaAction } from "@/app/actions/presenca"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, normalizarBusca } from "@/lib/format"
@@ -23,8 +34,12 @@ interface ProprietariosListProps {
   // Quem já votou NA ASSEMBLEIA ABERTA agora (badge "votou/não votou" +
   // filtro). undefined = não há assembleia aberta → sem badge/filtro.
   votouNaAberta?: Set<string>
-  // Quem está marcado PRESENTE na assembleia aberta (filtro "Presentes").
+  // Quem está marcado PRESENTE na assembleia aberta (filtro "Presentes" +
+  // estado inicial da caixa de presença por linha).
   presentesNaAberta?: Set<string>
+  // Id da assembleia aberta — habilita marcar presença direto na lista (sem
+  // abrir a Apuração). undefined = sem assembleia aberta → sem caixa.
+  assembleiaAbertaId?: string
   assembleiaAbertaTitulo?: string
   isAdmin?: boolean
   // Visualizador = só leitura: esconde editar/excluir/adicionar/remover unidade.
@@ -52,6 +67,7 @@ export function ProprietariosList({
   proprietariosQueJaVotaram,
   votouNaAberta,
   presentesNaAberta,
+  assembleiaAbertaId,
   assembleiaAbertaTitulo,
   isAdmin = false,
   podeEditar = true,
@@ -61,11 +77,49 @@ export function ProprietariosList({
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
   const [filtroVoto, setFiltroVoto] = useState<FiltroVoto>("todos")
 
+  // Presença marcada direto na lista (pedido do Carlos: agilizar a chamada sem
+  // abrir a Apuração). Mantemos um estado local semeado do servidor e atualizado
+  // de forma otimista — o inicializador só roda na montagem, então as
+  // revalidações disparadas pela action não zeram as marcações já feitas.
+  const [presentesLocal, setPresentesLocal] = useState<Set<string>>(
+    () => new Set(presentesNaAberta)
+  )
+  const [marcandoId, setMarcandoId] = useState<string | null>(null)
+  const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
+
+  async function handleTogglePresente(proprietarioId: string, presente: boolean) {
+    if (!assembleiaAbertaId) return
+    setMarcandoId(proprietarioId)
+    setPresentesLocal((prev) => {
+      const next = new Set(prev)
+      if (presente) next.add(proprietarioId)
+      else next.delete(proprietarioId)
+      return next
+    })
+    const result = await marcarPresencaAction(
+      assembleiaAbertaId,
+      condominioId,
+      proprietarioId,
+      presente
+    )
+    if (!result.success) {
+      // Reverte a marcação otimista se o servidor recusou.
+      setPresentesLocal((prev) => {
+        const next = new Set(prev)
+        if (presente) next.delete(proprietarioId)
+        else next.add(proprietarioId)
+        return next
+      })
+      toast.error(result.error ?? "Erro ao marcar presença.")
+    }
+    setMarcandoId(null)
+  }
+
   const proprietariosExibidos = useMemo(() => {
     const porVoto =
       votouNaAberta && filtroVoto !== "todos"
         ? proprietarios.filter((p) => {
-            if (filtroVoto === "presentes") return presentesNaAberta?.has(p.id) ?? false
+            if (filtroVoto === "presentes") return presentesLocal.has(p.id)
             if (filtroVoto === "votaram") return votouNaAberta.has(p.id)
             return !votouNaAberta.has(p.id) // "nao" — não votaram
           })
@@ -98,14 +152,14 @@ export function ProprietariosList({
       })
     }
     return ordenados
-  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta, presentesNaAberta])
+  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta, presentesLocal])
 
   const nVotaram = votouNaAberta
     ? proprietarios.reduce((n, p) => n + (votouNaAberta.has(p.id) ? 1 : 0), 0)
     : 0
   const nNao = proprietarios.length - nVotaram
-  const nPresentes = presentesNaAberta
-    ? proprietarios.reduce((n, p) => n + (presentesNaAberta.has(p.id) ? 1 : 0), 0)
+  const nPresentes = votouNaAberta
+    ? proprietarios.reduce((n, p) => n + (presentesLocal.has(p.id) ? 1 : 0), 0)
     : 0
 
   if (proprietarios.length === 0) {
@@ -213,6 +267,10 @@ export function ProprietariosList({
                 jaVotou={proprietariosQueJaVotaram?.has(p.id) ?? false}
                 mostrarVoto={!!votouNaAberta}
                 votou={votouNaAberta?.has(p.id) ?? false}
+                mostrarPresenca={podeMarcarPresenca}
+                presente={presentesLocal.has(p.id)}
+                marcandoPresenca={marcandoId === p.id}
+                onTogglePresente={handleTogglePresente}
                 isAdmin={isAdmin}
                 podeEditar={podeEditar}
                 criterioPeso={criterioPeso}
@@ -232,6 +290,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
   jaVotou,
   mostrarVoto,
   votou,
+  mostrarPresenca,
+  presente,
+  marcandoPresenca,
+  onTogglePresente,
   isAdmin,
   podeEditar,
   criterioPeso,
@@ -242,6 +304,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
   jaVotou: boolean
   mostrarVoto: boolean
   votou: boolean
+  mostrarPresenca: boolean
+  presente: boolean
+  marcandoPresenca: boolean
+  onTogglePresente: (proprietarioId: string, presente: boolean) => void
   isAdmin: boolean
   podeEditar: boolean
   criterioPeso: CriterioPeso
@@ -314,6 +380,29 @@ const ProprietarioRow = memo(function ProprietarioRow({
           grade de colunas alinhadas com o cabeçalho. */}
       <div className={`grid grid-cols-1 gap-1 lg:items-center lg:gap-3 ${GRID_COLUNAS}`}>
         <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold lg:font-medium">
+          {mostrarPresenca && (
+            <button
+              type="button"
+              onClick={() => onTogglePresente(proprietario.id, !presente)}
+              disabled={marcandoPresenca}
+              aria-pressed={presente}
+              title={presente ? "Presente — toque para desmarcar" : "Marcar presente"}
+              className={`flex min-h-[28px] min-w-[28px] shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
+                presente
+                  ? "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                  : "text-muted-foreground/40 hover:text-emerald-600 dark:hover:text-emerald-400"
+              }`}
+            >
+              {marcandoPresenca ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : presente ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <Circle className="h-4 w-4" />
+              )}
+              <span className="sr-only">{presente ? "Presente" : "Marcar presente"}</span>
+            </button>
+          )}
           <span className="truncate">{proprietario.nome}</span>
           {proprietario.inadimplente && (
             <span
