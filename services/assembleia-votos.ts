@@ -740,6 +740,21 @@ export async function getProprietarioIdsVotaram(assembleiaId: string): Promise<S
   return new Set(((data ?? []) as { proprietario_id: string }[]).map((r) => r.proprietario_id))
 }
 
+// Proprietários marcados como PRESENTES numa assembleia (presente_em
+// preenchido) — usado pro filtro "Presentes" na lista de proprietários, pra a
+// gestão trabalhar só em cima de quem está na assembleia (pedido do Carlos).
+export async function getProprietarioIdsPresentes(assembleiaId: string): Promise<Set<string>> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select("proprietario_id")
+    .eq("assembleia_id", assembleiaId)
+    .not("presente_em", "is", null)
+
+  if (error) throw new Error(error.message)
+  return new Set(((data ?? []) as { proprietario_id: string }[]).map((r) => r.proprietario_id))
+}
+
 export interface SendJaVotado {
   id: string
   token: string

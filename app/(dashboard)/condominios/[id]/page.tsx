@@ -5,7 +5,11 @@ import { ArrowLeft } from "lucide-react"
 import { getCondominioById } from "@/services/condominios"
 import { getAllProprietarios } from "@/services/proprietarios"
 import { getAllAssembleias } from "@/services/assembleias"
-import { getProprietariosQueJaVotaram, getProprietarioIdsVotaram } from "@/services/assembleia-votos"
+import {
+  getProprietariosQueJaVotaram,
+  getProprietarioIdsVotaram,
+  getProprietarioIdsPresentes,
+} from "@/services/assembleia-votos"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
 import { CriarProprietarioDialog } from "@/components/proprietarios/criar-proprietario-dialog"
@@ -54,9 +58,12 @@ export default async function CondominioDetailPage({ params }: Props) {
   // Marcar quem já votou NA ASSEMBLEIA ABERTA agora (não "em qualquer") direto
   // na lista de proprietários, pra filtrar/cobrar sem precisar ir à apuração.
   const assembleiaAberta = assembleias.find((a) => isEmAndamento(a.status))
-  const votouNaAberta = assembleiaAberta
-    ? await getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>())
-    : undefined
+  const [votouNaAberta, presentesNaAberta] = assembleiaAberta
+    ? await Promise.all([
+        getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>()),
+        getProprietarioIdsPresentes(assembleiaAberta.id).catch(() => new Set<string>()),
+      ])
+    : [undefined, undefined]
 
   // Escala das frações ideais cadastradas (ver FracaoEscalaAviso).
   const fracoesCadastradas = proprietarios
@@ -107,6 +114,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           assembleias={assembleias}
           condominioId={id}
           proprietarios={proprietarios}
+          podeOperar={session?.perfil !== "visualizador"}
         />
       </section>
 
@@ -135,8 +143,10 @@ export default async function CondominioDetailPage({ params }: Props) {
           condominioId={id}
           proprietariosQueJaVotaram={proprietariosQueJaVotaram}
           votouNaAberta={votouNaAberta}
+          presentesNaAberta={presentesNaAberta}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           isAdmin={session?.perfil === "administrador"}
+          podeEditar={session?.perfil !== "visualizador"}
           criterioPeso={condominio.criterio_peso}
         />
       </section>
