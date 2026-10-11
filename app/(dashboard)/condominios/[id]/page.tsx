@@ -114,6 +114,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           assembleias={assembleias}
           condominioId={id}
           proprietarios={proprietarios}
+          podeOperar={session?.perfil !== "visualizador"}
         />
       </section>
 
@@ -145,6 +146,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           presentesNaAberta={presentesNaAberta}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           isAdmin={session?.perfil === "administrador"}
+          podeEditar={session?.perfil !== "visualizador"}
           criterioPeso={condominio.criterio_peso}
         />
       </section>

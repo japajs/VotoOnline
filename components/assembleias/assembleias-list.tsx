@@ -43,9 +43,17 @@ interface AssembleiasListProps {
   assembleias: Assembleia[]
   condominioId: string
   proprietarios: Proprietario[]
+  // Visualizador = só leitura: esconde operar (abrir/pausar/encerrar/disparar/
+  // excluir). Mantém a Apuração (visualização).
+  podeOperar?: boolean
 }
 
-export function AssembleiasList({ assembleias, condominioId, proprietarios }: AssembleiasListProps) {
+export function AssembleiasList({
+  assembleias,
+  condominioId,
+  proprietarios,
+  podeOperar = true,
+}: AssembleiasListProps) {
   if (assembleias.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-10 text-center">
@@ -63,6 +71,7 @@ export function AssembleiasList({ assembleias, condominioId, proprietarios }: As
           assembleia={a}
           condominioId={condominioId}
           proprietarios={proprietarios}
+          podeOperar={podeOperar}
         />
       ))}
     </div>
@@ -73,10 +82,12 @@ function AssembleiaRow({
   assembleia,
   condominioId,
   proprietarios,
+  podeOperar,
 }: {
   assembleia: Assembleia
   condominioId: string
   proprietarios: Proprietario[]
+  podeOperar: boolean
 }) {
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -167,7 +178,9 @@ function AssembleiaRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {assembleia.status === "rascunho" && (
+        {podeOperar && (
+          <>
+            {assembleia.status === "rascunho" && (
           <Button
             variant="ghost"
             size="sm"
@@ -231,6 +244,8 @@ function AssembleiaRow({
         {assembleia.status !== "encerrada" && (
           <DispararAssembleiaDialog assembleia={assembleia} proprietarios={proprietarios} />
         )}
+          </>
+        )}
 
         <Link
           href={ROUTES.condominioAssembleia(condominioId, assembleia.id)}
@@ -244,7 +259,9 @@ function AssembleiaRow({
           <span className="sm:hidden sr-only">Ver apuração</span>
         </Link>
 
-        <Button
+        {podeOperar && (
+          <>
+            <Button
           variant="ghost"
           size="sm"
           onClick={() => setDeleteOpen(true)}
@@ -260,7 +277,7 @@ function AssembleiaRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Excluir assembleia?</AlertDialogTitle>
               <AlertDialogDescription>
-                <strong>"{assembleia.titulo}"</strong> e todos os votos registrados serão removidos
+                <strong>&quot;{assembleia.titulo}&quot;</strong> e todos os votos registrados serão removidos
                 permanentemente. Esta ação não pode ser desfeita.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -287,7 +304,7 @@ function AssembleiaRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Encerrar assembleia?</AlertDialogTitle>
               <AlertDialogDescription>
-                <strong>"{assembleia.titulo}"</strong> deixará de aceitar novos votos. Reabrir
+                <strong>&quot;{assembleia.titulo}&quot;</strong> deixará de aceitar novos votos. Reabrir
                 depois é possível, mas só deve ser usado em caráter excepcional pra corrigir um
                 problema pontual — não é um fluxo normal. Confira se todos que precisavam votar
                 já votaram antes de continuar.
@@ -316,7 +333,7 @@ function AssembleiaRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Reabrir assembleia?</AlertDialogTitle>
               <AlertDialogDescription>
-                <strong>"{assembleia.titulo}"</strong> volta para "Aberta" e todas as pautas voltam
+                <strong>&quot;{assembleia.titulo}&quot;</strong> volta para &quot;Aberta&quot; e todas as pautas voltam
                 a aceitar voto — inclusive uma apuração já divulgada pode mudar enquanto estiver
                 reaberta. Use só pra corrigir um problema pontual (ex.: remover um voto indevido) e
                 encerre de novo assim que terminar.
@@ -330,6 +347,8 @@ function AssembleiaRow({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+          </>
+        )}
       </div>
     </div>
   )

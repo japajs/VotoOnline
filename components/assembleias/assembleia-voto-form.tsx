@@ -108,7 +108,7 @@ export function AssembleiaVotoForm({
 
   return (
     <div className="space-y-5">
-      {pautas.map((pauta, i) => {
+      {pautas.map((pauta) => {
         const resposta = respostas[pauta.id] ?? null
         return (
           <div
@@ -117,7 +117,7 @@ export function AssembleiaVotoForm({
           >
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-primary/60">
-                Pauta {i + 1}
+                Pauta {pauta.ordem}
               </p>
               <p className="mt-1 text-sm font-medium leading-snug">{pauta.titulo}</p>
               {pauta.descricao && (

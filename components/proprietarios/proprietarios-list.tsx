@@ -27,6 +27,8 @@ interface ProprietariosListProps {
   presentesNaAberta?: Set<string>
   assembleiaAbertaTitulo?: string
   isAdmin?: boolean
+  // Visualizador = só leitura: esconde editar/excluir/adicionar/remover unidade.
+  podeEditar?: boolean
   criterioPeso?: CriterioPeso
 }
 
@@ -52,6 +54,7 @@ export function ProprietariosList({
   presentesNaAberta,
   assembleiaAbertaTitulo,
   isAdmin = false,
+  podeEditar = true,
   criterioPeso = "unidade",
 }: ProprietariosListProps) {
   const [busca, setBusca] = useState("")
@@ -211,6 +214,7 @@ export function ProprietariosList({
                 mostrarVoto={!!votouNaAberta}
                 votou={votouNaAberta?.has(p.id) ?? false}
                 isAdmin={isAdmin}
+                podeEditar={podeEditar}
                 criterioPeso={criterioPeso}
               />
             ))}
@@ -229,6 +233,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   mostrarVoto,
   votou,
   isAdmin,
+  podeEditar,
   criterioPeso,
 }: {
   proprietario: Proprietario
@@ -238,6 +243,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   mostrarVoto: boolean
   votou: boolean
   isAdmin: boolean
+  podeEditar: boolean
   criterioPeso: CriterioPeso
 }) {
   const [novaUnidade, setNovaUnidade] = useState("")
@@ -348,7 +354,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 lg:justify-end">{acoes}</div>
+        <div className="flex shrink-0 items-center gap-1 lg:justify-end">{podeEditar && acoes}</div>
       </div>
 
       {/* Linha 2: unidades — sempre em linha própria, nunca disputando
@@ -363,18 +369,20 @@ const ProprietarioRow = memo(function ProprietarioRow({
             className="group flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[11px]"
           >
             {formatUnidade(u)}
-            <button
-              type="button"
-              onClick={() => handleRemoveUnidade(u.id)}
-              disabled={isPendingRemove}
-              className="text-muted-foreground/40 hover:text-destructive transition-colors"
-            >
-              <X className="h-2.5 w-2.5" />
-            </button>
+            {podeEditar && (
+              <button
+                type="button"
+                onClick={() => handleRemoveUnidade(u.id)}
+                disabled={isPendingRemove}
+                className="text-muted-foreground/40 hover:text-destructive transition-colors"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
           </span>
         ))}
 
-        {showAdd ? (
+        {podeEditar && (showAdd ? (
           <div className="flex items-center gap-1">
             <Input
               placeholder="Nº"
@@ -409,7 +417,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
             <Plus className="h-3 w-3" />
             Add
           </button>
-        )}
+        ))}
       </div>
     </div>
   )
