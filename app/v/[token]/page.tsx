@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { headers } from "next/headers"
 import { CheckCircle2, Clock, PauseCircle } from "lucide-react"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 import {
@@ -18,7 +17,7 @@ import { VotoPautaPorPautaLive } from "@/components/assembleias/voto-pauta-por-p
 import { ResultadoAssembleia } from "@/components/assembleias/resultado-assembleia"
 import type { EstadoVoto } from "@/app/actions/assembleia-votos"
 import { APP_NAME } from "@/lib/constants"
-import { checkRateLimit } from "@/lib/rate-limit"
+import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit"
 
 interface Props {
   params: Promise<{ token: string }>
@@ -49,14 +48,13 @@ function formatDate(iso: string | null): string {
 export default async function PublicVotoPage({ params }: Props) {
   const { token } = await params
 
-  // Achado de auditoria LGPD: esta rota resolvia o token sem nenhum limite de
-  // tentativas. Mesmo com o token tendo entropia alta (crypto.randomUUID,
-  // 122 bits), fica sem essa camada de defesa a mais. Usa notFound() em vez
-  // de uma mensagem de "muitas tentativas" para não criar um sinal que
-  // diferencie "limite excedido" de "token inexistente" — a resposta
-  // uniforme contra enumeração já era um ponto forte do sistema.
-  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown"
-  if (!(await checkRateLimit(`voto-view:${ip}`))) notFound()
+  // Limite de tentativas por TOKEN (não por IP): numa assembleia presencial
+  // dezenas de pessoas abrem o link do mesmo wi-fi (mesmo IP) — limitar por IP
+  // bloquearia condôminos legítimos. O token tem 122 bits (crypto.randomUUID),
+  // impossível de adivinhar, então o limite por token já protege contra alguém
+  // martelar um mesmo link. notFound() em vez de "muitas tentativas" mantém a
+  // resposta uniforme contra enumeração.
+  if (!(await checkRateLimit(rateLimitKey.votoView(token)))) notFound()
 
   let send
   try {
