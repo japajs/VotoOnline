@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
   updateProprietarioAction,
   updateCpfProprietarioAction,
@@ -157,7 +158,7 @@ export function EditarProprietarioDialog({
   const [carregandoCoproprietarios, setCarregandoCoproprietarios] = useState(false)
   const [novoCoprop, setNovoCoprop] = useState<Record<string, string>>({})
   const [isPendingCoprop, startCoproprietarioTransition] = useTransition()
-  const [removendoCoprop, setRemovendoCoprop] = useState<string | null>(null)
+  const [confirmarRemoverCoprop, setConfirmarRemoverCoprop] = useState<{ id: string; nome: string } | null>(null)
 
   const [isPendingSalvar, startSalvarTransition] = useTransition()
   const [isPendingCpf, startCpfTransition] = useTransition()
@@ -225,19 +226,6 @@ export function EditarProprietarioDialog({
     })
   }
 
-  function handleRemoverCoproprietario(id: string) {
-    setRemovendoCoprop(id)
-    startCoproprietarioTransition(async () => {
-      const result = await deleteCoproprietarioAction(id, condominioId)
-      setRemovendoCoprop(null)
-      if (result.success) {
-        toast.success("Coproprietário removido.")
-        carregarCoproprietarios()
-      } else {
-        toast.error(result.error)
-      }
-    })
-  }
 
   const algumCampoMudou =
     nome.trim() !== proprietario.nome ||
@@ -340,6 +328,7 @@ export function EditarProprietarioDialog({
   const historico = [...proprietario.historico_alteracoes].reverse()
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
@@ -651,15 +640,12 @@ export function EditarProprietarioDialog({
                                 <span className="min-w-0 truncate">{c.proprietario_nome}</span>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoverCoproprietario(c.id)}
-                                  disabled={isPendingCoprop}
-                                  className="shrink-0 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                                  onClick={() =>
+                                    setConfirmarRemoverCoprop({ id: c.id, nome: c.proprietario_nome })
+                                  }
+                                  className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
                                 >
-                                  {isPendingCoprop && removendoCoprop === c.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <X className="h-3 w-3" />
-                                  )}
+                                  <X className="h-3 w-3" />
                                 </button>
                               </div>
                             ))}
@@ -762,5 +748,27 @@ export function EditarProprietarioDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+      <ConfirmarSenhaDialog
+        open={confirmarRemoverCoprop !== null}
+        onOpenChange={(o) => !o && setConfirmarRemoverCoprop(null)}
+        titulo="Remover coproprietário"
+        confirmLabel="Remover"
+        descricao={
+          <>
+            <strong className="text-foreground">{confirmarRemoverCoprop?.nome}</strong> deixará de
+            ser coproprietário desta unidade.
+          </>
+        }
+        onConfirmar={(senha) =>
+          deleteCoproprietarioAction(confirmarRemoverCoprop?.id ?? "", condominioId, senha)
+        }
+        onSuccess={() => {
+          setConfirmarRemoverCoprop(null)
+          toast.success("Coproprietário removido.")
+          carregarCoproprietarios()
+        }}
+      />
+    </>
   )
 }

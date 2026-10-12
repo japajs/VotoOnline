@@ -16,6 +16,7 @@ import {
 } from "@/services/pautas"
 import { getAssembleiaById, contarParticipantesJaVotaram } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
+import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 import type { AssembleiaStatus, PautaTipo } from "@/types"
@@ -254,12 +255,15 @@ export async function updateAssembleiaAction(input: {
 
 export async function deleteAssembleiaAction(
   id: string,
-  condominioId: string
+  condominioId: string,
+  senha: string
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
+  const senhaOk = await verificarSenhaUsuarioAtual(senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
   try {
     await deleteAssembleia(id)
     revalidatePath(`${ROUTES.condominios}/${condominioId}`)
@@ -403,11 +407,14 @@ export async function excluirPautaAction(input: {
   pautaId: string
   condominioId: string
   assembleiaId: string
+  senha: string
 }): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(input.condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
+  const senhaOk = await verificarSenhaUsuarioAtual(input.senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
 
   try {
     const assembleia = await getAssembleiaById(input.assembleiaId)

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
   getProcuracoesAction,
   getElegiveisParaProcuracaoAction,
@@ -174,8 +175,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
   const [buscaOutorgante, setBuscaOutorgante] = useState("")
   const [buscaOutorgado, setBuscaOutorgado] = useState("")
   const [isPendingCriar, startCriarTransition] = useTransition()
-  const [removendoId, setRemovendoId] = useState<string | null>(null)
-  const [isPendingRemover, startRemoverTransition] = useTransition()
+  const [confirmarRemoverId, setConfirmarRemoverId] = useState<string | null>(null)
   const limparAoFecharRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function carregar() {
@@ -232,19 +232,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
     })
   }
 
-  function handleRemover(id: string) {
-    setRemovendoId(id)
-    startRemoverTransition(async () => {
-      const result = await deleteProcuracaoAction(id, assembleiaId, condominioId)
-      setRemovendoId(null)
-      if (result.success) {
-        toast.success("Procuração removida.")
-        carregar()
-      } else {
-        toast.error(result.error)
-      }
-    })
-  }
+  const procuracaoAlvo = procuracoes.find((p) => p.id === confirmarRemoverId)
 
   const elegiveisOutorgado = useMemo(() => {
     const termo = normalizarBusca(buscaOutorgado.trim())
@@ -257,6 +245,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
   }, [elegiveis, outorgadoId, buscaOutorgante])
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         <FileSignature className="h-3.5 w-3.5" />
@@ -292,15 +281,10 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleRemover(p.id)}
-                      disabled={isPendingRemover}
-                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                      onClick={() => setConfirmarRemoverId(p.id)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      {isPendingRemover && removendoId === p.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <X className="h-3.5 w-3.5" />
-                      )}
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
@@ -371,5 +355,33 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+      <ConfirmarSenhaDialog
+        open={confirmarRemoverId !== null}
+        onOpenChange={(o) => !o && setConfirmarRemoverId(null)}
+        titulo="Remover procuração"
+        confirmLabel="Remover"
+        descricao={
+          procuracaoAlvo ? (
+            <>
+              A procuração de{" "}
+              <strong className="text-foreground">{procuracaoAlvo.outorgante_nome}</strong> para{" "}
+              <strong className="text-foreground">{procuracaoAlvo.outorgado_nome}</strong> será
+              removida.
+            </>
+          ) : (
+            "Esta procuração será removida."
+          )
+        }
+        onConfirmar={(senha) =>
+          deleteProcuracaoAction(confirmarRemoverId ?? "", assembleiaId, condominioId, senha)
+        }
+        onSuccess={() => {
+          setConfirmarRemoverId(null)
+          toast.success("Procuração removida.")
+          carregar()
+        }}
+      />
+    </>
   )
 }

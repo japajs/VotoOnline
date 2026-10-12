@@ -21,6 +21,7 @@ import {
   removeUnidadeAction,
 } from "@/app/actions/proprietarios"
 import { marcarPresencaAction } from "@/app/actions/presenca"
+import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, normalizarBusca } from "@/lib/format"
@@ -314,21 +315,14 @@ const ProprietarioRow = memo(function ProprietarioRow({
 }) {
   const [novaUnidade, setNovaUnidade] = useState("")
   const [showAdd, setShowAdd] = useState(false)
-  const [isPendingDelete, startDeleteTransition] = useTransition()
+  const [showExcluir, setShowExcluir] = useState(false)
+  const [unidadeExcluir, setUnidadeExcluir] = useState<string | null>(null)
   const [isPendingAdd, startAddTransition] = useTransition()
-  const [isPendingRemove, startRemoveTransition] = useTransition()
 
   const peso = getPesoParticipante(proprietario, criterioPeso)
   const unidades = proprietario.unidades ?? []
   const celular = proprietario.telefone ? formatCelular(proprietario.telefone) : null
-
-  function handleDeleteProprietario() {
-    if (!confirm(`Excluir "${proprietario.nome}"? As unidades vinculadas também serão removidas.`)) return
-    startDeleteTransition(async () => {
-      const result = await deleteProprietarioAction(proprietario.id, condominioId)
-      if (!result.success) toast.error(result.error)
-    })
-  }
+  const unidadeAlvo = unidades.find((u) => u.id === unidadeExcluir)
 
   function handleAddUnidade() {
     if (!novaUnidade.trim()) return
@@ -340,13 +334,6 @@ const ProprietarioRow = memo(function ProprietarioRow({
       } else {
         toast.error(result.error)
       }
-    })
-  }
-
-  function handleRemoveUnidade(unidadeId: string) {
-    startRemoveTransition(async () => {
-      const result = await removeUnidadeAction(unidadeId, condominioId)
-      if (!result.success) toast.error(result.error)
     })
   }
 
@@ -363,8 +350,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
       <Button
         variant="ghost"
         size="sm"
-        onClick={handleDeleteProprietario}
-        disabled={isPendingDelete}
+        onClick={() => setShowExcluir(true)}
         className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -461,8 +447,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
             {podeEditar && (
               <button
                 type="button"
-                onClick={() => handleRemoveUnidade(u.id)}
-                disabled={isPendingRemove}
+                onClick={() => setUnidadeExcluir(u.id)}
                 className="text-muted-foreground/40 hover:text-destructive transition-colors"
               >
                 <X className="h-2.5 w-2.5" />
@@ -508,6 +493,39 @@ const ProprietarioRow = memo(function ProprietarioRow({
           </button>
         ))}
       </div>
+
+      <ConfirmarSenhaDialog
+        open={showExcluir}
+        onOpenChange={setShowExcluir}
+        titulo="Excluir proprietário"
+        descricao={
+          <>
+            <strong className="text-foreground">{proprietario.nome}</strong> e as unidades
+            vinculadas serão removidos. Esta ação não pode ser desfeita.
+          </>
+        }
+        onConfirmar={(senha) => deleteProprietarioAction(proprietario.id, condominioId, senha)}
+      />
+
+      <ConfirmarSenhaDialog
+        open={unidadeExcluir !== null}
+        onOpenChange={(o) => !o && setUnidadeExcluir(null)}
+        titulo="Remover unidade"
+        confirmLabel="Remover"
+        descricao={
+          <>
+            {unidadeAlvo
+              ? `A unidade ${formatUnidade(unidadeAlvo)} será desvinculada de `
+              : "Esta unidade será desvinculada de "}
+            <strong className="text-foreground">{proprietario.nome}</strong>. Esta ação não pode
+            ser desfeita.
+          </>
+        }
+        onConfirmar={(senha) =>
+          removeUnidadeAction(unidadeExcluir ?? "", condominioId, senha)
+        }
+        onSuccess={() => setUnidadeExcluir(null)}
+      />
     </div>
   )
 })

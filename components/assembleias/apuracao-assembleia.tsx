@@ -1,6 +1,6 @@
 "use client"
 
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, BellRing, DoorOpen, Tv } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import { EditarPautaDialog } from "@/components/assembleias/editar-pauta-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
+import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { excluirPautaAction } from "@/app/actions/assembleias"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { APP_NAME } from "@/lib/constants"
@@ -395,20 +396,12 @@ function PautaApuracaoSection({
   criterioPeso: CriterioPeso
 }) {
   const { pauta } = item
-  const [isPendingExcluir, startExcluirTransition] = useTransition()
+  const [showExcluirPauta, setShowExcluirPauta] = useState(false)
 
   // Item 2 do pedido: só dá pra editar/excluir uma pauta individual
   // enquanto ELA MESMA ainda não tem voto (rascunho/aberta) — assim que
   // sobe para em_votacao/encerrada, o botão simplesmente some.
   const podeEditar = canEdit && (pauta.status === "rascunho" || pauta.status === "aberta")
-
-  function handleExcluir() {
-    if (!confirm(`Excluir a pauta "${pauta.titulo}"? Esta ação não pode ser desfeita.`)) return
-    startExcluirTransition(async () => {
-      const result = await excluirPautaAction({ pautaId: pauta.id, condominioId, assembleiaId })
-      if (!result.success) toast.error(result.error)
-    })
-  }
 
   return (
     <div className="space-y-3">
@@ -439,8 +432,7 @@ function PautaApuracaoSection({
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-              onClick={handleExcluir}
-              disabled={isPendingExcluir}
+              onClick={() => setShowExcluirPauta(true)}
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span className="sr-only">Excluir pauta</span>
@@ -448,6 +440,21 @@ function PautaApuracaoSection({
           </div>
         )}
       </div>
+
+      <ConfirmarSenhaDialog
+        open={showExcluirPauta}
+        onOpenChange={setShowExcluirPauta}
+        titulo="Excluir pauta"
+        descricao={
+          <>
+            A pauta <strong className="text-foreground">&quot;{pauta.titulo}&quot;</strong> será
+            removida. Esta ação não pode ser desfeita.
+          </>
+        }
+        onConfirmar={(senha) =>
+          excluirPautaAction({ pautaId: pauta.id, condominioId, assembleiaId, senha })
+        }
+      />
 
       {pauta.descricao && <p className="whitespace-pre-line text-justify text-sm text-muted-foreground">{pauta.descricao}</p>}
 

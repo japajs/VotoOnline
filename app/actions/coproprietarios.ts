@@ -7,6 +7,7 @@ import {
   getCoproprietariosByUnidades,
 } from "@/services/coproprietarios"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
+import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
 import type { CoproprietarioComNome } from "@/types"
 
@@ -55,12 +56,15 @@ export async function createCoproprietarioAction(
 
 export async function deleteCoproprietarioAction(
   id: string,
-  condominioId: string
+  condominioId: string,
+  senha: string
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
+  const senhaOk = await verificarSenhaUsuarioAtual(senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
 
   try {
     await deleteCoproprietario(id, condominioId)
