@@ -60,25 +60,31 @@ vi.mock("@/services/procuracoes", () => ({
 
 import { createAssembleiaRespostas } from "@/services/assembleia-votos"
 
-function sendRow(opts: { votacaoPorPauta: boolean }) {
+function sendRow(opts?: {
+  status?: string
+  exigePresenca?: boolean
+  presenteEm?: string | null
+  inadimplente?: boolean
+  votacaoPorPauta?: boolean
+}) {
   return {
     data: {
       assembleia_id: "a1",
       proprietario_id: "p-owner",
       votado_em: null,
-      presente_em: "2026-10-12T12:00:00Z",
+      presente_em: opts && "presenteEm" in opts ? opts.presenteEm : "2026-10-12T12:00:00Z",
       proprietarios: {
         nome: "Fulano",
         cpf: "123",
         email: "f@f.com",
         telefone: null,
-        inadimplente: false,
+        inadimplente: opts?.inadimplente ?? false,
         unidades: [{ numero: "101", bloco: null, fracao_ideal: null }],
       },
       assembleias: {
-        status: "aberta",
-        exige_presenca: false,
-        votacao_por_pauta: opts.votacaoPorPauta,
+        status: opts?.status ?? "aberta",
+        exige_presenca: opts?.exigePresenca ?? false,
+        votacao_por_pauta: opts?.votacaoPorPauta ?? false,
         condominios: { criterio_peso: "unidade" },
       },
     },
@@ -118,5 +124,43 @@ describe("createAssembleiaRespostas — trava pauta por pauta", () => {
         { pauta_id: "p2", resposta: "Não" },
       ])
     ).rejects.toThrow(/não está aberta/i)
+  })
+})
+
+// As regras de integridade que protegem a assembleia real: quem pode votar,
+// quando, e uma vez só. Todas barradas no núcleo do registro.
+describe("createAssembleiaRespostas — integridade do voto", () => {
+  it("recusa voto quando a assembleia não está aberta (encerrada)", async () => {
+    h.state.responses = { assembleia_sends: sendRow({ status: "encerrada" }) }
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
+    ).rejects.toThrow(/assembleia não está aberta/i)
+  })
+
+  it("recusa voto de proprietário inadimplente", async () => {
+    h.state.responses = { assembleia_sends: sendRow({ inadimplente: true }) }
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
+    ).rejects.toThrow(/inadimplente/i)
+  })
+
+  it("recusa voto quando exige presença e o proprietário não está presente", async () => {
+    h.state.responses = {
+      assembleia_sends: sendRow({ exigePresenca: true, presenteEm: null }),
+    }
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
+    ).rejects.toThrow(/presente/i)
+  })
+
+  it("recusa reenviar voto numa pauta já respondida (voto não pode ser alterado)", async () => {
+    h.state.responses = {
+      assembleia_sends: sendRow(),
+      pautas: { data: [{ id: "p1", votacao_aberta: true }], error: null },
+      assembleia_respostas: { data: [{ pauta_id: "p1" }], error: null },
+    }
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
+    ).rejects.toThrow(/já foram respondidas/i)
   })
 })
