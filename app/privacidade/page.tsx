@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 // E-mail de contato para assuntos de privacidade/LGPD. Trocar aqui se mudar.
-const CONTATO_PRIVACIDADE = "privacidade@votoonline.online"
+const CONTATO_PRIVACIDADE = "cleitonsalazargomes@gmail.com"
 const ATUALIZADO_EM = "12 de outubro de 2026"
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
