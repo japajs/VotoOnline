@@ -215,7 +215,7 @@ export function ProprietariosList({
           <div className="flex flex-wrap gap-1">
             {(
               [
-                ["todos", "Geral", proprietarios.length],
+                ["todos", "Total", proprietarios.length],
                 ["presentes", "Presentes", nPresentes],
                 ["votaram", "Votaram", nVotaram],
                 ["nao", "Não votaram", nNao],

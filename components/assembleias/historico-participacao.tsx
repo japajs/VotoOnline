@@ -30,7 +30,7 @@ function statusDe(h: HistoricoParticipante): Status {
 
 const STATUS_LABEL: Record<Status, string> = {
   completo: "Completo",
-  pendente: "Pendente",
+  pendente: "Não votaram",
   parcial: "Parcial",
 }
 
@@ -97,7 +97,7 @@ export function HistoricoParticipacao({ historico }: { historico: HistoricoParti
               statusFiltro === "todos" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"
             )}
           >
-            Todos ({historico.length})
+            Total ({historico.length})
           </button>
           {(["pendente", "parcial", "completo"] as const).map((s) => (
             <button
