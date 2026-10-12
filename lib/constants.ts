@@ -1,5 +1,9 @@
 export const APP_NAME = "VotoOnline"
 export const APP_VERSION = "1.0"
+// Selo de autoria/licenciamento exibido no painel (pedido do Carlos): deixa
+// claro pro síndico que a ferramenta é proprietária e locada por sessão — não
+// é gratuita nem de terceiros.
+export const APP_AUTORIA = "© Cleiton Salazar · uso licenciado por sessão de assembleia"
 
 export const ROUTES = {
   login: "/login",
