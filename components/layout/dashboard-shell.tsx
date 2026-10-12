@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Gavel, Menu } from "lucide-react"
 import { Sidebar } from "./sidebar"
@@ -101,7 +102,13 @@ export function DashboardShell({ user, children }: Props) {
           <div className="flex-1">{children}</div>
           <footer className="shrink-0 border-t border-border/40 px-6 py-3 print:hidden">
             <p className="text-center text-xs text-muted-foreground/50">
-              {APP_NAME} · Versão {APP_VERSION} · © Todos os direitos reservados.
+              {APP_NAME} · Versão {APP_VERSION} · © Todos os direitos reservados ·{" "}
+              <Link
+                href="/privacidade"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Privacidade
+              </Link>
             </p>
           </footer>
         </main>

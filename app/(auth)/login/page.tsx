@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Image from "next/image"
+import Link from "next/link"
 import { Suspense } from "react"
 import { Gavel, Lock, ShieldCheck, Users, BarChart3 } from "lucide-react"
 import { LoginForm } from "./login-form"
@@ -76,6 +77,14 @@ export default function LoginPage() {
           {/* Autoria/licenciamento (pedido do Carlos): primeira tela que um
               síndico vê numa demonstração. */}
           <p className="mt-3 text-center text-[11px] text-muted-foreground/70">{APP_AUTORIA}</p>
+          <p className="mt-1.5 text-center text-[11px] text-muted-foreground/70">
+            <Link
+              href="/privacidade"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Política de Privacidade
+            </Link>
+          </p>
         </div>
       </div>
     </div>

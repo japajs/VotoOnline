@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Clock, CheckCircle2 } from "lucide-react"
 import { getAssembleiaById } from "@/services/assembleias"
@@ -39,8 +40,14 @@ export default async function EntrarPage({ params }: Props) {
 
   const header = (
     <div className="border-b border-border/40 bg-card/40 backdrop-blur-sm">
-      <div className="mx-auto max-w-md px-4 py-3">
+      <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
         <p className="text-xs font-medium text-muted-foreground">{APP_NAME}</p>
+        <Link
+          href="/privacidade"
+          className="text-[11px] text-muted-foreground/70 underline underline-offset-2 hover:text-foreground"
+        >
+          Privacidade
+        </Link>
       </div>
     </div>
   )
@@ -103,6 +110,16 @@ export default async function EntrarPage({ params }: Props) {
         CPF cadastrado.
       </p>
       <EntrarForm assembleiaId={assembleia.id} />
+      <p className="mt-4 text-center text-[11px] text-muted-foreground/70">
+        Ao entrar, seus dados são tratados conforme a{" "}
+        <Link
+          href="/privacidade"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Política de Privacidade
+        </Link>
+        .
+      </p>
     </div>
   )
 }
