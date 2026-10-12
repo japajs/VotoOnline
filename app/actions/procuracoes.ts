@@ -9,6 +9,7 @@ import {
 import { getProprietariosSemVoto } from "@/services/assembleia-votos"
 import { getAssembleiaById } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
+import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 import type { ProcuracaoComNomes } from "@/types"
@@ -86,12 +87,15 @@ export async function createProcuracaoAction(
 export async function deleteProcuracaoAction(
   id: string,
   assembleiaId: string,
-  condominioId: string
+  condominioId: string,
+  senha: string
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
+  const senhaOk = await verificarSenhaUsuarioAtual(senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
 
   try {
     await deleteProcuracao(id)

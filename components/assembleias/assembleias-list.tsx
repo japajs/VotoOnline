@@ -36,6 +36,7 @@ import {
   reabrirAssembleiaAction,
 } from "@/app/actions/assembleias"
 import { ROUTES } from "@/lib/constants"
+import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import type { Assembleia, AssembleiaStatus, Proprietario } from "@/types"
 
 interface AssembleiasListProps {
@@ -99,17 +100,8 @@ function AssembleiaRow({
   // "Cancelar", não a ação destrutiva/excepcional — quem confirmar sem
   // querer (Enter, toque duplo etc.) cancela por padrão, precisa mover pra
   // excluir/encerrar/reabrir de propósito.
-  const cancelDeleteRef = useRef<HTMLButtonElement>(null)
   const cancelEncerrarRef = useRef<HTMLButtonElement>(null)
   const cancelReabrirRef = useRef<HTMLButtonElement>(null)
-
-  function handleDelete() {
-    setDeleteOpen(false)
-    startTransition(async () => {
-      const result = await deleteAssembleiaAction(assembleia.id, condominioId)
-      if (!result.success) toast.error(result.error)
-    })
-  }
 
   function handleStatusChange(nextStatus: AssembleiaStatus) {
     startTransition(async () => {
@@ -274,32 +266,18 @@ function AssembleiaRow({
           <span className="sr-only">Excluir assembleia</span>
         </Button>
 
-        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <AlertDialogContent initialFocus={cancelDeleteRef}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir assembleia?</AlertDialogTitle>
-              <AlertDialogDescription>
-                <strong>&quot;{assembleia.titulo}&quot;</strong> e todos os votos registrados serão removidos
-                permanentemente. Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                ref={cancelDeleteRef}
-                className="border-destructive/40 bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:border-ring focus:ring-3 focus:ring-ring/50"
-              >
-                Cancelar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                variant="outline"
-                onClick={handleDelete}
-                className="active:border-destructive active:bg-destructive active:text-destructive-foreground"
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmarSenhaDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          titulo="Excluir assembleia"
+          descricao={
+            <>
+              <strong className="text-foreground">&quot;{assembleia.titulo}&quot;</strong> e todos os
+              votos registrados serão removidos permanentemente. Esta ação não pode ser desfeita.
+            </>
+          }
+          onConfirmar={(senha) => deleteAssembleiaAction(assembleia.id, condominioId, senha)}
+        />
 
         <AlertDialog open={encerrarOpen} onOpenChange={setEncerrarOpen}>
           <AlertDialogContent initialFocus={cancelEncerrarRef}>

@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { deleteCondominioAction, updateCondominioAction } from "@/app/actions/condominios"
+import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { ROUTES } from "@/lib/constants"
 import type { Condominio } from "@/types"
 
@@ -46,16 +47,8 @@ function CondominioRow({
 }) {
   const [editing, setEditing] = useState(false)
   const [nome, setNome] = useState(condo.nome)
-  const [isPendingDelete, startDeleteTransition] = useTransition()
+  const [showExcluir, setShowExcluir] = useState(false)
   const [isPendingRename, startRenameTransition] = useTransition()
-
-  function handleDelete() {
-    if (!confirm(`Excluir "${condo.nome}"? Proprietários e unidades vinculados também serão removidos.`)) return
-    startDeleteTransition(async () => {
-      const result = await deleteCondominioAction(condo.id)
-      if (!result.success) toast.error(result.error)
-    })
-  }
 
   function handleRename() {
     if (!nome.trim() || nome.trim() === condo.nome) { setEditing(false); return }
@@ -132,14 +125,27 @@ function CondominioRow({
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleDelete}
-          disabled={isPendingDelete}
+          onClick={() => setShowExcluir(true)}
           className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
         >
           <Trash2 className="h-3.5 w-3.5" />
           <span className="sr-only">Excluir</span>
         </Button>
       </div>
+
+      <ConfirmarSenhaDialog
+        open={showExcluir}
+        onOpenChange={setShowExcluir}
+        titulo="Excluir condomínio"
+        descricao={
+          <>
+            <strong className="text-foreground">&quot;{condo.nome}&quot;</strong> e todos os
+            proprietários, unidades e assembleias vinculados serão removidos permanentemente. Esta
+            ação não pode ser desfeita.
+          </>
+        }
+        onConfirmar={(senha) => deleteCondominioAction(condo.id, senha)}
+      />
     </div>
   )
 }

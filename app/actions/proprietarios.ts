@@ -16,6 +16,7 @@ import {
 } from "@/services/unidades"
 import { getAssembleiaIdsEmAndamento, pesoJaFoiCongeladoEmAssembleiaAtiva } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
+import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
 import { normalizarCelular, validarEmailFormato } from "@/lib/format"
 
@@ -89,12 +90,15 @@ export async function createProprietarioAction(input: {
 
 export async function deleteProprietarioAction(
   id: string,
-  condominioId: string
+  condominioId: string,
+  senha: string
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
+  const senhaOk = await verificarSenhaUsuarioAtual(senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
   try {
     await deleteProprietario(id)
     revalidatePath(`${ROUTES.condominios}/${condominioId}`)
@@ -148,12 +152,15 @@ export async function updateFracaoIdealAction(
 
 export async function removeUnidadeAction(
   unidadeId: string,
-  condominioId: string
+  condominioId: string,
+  senha: string
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
+  const senhaOk = await verificarSenhaUsuarioAtual(senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
   try {
     await deleteUnidade(unidadeId)
     revalidatePath(`${ROUTES.condominios}/${condominioId}`)

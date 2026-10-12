@@ -12,6 +12,7 @@ import { condominioTemVotoRegistrado, hasAssembleiaAberta } from "@/services/ass
 import { getUnidadesByCondominioId, updateUnidade } from "@/services/unidades"
 import { converterEscalaFracaoIdeal, detectarDivisorEscalaFracaoIdeal } from "@/lib/peso"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
+import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
 import type { CriterioPeso } from "@/types"
 
@@ -54,13 +55,16 @@ export async function updateCondominioAction(
 }
 
 export async function deleteCondominioAction(
-  id: string
+  id: string,
+  senha: string
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador"])
   if (!auth.ok) return { success: false, error: auth.error }
   if (!auth.session.acessoTotal) {
     return { success: false, error: "Apenas usuários com acesso total podem excluir condomínios." }
   }
+  const senhaOk = await verificarSenhaUsuarioAtual(senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
   try {
     await deleteCondominio(id)
     revalidatePath(ROUTES.condominios)
