@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CheckCircle2, Clock, PauseCircle } from "lucide-react"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
@@ -98,8 +99,14 @@ export default async function PublicVotoPage({ params }: Props) {
 
   const header = (
     <div className="border-b border-border/40 bg-card/40 backdrop-blur-sm">
-      <div className="mx-auto max-w-2xl px-4 py-3">
+      <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
         <p className="text-xs font-medium text-muted-foreground">{APP_NAME}</p>
+        <Link
+          href="/privacidade"
+          className="text-[11px] text-muted-foreground/70 underline underline-offset-2 hover:text-foreground"
+        >
+          Privacidade
+        </Link>
       </div>
     </div>
   )
