@@ -261,6 +261,10 @@ function BlocoResultadoSimNao({
   const tdNao = full ? { ...s.tdNao, fontSize: 10 } : s.tdNao
   const tdAbst = full ? { ...s.tdAbst, fontSize: 10 } : s.tdAbst
 
+  // "Opção mais votada" entre SIM/NÃO (abstenção não é opção em deliberação) —
+  // % da opção vencedora pelos votos. Sem votos: não mostra nada.
+  const maisVotadaPct = total > 0 ? pctStr(Math.max(sim, nao), total) : null
+
   return (
     <View>
       <Text style={full ? { ...s.tableLabel, fontSize: 8 } : s.tableLabel}>{titulo}</Text>
@@ -314,7 +318,10 @@ function BlocoResultadoSimNao({
         style={[s.verdict, { backgroundColor: verdictColor(verdict) }, full ? { paddingVertical: 8 } : {}]}
       >
         <Text style={full ? { ...s.verdictText, fontSize: 11 } : s.verdictText}>{verdict}</Text>
-        {verdictSub ? <Text style={s.verdictSub}>{verdictSub}</Text> : null}
+        {maisVotadaPct ? (
+          <Text style={s.verdictSub}>Opção mais votada com {maisVotadaPct}</Text>
+        ) : null}
+        {total > 0 && verdictSub ? <Text style={s.verdictSub}>{verdictSub}</Text> : null}
       </View>
     </View>
   )
@@ -333,7 +340,6 @@ function PautaMultiplaEscolha({
   const { ponderado, por_participantes, opcoes_resultado = [] } = item
   const opcoes = [...opcoes_resultado].sort((a, b) => b.ponderado - a.ponderado)
   const tw = opcoes.reduce((sum, o) => sum + o.ponderado, 0) + ponderado.abstencao
-  const tp = opcoes.reduce((sum, o) => sum + o.participantes, 0) + por_participantes.abstencao
   const vencedora = tw > 0 && opcoes.length > 0 ? opcoes[0] : null
 
   const wide = full ? { ...s.tcWide, paddingVertical: 8, paddingHorizontal: 10 } : s.tcWide
@@ -395,9 +401,7 @@ function PautaMultiplaEscolha({
       {vencedora ? (
         <View style={[s.verdict, { backgroundColor: CORES_OPCOES[opcoes.indexOf(vencedora) % CORES_OPCOES.length] }, full ? { paddingVertical: 8 } : {}]}>
           <Text style={full ? { ...s.verdictText, fontSize: 11 } : s.verdictText}>{vencedora.label.toUpperCase()}</Text>
-          <Text style={s.verdictSub}>
-            {fracao ? `${fmtPonderado(vencedora.ponderado, criterio)} da fração` : `${vencedora.ponderado} imóv.`} · {tp} participante{tp === 1 ? "" : "s"}
-          </Text>
+          <Text style={s.verdictSub}>Opção mais votada com {pctStr(vencedora.ponderado, tw)}</Text>
         </View>
       ) : (
         <View style={[s.verdict, { backgroundColor: C.muted }]}>
@@ -581,11 +585,11 @@ export function ApuracaoPDF({
         <View style={s.partRow}>
           <View style={[s.partCell, s.partBorderR]}>
             <Text style={s.partNum}>{total_enviados}</Text>
-            <Text style={s.partLbl}>Convites enviados</Text>
+            <Text style={s.partLbl}>Imóveis cadastrados</Text>
           </View>
           <View style={[s.partCell, s.partBorderR]}>
             <Text style={s.partNum}>{total_respondidos}</Text>
-            <Text style={s.partLbl}>Responderam</Text>
+            <Text style={s.partLbl}>Participantes</Text>
           </View>
           <View style={s.partCell}>
             <Text style={s.partNum}>{pctStr(total_respondidos, total_enviados)}</Text>
@@ -648,7 +652,7 @@ export function ApuracaoPDF({
                   quebre no meio entre páginas. */}
               <View style={s.pautaBlock} wrap={layoutExpandido}>
                 <View style={s.pautaHeader}>
-                  <Text style={s.pautaIdx}>PAUTA {i + 1}</Text>
+                  <Text style={s.pautaIdx}>PAUTA {pauta.ordem}</Text>
                   <Text style={s.pautaTitle}>{pauta.titulo}</Text>
                   {pautaIncluidaDepois(pauta.created_at) ? (
                     <Text style={s.pautaNovaBadge}>INCLUÍDA APÓS A ABERTURA</Text>
