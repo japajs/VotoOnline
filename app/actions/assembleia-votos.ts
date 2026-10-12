@@ -23,7 +23,7 @@ import { sendAssembleiaEmailBatch, sendNovaPautaEmailBatch, sendLembreteVotoEmai
 import { generateSurveyToken } from "@/lib/tokens"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
-import { checkRateLimit } from "@/lib/rate-limit"
+import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 
 export interface EnviarAssembleiaResult {
@@ -337,9 +337,12 @@ export async function registrarVotosAction(
     const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
     const userAgent = h.get("user-agent") ?? null
 
-    // Achado de auditoria LGPD: o envio de voto em si não tinha nenhum
-    // limite de tentativas (só a página de leitura do token agora tem).
-    if (!(await checkRateLimit(`voto-submit:${ip ?? "unknown"}`))) {
+    // Limite por ENVIO (sendId/token), não por IP: numa assembleia presencial
+    // dezenas votam do mesmo wi-fi (mesmo IP) na janela em que a pauta fica
+    // aberta — limitar por IP bloquearia votos legítimos. Por envio, cada
+    // eleitor tem seu balde; e a constraint única do banco já impede voto
+    // duplicado por pauta de qualquer forma.
+    if (!(await checkRateLimit(rateLimitKey.votoSubmit(sendId)))) {
       return { success: false, error: "Muitas tentativas. Aguarde um momento e tente novamente." }
     }
 

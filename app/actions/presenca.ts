@@ -12,7 +12,8 @@ import {
   type ChamadaData,
 } from "@/services/presenca"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
-import { checkRateLimit } from "@/lib/rate-limit"
+import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit"
+import { normalizarChaveUnidade } from "@/lib/unidade-format"
 import { ROUTES } from "@/lib/constants"
 
 export type EntrarState = { error?: string } | null
@@ -25,16 +26,21 @@ export async function entrarAssembleiaAction(
   _prev: EntrarState,
   formData: FormData
 ): Promise<EntrarState> {
-  // Rota pública: limita tentativas por IP pra não virar oráculo de
-  // força-bruta de CPF (a mensagem de erro já é uniforme no serviço).
-  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown"
-  if (!(await checkRateLimit(`entrar:${ip}`))) {
-    return { error: "Muitas tentativas. Aguarde um momento e tente novamente." }
-  }
-
   const numero = String(formData.get("numero") ?? "").trim()
   const bloco = String(formData.get("bloco") ?? "").trim() || null
   const cpf = String(formData.get("cpf") ?? "").trim()
+
+  // Rota pública: limita tentativas pra não virar oráculo de força-bruta de
+  // CPF (a mensagem de erro já é uniforme no serviço). Conta por IP + UNIDADE,
+  // não só por IP: numa assembleia presencial todo mundo sai pelo mesmo IP
+  // (wi-fi do salão), então limitar por IP sozinho bloquearia condôminos de
+  // verdade. Por unidade, o brute-force de CPF de UMA unidade continua travado,
+  // mas dezenas de unidades diferentes entram sem problema do mesmo IP.
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown"
+  const chaveUnidade = normalizarChaveUnidade({ numero, bloco })
+  if (!(await checkRateLimit(rateLimitKey.entrada(ip, chaveUnidade)))) {
+    return { error: "Muitas tentativas. Aguarde um momento e tente novamente." }
+  }
 
   if (!numero || !cpf) return { error: "Preencha a sua unidade e o CPF." }
 

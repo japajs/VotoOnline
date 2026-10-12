@@ -16,6 +16,19 @@ import { RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS } from "./constants"
 const CLEANUP_PROBABILITY = 0.01
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000
 
+// Chaves de limite dos fluxos públicos. Ponto crítico de produção: numa
+// assembleia PRESENCIAL todo mundo sai pelo mesmo IP (wi-fi do salão), então
+// contar só por IP bloquearia condôminos legítimos. Por isso:
+// - entrada: por IP + UNIDADE — segura o brute-force de CPF de uma unidade,
+//   mas deixa dezenas de unidades diferentes passarem do mesmo IP.
+// - abrir/enviar voto: pelo TOKEN/ENVIO de cada pessoa (token tem 122 bits,
+//   impossível de adivinhar) — cada eleitor tem seu próprio balde.
+export const rateLimitKey = {
+  entrada: (ip: string, chaveUnidade: string | null) => `entrar:${ip}:${chaveUnidade ?? "?"}`,
+  votoView: (token: string) => `voto-view:${token}`,
+  votoSubmit: (sendId: string) => `voto-submit:${sendId}`,
+}
+
 export async function checkRateLimit(key: string): Promise<boolean> {
   const db = createServerClient()
   const now = Date.now()
