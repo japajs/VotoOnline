@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { Gavel, Menu } from "lucide-react"
 import { Sidebar } from "./sidebar"
 import { cn } from "@/lib/utils"
-import { APP_NAME, APP_VERSION } from "@/lib/constants"
+import { APP_NAME, APP_VERSION, APP_AUTORIA } from "@/lib/constants"
 import type { SessionUser } from "@/types"
 
 interface Props {
@@ -88,6 +88,16 @@ export function DashboardShell({ user, children }: Props) {
         </header>
 
         <main className="flex flex-1 flex-col overflow-y-auto">
+          {/* Selo de autoria/licenciamento no canto superior direito (pedido
+              do Carlos): deixa claro pro síndico que a ferramenta é
+              proprietária e locada por sessão. Curto no celular, completo a
+              partir de sm. */}
+          <div className="flex shrink-0 justify-end px-6 pt-3 print:hidden">
+            <p className="truncate text-[11px] font-medium text-muted-foreground">
+              <span className="hidden sm:inline">{APP_AUTORIA}</span>
+              <span className="sm:hidden">© Cleiton Salazar</span>
+            </p>
+          </div>
           <div className="flex-1">{children}</div>
           <footer className="shrink-0 border-t border-border/40 px-6 py-3 print:hidden">
             <p className="text-center text-xs text-muted-foreground/50">
