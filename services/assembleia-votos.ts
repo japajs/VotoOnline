@@ -500,11 +500,20 @@ export function calcularAprovacao(
   ponderadoSim: number,
   ponderadoNao: number,
   quorumAprovacao: number
-): { percentual_aprovacao: number | null; aprovada: boolean | null } {
+): { percentual_aprovacao: number | null; aprovada: boolean | null; empate: boolean } {
   const base = ponderadoSim + ponderadoNao
-  if (base === 0) return { percentual_aprovacao: null, aprovada: null }
+  if (base === 0) return { percentual_aprovacao: null, aprovada: null, empate: false }
   const percentual = ponderadoSim / base
-  return { percentual_aprovacao: percentual, aprovada: percentual >= quorumAprovacao }
+  // Empate exato: o sistema NÃO decide (regra validada com o Carlos — a função
+  // dele é gerir o voto, não dar a decisão de desempate, que é sempre da mesa).
+  // Num empate, `aprovada` é false e `empate` é true; a tela/PDF mostram
+  // "EMPATE", nunca "APROVADA".
+  const empate = ponderadoSim === ponderadoNao
+  return {
+    percentual_aprovacao: percentual,
+    aprovada: !empate && percentual >= quorumAprovacao,
+    empate,
+  }
 }
 
 // Apuração de uma pauta "sim_nao" — lê o peso congelado em cada resposta
@@ -586,6 +595,7 @@ export function apurarMultiplaEscolha(pauta: Pauta, pautaRows: ApuracaoRow[]) {
     // PautaApuracao.aprovada em types/index.ts.
     percentual_aprovacao: null,
     aprovada: null,
+    empate: false,
     opcoes_resultado,
   }
 }

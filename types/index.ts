@@ -357,7 +357,14 @@ export interface PautaApuracao {
   // Só calculado para pautas "sim_nao" — em "multipla_escolha" não existe
   // um único resultado passa/não passa (é a opção mais votada), então fica
   // null. Também null enquanto percentual_aprovacao for null.
+  // Num EMPATE exato (Sim == Não, ponderado), `aprovada` é false mas `empate`
+  // é true — o sistema não decide empate (regra validada com o Carlos: isso
+  // cabe sempre à mesa da reunião). Ver `empate` abaixo.
   aprovada: boolean | null
+  // Empate exato no ponderado (Sim == Não, com votos). Quando true, o
+  // resultado é exibido como "EMPATE" (nem aprovada nem rejeitada) — a decisão
+  // de desempate é da mesa, não do sistema.
+  empate: boolean
   // joined — só populado para pautas do tipo "multipla_escolha"
   opcoes_resultado?: OpcaoApuracao[]
 }

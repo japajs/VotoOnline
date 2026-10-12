@@ -177,7 +177,15 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
     // unanimidade etc.) — nunca mais ">50%" fixo aqui. Este é o documento
     // oficial de apuração, o lugar mais importante pra essa conta estar
     // certa.
-    const vW = p.aprovada === null ? "SEM VOTOS" : p.aprovada ? "APROVADA" : "REJEITADA"
+    // Empate não é decidido pelo sistema (regra validada com o Carlos) — a
+    // mesa resolve o desempate.
+    const vW = p.empate
+      ? "EMPATE"
+      : p.aprovada === null
+        ? "SEM VOTOS"
+        : p.aprovada
+          ? "APROVADA"
+          : "REJEITADA"
 
     return [
       i + 1,
