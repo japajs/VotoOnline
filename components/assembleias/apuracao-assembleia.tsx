@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, BellRing, DoorOpen, Tv } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { DonutChart } from "@/components/ui/donut-chart"
@@ -12,7 +12,12 @@ import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-vo
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
-import { excluirPautaAction } from "@/app/actions/assembleias"
+import {
+  excluirPautaAction,
+  setVotacaoPorPautaAction,
+  abrirVotacaoPautaAction,
+  fecharVotacaoPautaAction,
+} from "@/app/actions/assembleias"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { APP_NAME } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
@@ -92,6 +97,25 @@ export function ApuracaoAssembleia({
   const pendentes = total_enviados - total_respondidos
 
   const [isPendingLembrete, startLembreteTransition] = useTransition()
+
+  // Votação pauta por pauta: a mesa abre/fecha cada pauta (ver Fase 1). O
+  // liga/desliga fica aqui no cabeçalho; quando ligado, cada pauta ganha os
+  // botões "Abrir/Fechar votação". Estado local otimista pra resposta imediata.
+  const [votacaoPorPauta, setVotacaoPorPautaState] = useState(assembleia.votacao_por_pauta ?? false)
+  const [isPendingVpp, startVppTransition] = useTransition()
+  const emAndamento = assembleia.status === "aberta" || assembleia.status === "pausada"
+
+  function handleToggleVotacaoPorPauta() {
+    const novo = !votacaoPorPauta
+    setVotacaoPorPautaState(novo)
+    startVppTransition(async () => {
+      const r = await setVotacaoPorPautaAction(assembleia.id, condominioId, novo)
+      if (!r.success) {
+        setVotacaoPorPautaState(!novo)
+        toast.error(r.error ?? "Erro ao atualizar a opção.")
+      }
+    })
+  }
 
   // Auditoria de assembleias — Fase 6: lembrete manual (sem cron/agendamento
   // neste projeto) pra quem ainda não registrou nenhum voto. Confirmação
@@ -207,6 +231,23 @@ export function ApuracaoAssembleia({
                   condominioId={condominioId}
                   podeLembrar={assembleia.status === "aberta"}
                 />
+              )}
+              {canExport && assembleia.status !== "encerrada" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToggleVotacaoPorPauta}
+                  disabled={isPendingVpp}
+                  title="Conduzir a votação pauta por pauta: a mesa abre e fecha cada pauta no seu tempo."
+                  className={`gap-1.5 ${votacaoPorPauta ? "border-primary/40 text-primary" : ""}`}
+                >
+                  {isPendingVpp ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ListChecks className="h-3.5 w-3.5" />
+                  )}
+                  Pauta por pauta: {votacaoPorPauta ? "ligada" : "desligada"}
+                </Button>
               )}
               {/* Telão liberado pra todos os perfis (inclusive visualizador/
                   "advogado" que acompanha): é tela ao vivo só de leitura, e a
@@ -358,6 +399,8 @@ export function ApuracaoAssembleia({
           assembleiaId={assembleia.id}
           canEdit={canExport}
           criterioPeso={criterioPeso}
+          votacaoPorPauta={votacaoPorPauta}
+          emAndamento={emAndamento}
         />
       ))}
 
@@ -387,6 +430,8 @@ function PautaApuracaoSection({
   assembleiaId,
   canEdit,
   criterioPeso,
+  votacaoPorPauta,
+  emAndamento,
 }: {
   index: number
   item: PautaApuracao
@@ -394,6 +439,8 @@ function PautaApuracaoSection({
   assembleiaId: string
   canEdit: boolean
   criterioPeso: CriterioPeso
+  votacaoPorPauta: boolean
+  emAndamento: boolean
 }) {
   const { pauta } = item
   const [showExcluirPauta, setShowExcluirPauta] = useState(false)
@@ -403,6 +450,34 @@ function PautaApuracaoSection({
   // sobe para em_votacao/encerrada, o botão simplesmente some.
   const podeEditar = canEdit && (pauta.status === "rascunho" || pauta.status === "aberta")
 
+  // Condução pauta por pauta (Fase 1b): a mesa abre/fecha a votação DESTA
+  // pauta. Estado local otimista; `everOpened` distingue "fechada" de
+  // "aguardando" (nunca aberta) mesmo depois de abrir e fechar na sessão.
+  const mostrarConducao = votacaoPorPauta && canEdit && emAndamento
+  const [votacaoAberta, setVotacaoAberta] = useState(pauta.votacao_aberta ?? false)
+  const [everOpened, setEverOpened] = useState(!!pauta.votacao_aberta_em)
+  const [isPendingVot, startVotTransition] = useTransition()
+  const fase: "aberta" | "fechada" | "aguardando" = votacaoAberta
+    ? "aberta"
+    : everOpened
+      ? "fechada"
+      : "aguardando"
+
+  function handleAbrirFechar() {
+    const abrir = !votacaoAberta
+    setVotacaoAberta(abrir)
+    if (abrir) setEverOpened(true)
+    startVotTransition(async () => {
+      const r = abrir
+        ? await abrirVotacaoPautaAction({ pautaId: pauta.id, condominioId, assembleiaId })
+        : await fecharVotacaoPautaAction({ pautaId: pauta.id, condominioId, assembleiaId })
+      if (!r.success) {
+        setVotacaoAberta(!abrir)
+        toast.error(r.error ?? "Erro ao atualizar a votação da pauta.")
+      }
+    })
+  }
+
   return (
     <div className="space-y-3">
       {/* Título da pauta */}
@@ -411,11 +486,35 @@ function PautaApuracaoSection({
           Pauta {index + 1}
         </span>
         <h2 className="text-base font-semibold tracking-tight">{pauta.titulo}</h2>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${PAUTA_STATUS_CLASS[pauta.status]}`}
-        >
-          {PAUTA_STATUS_LABEL[pauta.status]}
-        </span>
+        {/* Com votação pauta por pauta ligada, a fase (aberta/fechada/
+            aguardando) substitui o status interno da pauta — mostrar os dois
+            só confundiria (ambos falam de "aberta" com sentidos diferentes). */}
+        {votacaoPorPauta ? (
+          <span
+            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              fase === "aberta"
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : fase === "fechada"
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {fase === "aberta" && (
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+            {fase === "aberta"
+              ? "Votação aberta"
+              : fase === "fechada"
+                ? "Votação fechada"
+                : "Aguardando abertura"}
+          </span>
+        ) : (
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${PAUTA_STATUS_CLASS[pauta.status]}`}
+          >
+            {PAUTA_STATUS_LABEL[pauta.status]}
+          </span>
+        )}
         {pauta.sigiloso && (
           <span
             className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
@@ -425,18 +524,40 @@ function PautaApuracaoSection({
             Sigiloso
           </span>
         )}
-        {podeEditar && (
-          <div className="ml-auto flex items-center gap-0.5 print:hidden">
-            <EditarPautaDialog pauta={pauta} assembleiaId={assembleiaId} condominioId={condominioId} />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-              onClick={() => setShowExcluirPauta(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span className="sr-only">Excluir pauta</span>
-            </Button>
+        {(mostrarConducao || podeEditar) && (
+          <div className="ml-auto flex items-center gap-1 print:hidden">
+            {mostrarConducao && (
+              <Button
+                variant={votacaoAberta ? "outline" : "default"}
+                size="sm"
+                onClick={handleAbrirFechar}
+                disabled={isPendingVot}
+                className="h-7 gap-1.5 px-2.5 text-xs"
+              >
+                {isPendingVot ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : votacaoAberta ? (
+                  <Lock className="h-3.5 w-3.5" />
+                ) : (
+                  <Unlock className="h-3.5 w-3.5" />
+                )}
+                {votacaoAberta ? "Fechar votação" : "Abrir votação"}
+              </Button>
+            )}
+            {podeEditar && (
+              <>
+                <EditarPautaDialog pauta={pauta} assembleiaId={assembleiaId} condominioId={condominioId} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => setShowExcluirPauta(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span className="sr-only">Excluir pauta</span>
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
