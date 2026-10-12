@@ -40,6 +40,7 @@ type JoinedPauta = {
   status: PautaStatus
   quorum_aprovacao: number
   sigiloso: boolean
+  votacao_aberta?: boolean | null
   created_at: string
   pauta_opcoes: JoinedPautaOpcao[] | null
 }
@@ -65,6 +66,7 @@ type JoinedAssembleia = {
   quorum_minimo: number | null
   data_1a_convocacao: string | null
   quorum_minimo_2a: number | null
+  votacao_por_pauta?: boolean | null
   condominios: { nome: string } | null
   pautas: JoinedPauta[] | null
 }
@@ -97,7 +99,7 @@ type JoinedSend = JoinedSendSnapshot & {
 }
 
 const SELECT_SEND_JOINED =
-  "*, assembleias(id, condominio_id, titulo, descricao, status, data_abertura, data_encerramento, quorum_minimo, data_1a_convocacao, quorum_minimo_2a, condominios(nome), pautas(id, assembleia_id, ordem, titulo, descricao, ativa, tipo, permite_abstencao, status, quorum_aprovacao, sigiloso, created_at, pauta_opcoes(*))), proprietarios(id, nome, email)"
+  "*, assembleias(id, condominio_id, titulo, descricao, status, data_abertura, data_encerramento, quorum_minimo, data_1a_convocacao, quorum_minimo_2a, votacao_por_pauta, condominios(nome), pautas(id, assembleia_id, ordem, titulo, descricao, ativa, tipo, permite_abstencao, status, quorum_aprovacao, sigiloso, votacao_aberta, created_at, pauta_opcoes(*))), proprietarios(id, nome, email)"
 
 function rowToSend(row: JoinedSend): AssembleiaSend {
   const a = row.assembleias
@@ -131,6 +133,7 @@ function rowToSend(row: JoinedSend): AssembleiaSend {
           quorum_minimo: a.quorum_minimo,
           data_1a_convocacao: a.data_1a_convocacao,
           quorum_minimo_2a: a.quorum_minimo_2a,
+          votacao_por_pauta: a.votacao_por_pauta ?? false,
           condominio_nome: a.condominios?.nome ?? null,
           pautas: (a.pautas ?? [])
             .map((p) => ({
@@ -145,6 +148,7 @@ function rowToSend(row: JoinedSend): AssembleiaSend {
               status: p.status,
               quorum_aprovacao: p.quorum_aprovacao,
               sigiloso: p.sigiloso,
+              votacao_aberta: p.votacao_aberta ?? false,
               created_at: p.created_at,
               opcoes: p.pauta_opcoes
                 ? [...p.pauta_opcoes].sort((x, y) => x.ordem - y.ordem).map(rowToPautaOpcao)

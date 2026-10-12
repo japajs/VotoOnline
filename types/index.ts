@@ -288,6 +288,7 @@ export interface AssembleiaSend extends AssembleiaSendSnapshot {
     | "quorum_minimo"
     | "data_1a_convocacao"
     | "quorum_minimo_2a"
+    | "votacao_por_pauta"
   > & {
     pautas?: Pauta[]
     condominio_nome?: string | null
