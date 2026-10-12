@@ -641,6 +641,23 @@ export function ApuracaoPDF({
           const vW = item.empate ? "EMPATE" : verdictAprovacao(item.aprovada)
           const votosPauta = votosDetalhados.filter((v) => v.pauta_id === pauta.id)
 
+          // Subtexto do bloco ponderado: imóveis representados + quórum exigido.
+          // "Quórum exigido: X%" só aparece em quórum QUALIFICADO (>50%) — numa
+          // pauta de maioria simples não há exigência de 50% (pedido do Carlos),
+          // dizer isso só confunde.
+          const representadosTxt =
+            total_apartamentos_representados > 0
+              ? condominio.criterio_peso === "fracao_ideal"
+                ? `${fmtPonderado(total_apartamentos_representados, condominio.criterio_peso)} da fração ideal representada`
+                : `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")}`
+              : ""
+          const quorumTxt =
+            pauta.quorum_aprovacao > 0.5
+              ? `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
+              : ""
+          const verdictSubPonderado =
+            [representadosTxt, quorumTxt].filter(Boolean).join(" · ") || undefined
+
           return (
             <View key={pauta.id}>
               {/* Com 1 pauta só (layoutExpandido), o bloco fica grande demais
@@ -686,11 +703,7 @@ export function ApuracaoPDF({
                         abstencao={ponderado.abstencao}
                         total={tw}
                         verdict={vW}
-                        verdictSub={
-                          total_apartamentos_representados > 0
-                            ? `${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(total_apartamentos_representados, condominio.criterio_peso)} da fração ideal representada` : `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")}`} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
-                            : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
-                        }
+                        verdictSub={verdictSubPonderado}
                         full
                       />
                     </View>
@@ -719,11 +732,7 @@ export function ApuracaoPDF({
                         abstencao={ponderado.abstencao}
                         total={tw}
                         verdict={vW}
-                        verdictSub={
-                          total_apartamentos_representados > 0
-                            ? `${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(total_apartamentos_representados, condominio.criterio_peso)} da fração ideal representada` : `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")}`} · quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
-                            : `quórum exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%`
-                        }
+                        verdictSub={verdictSubPonderado}
                         full={false}
                       />
                     </View>

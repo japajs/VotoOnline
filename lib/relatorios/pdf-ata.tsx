@@ -205,7 +205,7 @@ export function AtaPDF({
           } else if (item.aprovada === null) {
             resultadoTexto = "Sem votos registrados."
           } else {
-            resultadoTexto = `${item.aprovada ? "APROVADA" : "REJEITADA"} — Sim: ${fmtPonderado(item.ponderado.sim, condominio.criterio_peso)} · Não: ${fmtPonderado(item.ponderado.nao, condominio.criterio_peso)} · Abstenção: ${fmtPonderado(item.ponderado.abstencao, condominio.criterio_peso)} (quórum de aprovação exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%).`
+            resultadoTexto = `${item.aprovada ? "APROVADA" : "REJEITADA"} — Sim: ${fmtPonderado(item.ponderado.sim, condominio.criterio_peso)} · Não: ${fmtPonderado(item.ponderado.nao, condominio.criterio_peso)} · Abstenção: ${fmtPonderado(item.ponderado.abstencao, condominio.criterio_peso)}${pauta.quorum_aprovacao > 0.5 ? ` (quórum de aprovação exigido: ${Math.round(pauta.quorum_aprovacao * 100)}%)` : ""}.`
           }
 
           return (
