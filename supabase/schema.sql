@@ -190,6 +190,11 @@ create table if not exists assembleias (
   quorum_minimo       numeric(5,4)  check (quorum_minimo is null or (quorum_minimo > 0 and quorum_minimo <= 1)),
   data_1a_convocacao  timestamptz,
   quorum_minimo_2a    numeric(5,4)  check (quorum_minimo_2a is null or (quorum_minimo_2a > 0 and quorum_minimo_2a <= 1)),
+  -- Votação pauta por pauta (controlada pela mesa): quando true, cada pauta
+  -- precisa ser aberta individualmente pela mesa pra aceitar voto (ver
+  -- pautas.votacao_aberta). Default false = comportamento de sempre (abrir a
+  -- assembleia libera todas as pautas de uma vez).
+  votacao_por_pauta   boolean       not null default false,
   created_at          timestamptz   not null default now(),
   updated_at          timestamptz   not null default now()
 );
@@ -228,6 +233,14 @@ create table if not exists pautas (
   -- vínculo nome↔voto pra pautas marcadas aqui. Não afeta a tela viva do
   -- admin, que nunca mostrou esse detalhamento nominal (só nos exports).
   sigiloso           boolean       not null default false,
+  -- Votação pauta por pauta (só vale quando assembleias.votacao_por_pauta =
+  -- true): a mesa abre/fecha a votação de CADA pauta. votacao_aberta = pode
+  -- votar agora. As datas são pro registro/ata (quando abriu, quando fechou);
+  -- votacao_aberta_em != null distingue "fechada" (já foi aberta) de
+  -- "aguardando" (nunca foi aberta). Reabrir é permitido (atualiza as datas).
+  votacao_aberta     boolean       not null default false,
+  votacao_aberta_em  timestamptz,
+  votacao_fechada_em timestamptz,
   created_at         timestamptz   not null default now()
 );
 
@@ -601,3 +614,18 @@ create index if not exists idx_assembleia_sends_presente_em
 -- (autoatendimento / e-mail). Aditivo e idempotente. Execute no SQL Editor.
 -- ============================================================
 alter table assembleias add column if not exists exige_presenca boolean not null default false;
+
+-- ============================================================
+-- Migração — Votação PAUTA POR PAUTA (controlada pela mesa).
+-- Quando assembleias.votacao_por_pauta = true, cada pauta precisa ser aberta
+-- individualmente pela mesa pra aceitar voto (pautas.votacao_aberta). A mesa
+-- abre a pauta, dá o tempo de votação, fecha (pode reabrir); a tela de voto só
+-- aceita a pauta aberta no momento. Default false preserva o comportamento
+-- atual (abrir a assembleia libera todas as pautas de uma vez). As datas de
+-- abertura/fechamento ficam pro registro/ata. Aditivo e idempotente. Execute
+-- no SQL Editor do Supabase ANTES de publicar o código que lê estas colunas.
+-- ============================================================
+alter table assembleias add column if not exists votacao_por_pauta boolean not null default false;
+alter table pautas add column if not exists votacao_aberta boolean not null default false;
+alter table pautas add column if not exists votacao_aberta_em timestamptz;
+alter table pautas add column if not exists votacao_fechada_em timestamptz;

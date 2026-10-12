@@ -199,6 +199,11 @@ export interface Assembleia {
   // Opcional no tipo porque é lido direto do banco onde importa (chamada,
   // registro de presença, trava de voto) — nem toda query de Assembleia traz.
   exige_presenca?: boolean
+  // Votação pauta por pauta: quando true, cada pauta precisa ser aberta pela
+  // mesa pra aceitar voto (ver pautas.votacao_aberta e a trava em
+  // validarVotoOuFalhar). Default false = abrir a assembleia libera todas as
+  // pautas. Opcional pelo mesmo motivo de exige_presenca (nem toda query traz).
+  votacao_por_pauta?: boolean
   created_at: string
   updated_at: string
   // joined
@@ -231,6 +236,14 @@ export interface Pauta {
   // síndico) — resultado agregado continua público; PDF/Excel omitem o
   // vínculo nome↔voto no detalhamento pra essa pauta.
   sigiloso: boolean
+  // Votação pauta por pauta (só vale com assembleias.votacao_por_pauta = true):
+  // a mesa abre/fecha a votação de cada pauta. votacao_aberta = aceita voto
+  // agora. As datas (quando abriu/fechou) são pro registro/ata;
+  // votacao_aberta_em != null distingue "fechada" de "aguardando" (nunca aberta).
+  // Opcionais: nem toda query de Pauta traz essas colunas.
+  votacao_aberta?: boolean
+  votacao_aberta_em?: string | null
+  votacao_fechada_em?: string | null
   created_at: string
   // joined — só populado para pautas do tipo "multipla_escolha"
   opcoes?: PautaOpcao[]

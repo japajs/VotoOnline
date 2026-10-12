@@ -13,6 +13,9 @@ type PautaRow = {
   status: PautaStatus
   quorum_aprovacao: number
   sigiloso: boolean
+  votacao_aberta?: boolean
+  votacao_aberta_em?: string | null
+  votacao_fechada_em?: string | null
   created_at: string
   pauta_opcoes?: PautaOpcaoRow[] | null
 }
@@ -48,6 +51,9 @@ function rowToPauta(row: PautaRow): Pauta {
     status: row.status,
     quorum_aprovacao: row.quorum_aprovacao,
     sigiloso: row.sigiloso,
+    votacao_aberta: row.votacao_aberta ?? false,
+    votacao_aberta_em: row.votacao_aberta_em ?? null,
+    votacao_fechada_em: row.votacao_fechada_em ?? null,
     created_at: row.created_at,
     opcoes: row.pauta_opcoes
       ? row.pauta_opcoes.map(rowToPautaOpcao).sort((a, b) => a.ordem - b.ordem)
@@ -150,6 +156,33 @@ export async function marcarPautaEmVotacaoSeNecessario(pautaId: string): Promise
 export async function deletePauta(id: string): Promise<void> {
   const db = createServerClient()
   const { error } = await db.from("pautas").delete().eq("id", id)
+  if (error) throw new Error(error.message)
+}
+
+// Votação pauta por pauta (controlada pela mesa) — só faz sentido quando a
+// assembleia está com votacao_por_pauta = true. Abrir libera o voto DESTA
+// pauta; fechar bloqueia (reabrível). As datas ficam pro registro/ata. Abrir
+// limpa a data de fechamento e vice-versa, pra o par aberto/fechado refletir
+// sempre o último movimento.
+export async function abrirVotacaoPauta(pautaId: string): Promise<void> {
+  const db = createServerClient()
+  const { error } = await db
+    .from("pautas")
+    .update({
+      votacao_aberta: true,
+      votacao_aberta_em: new Date().toISOString(),
+      votacao_fechada_em: null,
+    })
+    .eq("id", pautaId)
+  if (error) throw new Error(error.message)
+}
+
+export async function fecharVotacaoPauta(pautaId: string): Promise<void> {
+  const db = createServerClient()
+  const { error } = await db
+    .from("pautas")
+    .update({ votacao_aberta: false, votacao_fechada_em: new Date().toISOString() })
+    .eq("id", pautaId)
   if (error) throw new Error(error.message)
 }
 
