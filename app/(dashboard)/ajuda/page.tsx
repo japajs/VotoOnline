@@ -5,6 +5,7 @@ import {
   ClipboardList,
   Unlock,
   Send,
+  ListChecks,
   UserCheck,
   Gavel,
   Tv,
@@ -168,7 +169,37 @@ export default function AjudaPage() {
         </p>
       </Secao>
 
-      <Secao icon={UserCheck} titulo="5. Presença">
+      <Secao icon={ListChecks} titulo="5. Votação pauta por pauta (opcional)">
+        <p>
+          Modo para conduzir a assembleia no ritmo do salão: em vez de liberar todas as pautas de
+          uma vez, a mesa abre e fecha a votação de{" "}
+          <strong className="text-foreground">cada pauta</strong>, uma por vez.
+        </p>
+        <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
+          <li>
+            Na tela de apuração, ligue <Chip>Pauta por pauta</Chip>. Aí cada pauta ganha os botões{" "}
+            <Chip>Abrir votação</Chip> e <Chip>Fechar votação</Chip>.
+          </li>
+          <li>
+            O rito: discute a pauta → <strong className="text-foreground">Abrir votação</strong> →
+            dá o tempo → <strong className="text-foreground">Fechar votação</strong> → próxima.
+            Precisou voltar numa pauta? É só <Chip>Abrir</Chip> de novo (sem reabrir a assembleia
+            toda).
+          </li>
+          <li>
+            No celular do condômino aparece{" "}
+            <strong className="text-foreground">só a pauta aberta no momento</strong> (as já votadas
+            como &quot;Votada&quot;, as próximas como &quot;Aguardando&quot;), e a tela dele{" "}
+            <strong className="text-foreground">atualiza sozinha</strong> quando você abre a próxima.
+          </li>
+          <li>Segurança: voto numa pauta que a mesa ainda não abriu é recusado.</li>
+        </ul>
+        <p className="text-xs">
+          Desligado (padrão): abrir a assembleia libera todas as pautas de uma vez, como sempre.
+        </p>
+      </Secao>
+
+      <Secao icon={UserCheck} titulo="6. Presença">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
             Você pode <strong className="text-foreground">exigir presença confirmada pela mesa</strong>:
@@ -186,7 +217,7 @@ export default function AjudaPage() {
         </ul>
       </Secao>
 
-      <Secao icon={Gavel} titulo="6. Procurações e voto manual">
+      <Secao icon={Gavel} titulo="7. Procurações e voto manual">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
             <strong className="text-foreground">Procurações:</strong> dentro da assembleia dá para
@@ -200,10 +231,10 @@ export default function AjudaPage() {
         </ul>
       </Secao>
 
-      <Secao icon={BellRing} titulo="7. Acompanhar e cobrar quem falta">
+      <Secao icon={BellRing} titulo="8. Acompanhar e cobrar quem falta">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
-            Na lista de proprietários, use os filtros <Chip>Geral</Chip> · <Chip>Presentes</Chip> ·{" "}
+            Na lista de proprietários, use os filtros <Chip>Total</Chip> · <Chip>Presentes</Chip> ·{" "}
             <Chip>Votaram</Chip> · <Chip>Não votaram</Chip> para enxergar o andamento na hora.
           </li>
           <li>
@@ -213,7 +244,7 @@ export default function AjudaPage() {
         </ul>
       </Secao>
 
-      <Secao icon={Tv} titulo="8. Telão ao vivo">
+      <Secao icon={Tv} titulo="9. Telão ao vivo">
         <p>
           O botão <Chip>Telão</Chip> abre uma tela cheia que se atualiza sozinha, pensada para
           projetar no salão. Mostra o resultado parcial em tempo real. Está liberado inclusive para o
@@ -221,7 +252,7 @@ export default function AjudaPage() {
         </p>
       </Secao>
 
-      <Secao icon={LockKeyhole} titulo="9. Encerrar e apurar">
+      <Secao icon={LockKeyhole} titulo="10. Encerrar e apurar">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
             <Chip>Encerrar</Chip> fecha a votação. A tela passa a mostrar o resultado ponderado (em
