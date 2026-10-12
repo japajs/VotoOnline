@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
-import { APP_NAME, APP_VERSION } from "@/lib/constants"
+import { APP_NAME, APP_VERSION, APP_AUTORIA } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
 import type { Assembleia, AssembleiaApuracao, Condominio } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
@@ -228,9 +228,12 @@ export function AtaPDF({
         </View>
 
         <View style={s.pageFooter} fixed>
-          <Text style={s.footerText}>
-            {APP_NAME} v{APP_VERSION} — documento gerado eletronicamente, sujeito a assinatura
-          </Text>
+          <View>
+            <Text style={s.footerText}>
+              {APP_NAME} v{APP_VERSION} — documento gerado eletronicamente, sujeito a assinatura
+            </Text>
+            <Text style={s.footerText}>{APP_AUTORIA}</Text>
+          </View>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>

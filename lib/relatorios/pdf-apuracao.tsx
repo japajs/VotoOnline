@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
-import { APP_NAME, APP_VERSION } from "@/lib/constants"
+import { APP_NAME, APP_VERSION, APP_AUTORIA } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
 import type { Assembleia, AssembleiaApuracao, Condominio, CriterioPeso } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
@@ -742,9 +742,12 @@ export function ApuracaoPDF({
 
         {/* ── Fixed footer ──────────────────── */}
         <View style={s.pageFooter} fixed>
-          <Text style={s.footerText}>
-            Emitido em {emitidoEm} por {emitidoPor} | {APP_NAME} v{APP_VERSION}
-          </Text>
+          <View>
+            <Text style={s.footerText}>
+              Emitido em {emitidoEm} por {emitidoPor} | {APP_NAME} v{APP_VERSION}
+            </Text>
+            <Text style={s.footerText}>{APP_AUTORIA}</Text>
+          </View>
           <Text
             style={s.footerText}
             render={({ pageNumber, totalPages }) =>
