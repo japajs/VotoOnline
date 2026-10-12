@@ -496,7 +496,7 @@ type ApuracaoRow = {
 // mais comum em assembleia de condomínio). Comparado com
 // pauta.quorum_aprovacao pra decidir `aprovada`. Null se ninguém votou Sim
 // nem Não ainda.
-function calcularAprovacao(
+export function calcularAprovacao(
   ponderadoSim: number,
   ponderadoNao: number,
   quorumAprovacao: number
@@ -509,7 +509,7 @@ function calcularAprovacao(
 
 // Apuração de uma pauta "sim_nao" — lê o peso congelado em cada resposta
 // (nunca recalculado a partir das unidades atuais do proprietário).
-function apurarSimNao(pautaRows: ApuracaoRow[], quorumAprovacao: number) {
+export function apurarSimNao(pautaRows: ApuracaoRow[], quorumAprovacao: number) {
   let participantesSim = 0
   let participantesNao = 0
   let participantesAbstencao = 0
@@ -546,7 +546,7 @@ function apurarSimNao(pautaRows: ApuracaoRow[], quorumAprovacao: number) {
 // se absteve (resposta = "Abstenção", opcao_id nulo) entra no campo
 // `abstencao`, no mesmo formato usado pelas pautas "sim_nao". Peso também
 // vem congelado de `row.peso`, nunca recalculado.
-function apurarMultiplaEscolha(pauta: Pauta, pautaRows: ApuracaoRow[]) {
+export function apurarMultiplaEscolha(pauta: Pauta, pautaRows: ApuracaoRow[]) {
   const porOpcao = new Map<string, { participantes: number; ponderado: number }>()
   for (const opcao of pauta.opcoes ?? []) {
     porOpcao.set(opcao.id, { participantes: 0, ponderado: 0 })
