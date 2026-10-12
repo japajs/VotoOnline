@@ -23,6 +23,9 @@ type JoinedPauta = {
   status: PautaStatus
   quorum_aprovacao: number
   sigiloso: boolean
+  votacao_aberta?: boolean
+  votacao_aberta_em?: string | null
+  votacao_fechada_em?: string | null
   created_at: string
   pauta_opcoes: JoinedPautaOpcao[] | null
 }
@@ -38,6 +41,8 @@ type JoinedAssembleia = {
   quorum_minimo: number | null
   data_1a_convocacao: string | null
   quorum_minimo_2a: number | null
+  exige_presenca?: boolean
+  votacao_por_pauta?: boolean
   created_at: string
   updated_at: string
   pautas: JoinedPauta[] | null
@@ -66,6 +71,9 @@ function rowToPauta(row: JoinedPauta): Pauta {
     status: row.status,
     quorum_aprovacao: row.quorum_aprovacao,
     sigiloso: row.sigiloso,
+    votacao_aberta: row.votacao_aberta ?? false,
+    votacao_aberta_em: row.votacao_aberta_em ?? null,
+    votacao_fechada_em: row.votacao_fechada_em ?? null,
     created_at: row.created_at,
     opcoes: row.pauta_opcoes
       ? [...row.pauta_opcoes].sort((a, b) => a.ordem - b.ordem).map(rowToPautaOpcao)
@@ -85,6 +93,8 @@ function rowToAssembleia(row: JoinedAssembleia): Assembleia {
     quorum_minimo: row.quorum_minimo ?? null,
     data_1a_convocacao: row.data_1a_convocacao ?? null,
     quorum_minimo_2a: row.quorum_minimo_2a ?? null,
+    exige_presenca: row.exige_presenca ?? false,
+    votacao_por_pauta: row.votacao_por_pauta ?? false,
     created_at: row.created_at,
     updated_at: row.updated_at,
     pautas: (row.pautas ?? []).map(rowToPauta).sort((a, b) => a.ordem - b.ordem),
@@ -118,6 +128,17 @@ export async function getAssembleiaById(id: string): Promise<Assembleia | null> 
     throw new Error(error.message)
   }
   return rowToAssembleia(data as unknown as JoinedAssembleia)
+}
+
+// Liga/desliga a votação pauta por pauta de uma assembleia (ver
+// pautas.abrirVotacaoPauta/fecharVotacaoPauta e a trava em validarVotoOuFalhar).
+export async function setVotacaoPorPauta(assembleiaId: string, value: boolean): Promise<void> {
+  const db = createServerClient()
+  const { error } = await db
+    .from("assembleias")
+    .update({ votacao_por_pauta: value })
+    .eq("id", assembleiaId)
+  if (error) throw new Error(error.message)
 }
 
 export async function createAssembleia(

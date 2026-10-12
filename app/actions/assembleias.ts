@@ -7,12 +7,15 @@ import {
   updateAssembleiaStatus,
   updateAssembleiaCompleta,
   reabrirAssembleia,
+  setVotacaoPorPauta,
 } from "@/services/assembleias"
 import {
   createPautasBatch,
   getNextOrdem,
   updatePautaIndividual,
   deletePautaIndividual,
+  abrirVotacaoPauta,
+  fecharVotacaoPauta,
 } from "@/services/pautas"
 import { getAssembleiaById, contarParticipantesJaVotaram } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
@@ -428,6 +431,62 @@ export async function excluirPautaAction(input: {
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao excluir pauta." }
+  }
+}
+
+// ─── Votação pauta por pauta (controlada pela mesa) ──────────────────────────
+
+export async function setVotacaoPorPautaAction(
+  assembleiaId: string,
+  condominioId: string,
+  value: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    await setVotacaoPorPauta(assembleiaId, value)
+    revalidatePath(ROUTES.condominioAssembleia(condominioId, assembleiaId))
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao atualizar a opção." }
+  }
+}
+
+export async function abrirVotacaoPautaAction(input: {
+  pautaId: string
+  condominioId: string
+  assembleiaId: string
+}): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(input.condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    await abrirVotacaoPauta(input.pautaId)
+    revalidatePath(ROUTES.condominioAssembleia(input.condominioId, input.assembleiaId))
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao abrir a votação da pauta." }
+  }
+}
+
+export async function fecharVotacaoPautaAction(input: {
+  pautaId: string
+  condominioId: string
+  assembleiaId: string
+}): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(input.condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    await fecharVotacaoPauta(input.pautaId)
+    revalidatePath(ROUTES.condominioAssembleia(input.condominioId, input.assembleiaId))
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao fechar a votação da pauta." }
   }
 }
 

@@ -257,6 +257,7 @@ type SendComProprietarioCompleto = {
   assembleias: {
     status: AssembleiaStatus
     exige_presenca: boolean
+    votacao_por_pauta: boolean
     condominios: { criterio_peso: CriterioPeso } | null
   } | null
 }
@@ -289,7 +290,8 @@ async function validarVotoOuFalhar(
   inadimplente: boolean,
   exigePresenca: boolean,
   presenteEm: string | null,
-  viaMesa: boolean
+  viaMesa: boolean,
+  votacaoPorPauta: boolean
 ): Promise<void> {
   if (!isVotacaoAberta(status)) {
     throw new Error("Esta assembleia não está aberta para votação.")
@@ -328,14 +330,27 @@ async function validarVotoOuFalhar(
   const idsUnicos = [...new Set(pautaIds)]
   const { data: todasPautas, error } = await db
     .from("pautas")
-    .select("id")
+    .select("id, votacao_aberta")
     .eq("assembleia_id", assembleiaId)
 
   if (error) throw new Error(error.message)
-  const idsValidos = new Set((todasPautas ?? []).map((p) => p.id as string))
+  const pautasRows = (todasPautas ?? []) as { id: string; votacao_aberta: boolean | null }[]
+  const idsValidos = new Set(pautasRows.map((p) => p.id))
 
   if (idsUnicos.some((id) => !idsValidos.has(id))) {
     throw new Error("Pauta inválida para esta assembleia.")
+  }
+
+  // Votação pauta por pauta: quando a assembleia roda nesse modo, só vota quem
+  // está respondendo uma pauta que a MESA abriu (votacao_aberta). A trava fica
+  // aqui no núcleo do registro — nem pelo link direto passa voto numa pauta
+  // fechada/aguardando. O lançamento manual da mesa (viaMesa) está isento: é a
+  // própria mesa conduzindo a votação.
+  if (votacaoPorPauta && !viaMesa) {
+    const abertaPorPauta = new Map(pautasRows.map((p) => [p.id, p.votacao_aberta ?? false]))
+    if (idsUnicos.some((id) => !abertaPorPauta.get(id))) {
+      throw new Error("Esta pauta ainda não está aberta para votação. Aguarde a mesa abrir.")
+    }
   }
 
   const { data: respostasExistentes, error: respostasError } = await db
@@ -367,7 +382,7 @@ export async function createAssembleiaRespostas(
   const { data: sendRow, error: sendError } = await db
     .from("assembleia_sends")
     .select(
-      "assembleia_id, proprietario_id, votado_em, presente_em, proprietarios(nome, cpf, email, telefone, inadimplente, unidades(numero, bloco, fracao_ideal)), assembleias(status, exige_presenca, condominios(criterio_peso))"
+      "assembleia_id, proprietario_id, votado_em, presente_em, proprietarios(nome, cpf, email, telefone, inadimplente, unidades(numero, bloco, fracao_ideal)), assembleias(status, exige_presenca, votacao_por_pauta, condominios(criterio_peso))"
     )
     .eq("id", sendId)
     .single()
@@ -386,7 +401,8 @@ export async function createAssembleiaRespostas(
     proprietario?.inadimplente ?? false,
     send.assembleias?.exige_presenca ?? false,
     send.presente_em,
-    opts.viaMesa ?? false
+    opts.viaMesa ?? false,
+    send.assembleias?.votacao_por_pauta ?? false
   )
 
   const unidadesProprias = proprietario?.unidades ?? []

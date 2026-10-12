@@ -195,6 +195,7 @@ export type Database = {
           data_1a_convocacao: string | null
           quorum_minimo_2a: number | null
           exige_presenca: boolean
+          votacao_por_pauta: boolean
           created_at: string
           updated_at: string
         }
@@ -210,6 +211,7 @@ export type Database = {
           data_1a_convocacao?: string | null
           quorum_minimo_2a?: number | null
           exige_presenca?: boolean
+          votacao_por_pauta?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -223,6 +225,7 @@ export type Database = {
           data_1a_convocacao?: string | null
           quorum_minimo_2a?: number | null
           exige_presenca?: boolean
+          votacao_por_pauta?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -240,6 +243,9 @@ export type Database = {
           status: "rascunho" | "aberta" | "em_votacao" | "encerrada"
           quorum_aprovacao: number
           sigiloso: boolean
+          votacao_aberta: boolean
+          votacao_aberta_em: string | null
+          votacao_fechada_em: string | null
           created_at: string
         }
         Insert: {
@@ -254,6 +260,9 @@ export type Database = {
           status?: "rascunho" | "aberta" | "em_votacao" | "encerrada"
           quorum_aprovacao?: number
           sigiloso?: boolean
+          votacao_aberta?: boolean
+          votacao_aberta_em?: string | null
+          votacao_fechada_em?: string | null
           created_at?: string
         }
         Update: {
@@ -266,6 +275,9 @@ export type Database = {
           status?: "rascunho" | "aberta" | "em_votacao" | "encerrada"
           quorum_aprovacao?: number
           sigiloso?: boolean
+          votacao_aberta?: boolean
+          votacao_aberta_em?: string | null
+          votacao_fechada_em?: string | null
         }
         Relationships: []
       }
