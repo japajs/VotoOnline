@@ -13,9 +13,12 @@ import {
   getSendsJaVotaram,
   getSendsNaoVotaram,
   getProprietariosSemVoto,
+  getAssembleiaSendByToken,
+  getRespostasBySendId,
   type RespostaInput,
   type ProprietarioSemVoto,
 } from "@/services/assembleia-votos"
+import type { AssembleiaStatus, PautaTipo } from "@/types"
 import { sendAssembleiaEmailBatch, sendNovaPautaEmailBatch, sendLembreteVotoEmailBatch } from "@/services/email"
 import { generateSurveyToken } from "@/lib/tokens"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
@@ -357,6 +360,69 @@ export async function registrarVotosAction(
 // do condomínio que ainda não votou nesta assembleia, com ou sem e-mail,
 // pra alimentar o dialog de registro manual (voto presencial/por
 // procuração em papel, lançado pelo síndico).
+// Votação pauta por pauta (Fase 2): estado ao vivo da tela do eleitor. A
+// tela pública faz polling desta action pra saber qual pauta a mesa abriu
+// agora e o que ele já votou — sem recarregar a página. Resolvida pelo token
+// (a mesma prova de identidade do voto); read-only, sem rate limit pra não
+// travar a atualização ao vivo quando vários votam atrás do mesmo IP.
+export interface EstadoVotoPauta {
+  id: string
+  ordem: number
+  titulo: string
+  descricao: string | null
+  tipo: PautaTipo
+  permite_abstencao: boolean
+  opcoes: { id: string; label: string }[]
+  votacaoAberta: boolean
+  jaVotou: boolean
+}
+
+export interface EstadoVoto {
+  status: AssembleiaStatus
+  votacaoPorPauta: boolean
+  sendId: string
+  pautas: EstadoVotoPauta[]
+}
+
+export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | null> {
+  let send
+  try {
+    send = await getAssembleiaSendByToken(token)
+  } catch {
+    return null
+  }
+  if (!send || !send.assembleia) return null
+
+  const assembleia = send.assembleia
+  let respondidas = new Set<string>()
+  try {
+    const respostas = await getRespostasBySendId(send.id)
+    respondidas = new Set(respostas.map((r) => r.pauta_id))
+  } catch {
+    // Melhor esforço: sem as respostas, tratamos como nada votado — a
+    // constraint única do banco ainda impede voto duplicado no envio.
+  }
+
+  return {
+    status: assembleia.status,
+    votacaoPorPauta: assembleia.votacao_por_pauta ?? false,
+    sendId: send.id,
+    pautas: [...(assembleia.pautas ?? [])]
+      .sort((a, b) => a.ordem - b.ordem)
+      .map((p) => ({
+        id: p.id,
+        ordem: p.ordem,
+        titulo: p.titulo,
+        descricao: p.descricao,
+        tipo: p.tipo,
+        permite_abstencao: p.permite_abstencao,
+        opcoes: (p.opcoes ?? []).map((o) => ({ id: o.id, label: o.label })),
+        votacaoAberta: p.votacao_aberta ?? false,
+        jaVotou: respondidas.has(p.id),
+      })),
+  }
+}
+
 export async function getProprietariosSemVotoAction(
   assembleiaId: string,
   condominioId: string

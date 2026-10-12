@@ -14,7 +14,9 @@ import { getConfiguracao } from "@/services/configuracoes"
 import { getCondominioById } from "@/services/condominios"
 import { getVotosDetalhados } from "@/services/relatorios"
 import { AssembleiaVotoForm } from "@/components/assembleias/assembleia-voto-form"
+import { VotoPautaPorPautaLive } from "@/components/assembleias/voto-pauta-por-pauta-live"
 import { ResultadoAssembleia } from "@/components/assembleias/resultado-assembleia"
+import type { EstadoVoto } from "@/app/actions/assembleia-votos"
 import { APP_NAME } from "@/lib/constants"
 import { checkRateLimit } from "@/lib/rate-limit"
 
@@ -255,6 +257,47 @@ export default async function PublicVotoPage({ params }: Props) {
               />
             </div>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Votação pauta por pauta (Fase 2): tela ao vivo, só a pauta aberta ──────
+  // Quando a assembleia roda pauta por pauta e o participante ainda não
+  // respondeu tudo, a tela mostra só a pauta que a mesa abriu agora, deixa
+  // votar pauta a pauta e se atualiza sozinha (inclusive trata pausada). Vem
+  // antes das situações 5 e 2, que são o fluxo clássico (todas as pautas de
+  // uma vez) quando o modo está desligado.
+  if (assembleia.votacao_por_pauta) {
+    const pendentesSet = new Set(pautasPendentes.map((p) => p.id))
+    const inicial: EstadoVoto = {
+      status,
+      votacaoPorPauta: true,
+      sendId: send.id,
+      pautas: [...pautas]
+        .sort((a, b) => a.ordem - b.ordem)
+        .map((p) => ({
+          id: p.id,
+          ordem: p.ordem,
+          titulo: p.titulo,
+          descricao: p.descricao,
+          tipo: p.tipo,
+          permite_abstencao: p.permite_abstencao,
+          opcoes: (p.opcoes ?? []).map((o) => ({ id: o.id, label: o.label })),
+          votacaoAberta: p.votacao_aberta ?? false,
+          jaVotou: !pendentesSet.has(p.id),
+        })),
+    }
+    return (
+      <div className="min-h-screen bg-background">
+        {header}
+        <div className="mx-auto max-w-2xl px-4 py-10">
+          {heading}
+          <VotoPautaPorPautaLive
+            token={token}
+            assembleiaTitulo={assembleia.titulo}
+            inicial={inicial}
+          />
         </div>
       </div>
     )

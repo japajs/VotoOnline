@@ -30,9 +30,21 @@ const OPCOES: { valor: AssembleiaRespostaValor; colorSelected: string; colorHove
   },
 ]
 
+// Formato mínimo que este formulário realmente usa pra renderizar e votar —
+// tanto a Pauta completa quanto o estado ao vivo (EstadoVotoPauta) se encaixam.
+export interface PautaVotavel {
+  id: string
+  ordem: number
+  titulo: string
+  descricao: string | null
+  tipo: Pauta["tipo"]
+  permite_abstencao: boolean
+  opcoes?: { id: string; label: string }[]
+}
+
 interface Props {
   sendId: string
-  pautas: Pauta[]
+  pautas: PautaVotavel[]
   assembleiaTitulo: string
   // Auditoria de assembleias — Fase 7: o dialog de registro manual
   // (síndico lançando voto de quem não tem e-mail/votou presencialmente)
