@@ -4,7 +4,7 @@ import { Suspense } from "react"
 import { Gavel, Lock, ShieldCheck, Users, BarChart3 } from "lucide-react"
 import { LoginForm } from "./login-form"
 import { Skeleton } from "@/components/ui/skeleton"
-import { APP_NAME } from "@/lib/constants"
+import { APP_NAME, APP_AUTORIA } from "@/lib/constants"
 
 export const metadata: Metadata = { title: "Entrar" }
 
@@ -73,6 +73,9 @@ export default function LoginPage() {
             <Lock className="h-3 w-3" />
             Ambiente seguro • Acesso restrito
           </p>
+          {/* Autoria/licenciamento (pedido do Carlos): primeira tela que um
+              síndico vê numa demonstração. */}
+          <p className="mt-3 text-center text-[11px] text-muted-foreground/70">{APP_AUTORIA}</p>
         </div>
       </div>
     </div>
