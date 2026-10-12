@@ -198,6 +198,10 @@ export function AtaPDF({
             resultadoTexto = vencedora
               ? `Opção mais votada: ${vencedora.label} (${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(vencedora.ponderado, condominio.criterio_peso)} da fração ideal` : `${vencedora.ponderado} ${pluralImovel(vencedora.ponderado, "ponderado")}`}).`
               : "Sem votos registrados."
+          } else if (item.empate) {
+            // Empate: o sistema não decide (regra validada com o Carlos) — o
+            // critério de desempate cabe à mesa da reunião.
+            resultadoTexto = `EMPATE — Sim: ${fmtPonderado(item.ponderado.sim, condominio.criterio_peso)} · Não: ${fmtPonderado(item.ponderado.nao, condominio.criterio_peso)} · Abstenção: ${fmtPonderado(item.ponderado.abstencao, condominio.criterio_peso)}. Resultado empatado; o critério de desempate cabe à mesa da reunião.`
           } else if (item.aprovada === null) {
             resultadoTexto = "Sem votos registrados."
           } else {

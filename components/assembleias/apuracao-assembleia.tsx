@@ -641,7 +641,7 @@ function MultiplaEscolhaApuracao({ item, criterioPeso }: { item: PautaApuracao; 
 }
 
 function SimNaoApuracao({ item, criterioPeso }: { item: PautaApuracao; criterioPeso: CriterioPeso }) {
-  const { por_participantes, ponderado, total_apartamentos_representados, aprovada } = item
+  const { por_participantes, ponderado, total_apartamentos_representados, aprovada, empate } = item
 
   const totalP = por_participantes.sim + por_participantes.nao + por_participantes.abstencao
   const totalW = ponderado.sim + ponderado.nao + ponderado.abstencao
@@ -675,7 +675,15 @@ function SimNaoApuracao({ item, criterioPeso }: { item: PautaApuracao; criterioP
   // isso responde "a pauta foi aprovada?", que pode divergir de "quem teve
   // mais votos" quando o quórum exigido é qualificado (ex.: 2/3): SIM pode
   // ter maioria simples e ainda assim a pauta ser REJEITADA.
-  const rotuloAprovacao = aprovada === null ? "—" : aprovada ? "APROVADA" : "REJEITADA"
+  // Empate não é decidido pelo sistema (regra validada com o Carlos) — mostra
+  // "EMPATE"; a mesa resolve o desempate.
+  const rotuloAprovacao = empate
+    ? "EMPATE"
+    : aprovada === null
+      ? "—"
+      : aprovada
+        ? "APROVADA"
+        : "REJEITADA"
 
   return (
     <>

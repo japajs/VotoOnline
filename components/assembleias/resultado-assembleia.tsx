@@ -261,7 +261,7 @@ export function ResultadoAssembleia({
           // Auditoria de assembleias — Fase 1: `aprovada` já vem calculada do
           // servidor respeitando pauta.quorum_aprovacao (maioria simples,
           // 2/3, unanimidade etc.) — nunca mais ">50%" fixo aqui no client.
-          const { aprovada } = item
+          const { aprovada, empate } = item
           const vencedora = multiplaEscolha && opcoesOrdenadas.length > 0 && opcoesOrdenadas[0]!.ponderado > 0
             ? opcoesOrdenadas[0]
             : null
@@ -296,6 +296,14 @@ export function ResultadoAssembleia({
                       {vencedora.label}
                     </div>
                   )
+                ) : empate ? (
+                  <div
+                    className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
+                    title="Empate — a decisão do desempate cabe à mesa da reunião"
+                  >
+                    <Scale className="h-3.5 w-3.5" />
+                    Empate
+                  </div>
                 ) : aprovada === null ? (
                   <div className="flex shrink-0 items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
                     Sem votos

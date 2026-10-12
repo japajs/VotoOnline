@@ -52,6 +52,7 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
       total_apartamentos_representados: 0,
       percentual_aprovacao: null,
       aprovada: null,
+      empate: false,
     })),
     total_enviados: 0,
     total_respondidos: 0,

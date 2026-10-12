@@ -638,7 +638,7 @@ export function ApuracaoPDF({
             por_participantes.sim + por_participantes.nao + por_participantes.abstencao
           const tw = ponderado.sim + ponderado.nao + ponderado.abstencao
           const vP = calcVerdict(por_participantes.sim, por_participantes.nao, tp)
-          const vW = verdictAprovacao(item.aprovada)
+          const vW = item.empate ? "EMPATE" : verdictAprovacao(item.aprovada)
           const votosPauta = votosDetalhados.filter((v) => v.pauta_id === pauta.id)
 
           return (

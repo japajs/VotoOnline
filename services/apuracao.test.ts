@@ -16,7 +16,18 @@ type Row = { pauta_id: string; resposta: "Sim" | "Não" | "Abstenção" | null; 
 
 describe("calcularAprovacao (Sim / (Sim+Não), abstenção fora)", () => {
   it("null quando ninguém votou Sim nem Não", () => {
-    expect(calcularAprovacao(0, 0, 0.5)).toEqual({ percentual_aprovacao: null, aprovada: null })
+    expect(calcularAprovacao(0, 0, 0.5)).toEqual({
+      percentual_aprovacao: null,
+      aprovada: null,
+      empate: false,
+    })
+  })
+
+  it("EMPATE exato (Sim == Não) não é aprovado — o sistema não decide empate", () => {
+    const r = calcularAprovacao(5, 5, 0.5)
+    expect(r.empate).toBe(true)
+    expect(r.aprovada).toBe(false) // não declara APROVADA num empate
+    expect(r.percentual_aprovacao).toBe(0.5)
   })
 
   it("aprova com maioria simples (Sim > Não)", () => {
@@ -58,6 +69,17 @@ describe("apurarSimNao", () => {
     const r = apurarSimNao(rows, 0.5)
     expect(r.percentual_aprovacao).toBe(1) // 1/(1+0)
     expect(r.aprovada).toBe(true)
+  })
+
+  it("empate ponderado (Sim == Não) marca empate e NÃO aprova", () => {
+    const rows: Row[] = [
+      { pauta_id: "p1", resposta: "Sim", opcao_id: null, peso: 3 },
+      { pauta_id: "p1", resposta: "Não", opcao_id: null, peso: 3 },
+      { pauta_id: "p1", resposta: "Abstenção", opcao_id: null, peso: 1 },
+    ]
+    const r = apurarSimNao(rows, 0.5)
+    expect(r.empate).toBe(true)
+    expect(r.aprovada).toBe(false)
   })
 
   it("sem votos → aprovada null e total zero", () => {
