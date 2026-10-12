@@ -386,7 +386,7 @@ export function ResultadoAssembleia({
                   {criterioPeso === "fracao_ideal"
                     ? `${formatPesoValor(total_apartamentos_representados, criterioPeso)} da fração ideal representada`
                     : `${total_apartamentos_representados} ${pluralImovel(total_apartamentos_representados, "representado")}`}
-                  {!multiplaEscolha && (
+                  {!multiplaEscolha && pauta.quorum_aprovacao > 0.5 && (
                     <> · quórum de aprovação exigido: {Math.round(pauta.quorum_aprovacao * 100)}%</>
                   )}
                 </p>

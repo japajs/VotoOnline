@@ -713,9 +713,11 @@ function SimNaoApuracao({ item, criterioPeso }: { item: PautaApuracao; criterioP
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Resultado ponderado
             </p>
-            <span className="text-[11px] text-muted-foreground">
-              quórum exigido: {Math.round(item.pauta.quorum_aprovacao * 100)}%
-            </span>
+            {item.pauta.quorum_aprovacao > 0.5 && (
+              <span className="text-[11px] text-muted-foreground">
+                quórum exigido: {Math.round(item.pauta.quorum_aprovacao * 100)}%
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-5">
             <DonutChart
