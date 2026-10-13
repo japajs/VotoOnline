@@ -371,8 +371,18 @@ export interface PautaApuracao {
 
 export interface AssembleiaApuracao {
   pautas: PautaApuracao[]
+  // Participação por PESSOA (quantos proprietários receberam convite / votaram)
+  // — usado no dashboard. Para a assembleia em si, o que vale é por IMÓVEL
+  // (abaixo): a assembleia gira em torno do imóvel, não da pessoa (regra do
+  // Carlos).
   total_enviados: number
   total_respondidos: number
+  // Participação por IMÓVEL: total de imóveis cadastrados no condomínio e
+  // quantos imóveis votaram (soma do snapshot de unidades de cada participante,
+  // que já inclui as unidades recebidas por procuração). É o que a
+  // "Participação Geral" do boletim/telão mostra.
+  imoveis_cadastrados: number
+  imoveis_votantes: number
   // Quórum da assembleia (ver assembleias.quorum_minimo/quorum_minimo_2a) —
   // peso de quem já votou sobre o peso total do condomínio inteiro (todas
   // as unidades, não só quem recebeu convite). quorum_atingido é null

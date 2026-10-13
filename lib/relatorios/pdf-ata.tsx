@@ -165,8 +165,8 @@ export function AtaPDF({
           {quorumTexto && <Text style={s.paragraph}>{quorumTexto}</Text>}
 
           <Text style={s.paragraph}>
-            Participaram da votação {apuracao.total_respondidos} de {apuracao.total_enviados} condômino(s)
-            convidado(s).
+            Participaram da votação {apuracao.imoveis_votantes} de {apuracao.imoveis_cadastrados}{" "}
+            {apuracao.imoveis_cadastrados === 1 ? "imóvel cadastrado" : "imóveis cadastrados"}.
           </Text>
         </View>
 

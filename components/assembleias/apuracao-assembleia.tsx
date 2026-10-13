@@ -91,9 +91,11 @@ export function ApuracaoAssembleia({
   canExport = false,
   criterioPeso = "unidade",
 }: Props) {
-  const { total_enviados, total_respondidos } = apuracao
+  const { total_enviados, total_respondidos, imoveis_cadastrados, imoveis_votantes } = apuracao
+  // Participação por IMÓVEL (a assembleia gira em torno do imóvel). `pendentes`
+  // continua por PESSOA porque é a contagem do lembrete de e-mail (quem avisar).
   const participacao =
-    total_enviados > 0 ? Math.round((total_respondidos / total_enviados) * 100) : 0
+    imoveis_cadastrados > 0 ? Math.round((imoveis_votantes / imoveis_cadastrados) * 100) : 0
   const pendentes = total_enviados - total_respondidos
 
   const [isPendingLembrete, startLembreteTransition] = useTransition()
@@ -347,12 +349,12 @@ export function ApuracaoAssembleia({
       <div className="rounded-xl border border-border/60 bg-card">
         <div className="grid grid-cols-3 divide-x divide-border/40">
           <div className="px-5 py-4 text-center">
-            <p className="text-2xl font-semibold tabular-nums">{total_enviados}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Convites enviados</p>
+            <p className="text-2xl font-semibold tabular-nums">{imoveis_cadastrados}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Imóveis cadastrados</p>
           </div>
           <div className="px-5 py-4 text-center">
-            <p className="text-2xl font-semibold tabular-nums">{total_respondidos}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Responderam</p>
+            <p className="text-2xl font-semibold tabular-nums">{imoveis_votantes}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Imóveis votantes</p>
           </div>
           <div className="px-5 py-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{participacao}%</p>

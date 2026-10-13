@@ -493,7 +493,7 @@ export function ApuracaoPDF({
   emitidoPor,
   emitidoEm,
 }: ApuracaoPDFProps) {
-  const { total_enviados, total_respondidos } = apuracao
+  const { imoveis_cadastrados, imoveis_votantes } = apuracao
 
   // Layout inteligente (item 1 do pedido): com só 1 pauta, a página sobrava
   // muito espaço em branco — tabelas full-width com fonte maior em vez do
@@ -597,16 +597,16 @@ export function ApuracaoPDF({
         <Text style={s.sectionLabel}>PARTICIPAÇÃO GERAL</Text>
         <View style={s.partRow}>
           <View style={[s.partCell, s.partBorderR]}>
-            <Text style={s.partNum}>{total_enviados}</Text>
+            <Text style={s.partNum}>{imoveis_cadastrados}</Text>
             <Text style={s.partLbl}>Imóveis cadastrados</Text>
           </View>
           <View style={[s.partCell, s.partBorderR]}>
-            <Text style={s.partNum}>{total_respondidos}</Text>
-            <Text style={s.partLbl}>Participantes</Text>
+            <Text style={s.partNum}>{imoveis_votantes}</Text>
+            <Text style={s.partLbl}>Imóveis votantes</Text>
           </View>
           <View style={s.partCell}>
-            <Text style={s.partNum}>{pctStr(total_respondidos, total_enviados)}</Text>
-            <Text style={s.partLbl}>Taxa de participação</Text>
+            <Text style={s.partNum}>{pctStr(imoveis_votantes, imoveis_cadastrados)}</Text>
+            <Text style={s.partLbl}>Participação</Text>
           </View>
         </View>
 

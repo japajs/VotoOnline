@@ -644,7 +644,7 @@ export async function getApuracaoAssembleia(
       // triplicaria a contagem de quem votou em mais de uma pauta.
       db
         .from("assembleia_sends")
-        .select("peso_snapshot")
+        .select("peso_snapshot, quantidade_unidades_snapshot")
         .eq("assembleia_id", assembleiaId)
         .not("votado_em", "is", null),
       db
@@ -668,9 +668,18 @@ export async function getApuracaoAssembleia(
 
   const criterioPeso: CriterioPeso = condominio?.criterio_peso ?? "unidade"
   const peso_total_condominio = getPesoTotalCondominio(unidadesCondominio, criterioPeso)
-  const peso_representado = (
-    (pesoRepresentadoRes.data ?? []) as { peso_snapshot: number | null }[]
-  ).reduce((soma, s) => soma + (s.peso_snapshot ?? 0), 0)
+  const representadoRows = (pesoRepresentadoRes.data ?? []) as {
+    peso_snapshot: number | null
+    quantidade_unidades_snapshot: number | null
+  }[]
+  const peso_representado = representadoRows.reduce((soma, s) => soma + (s.peso_snapshot ?? 0), 0)
+  // Participação por IMÓVEL: total de imóveis no condomínio e imóveis que
+  // votaram (soma das unidades congeladas em cada voto — já inclui procuração).
+  const imoveis_cadastrados = unidadesCondominio.length
+  const imoveis_votantes = representadoRows.reduce(
+    (soma, s) => soma + (s.quantidade_unidades_snapshot ?? 0),
+    0
+  )
 
   // Auditoria de assembleias — Fase 2: getQuorumEfetivo decide se vale o
   // quórum da 1ª ou da 2ª convocação, com base em data_1a_convocacao vs. o
@@ -724,6 +733,8 @@ export async function getApuracaoAssembleia(
     pautas: pautaApuracoes,
     total_enviados,
     total_respondidos,
+    imoveis_cadastrados,
+    imoveis_votantes,
     peso_total_condominio,
     peso_representado,
     percentual_quorum,
