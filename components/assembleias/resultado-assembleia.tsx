@@ -125,7 +125,7 @@ export function ResultadoAssembleia({
 }: Props) {
   const {
     pautas,
-    total_respondidos,
+    imoveis_votantes,
     peso_total_condominio,
     peso_representado,
     percentual_quorum,
@@ -202,7 +202,7 @@ export function ResultadoAssembleia({
             label={criterioPeso === "fracao_ideal" ? "Fração ideal total" : "Imóveis a votar"}
             value={criterioPeso === "fracao_ideal" ? formatPesoValor(aptosAVotar, criterioPeso) : aptosAVotar}
           />
-          <Stat label="Votaram" value={total_respondidos} />
+          <Stat label="Imóveis votantes" value={imoveis_votantes} />
           <Stat label="Participação" value={`${participacaoPct}%`} highlight={participacaoPct >= 50} />
           <Stat
             label={criterioPeso === "fracao_ideal" ? "Fração repr." : "Imóveis repr."}

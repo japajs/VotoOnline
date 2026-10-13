@@ -50,7 +50,7 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
   const uPond = fracaoIdeal ? "fração %" : "imóv."
 
   /* ── Tab 1: Resumo Geral ─────────────────────────────────────────────── */
-  const taxaPart = pctStr(apuracao.total_respondidos, apuracao.total_enviados)
+  const taxaPart = pctStr(apuracao.imoveis_votantes, apuracao.imoveis_cadastrados)
 
   const resumoRows: (string | number)[][] = [
     [`RELATÓRIO DE APURAÇÃO — ${APP_NAME} v${APP_VERSION}`],
@@ -77,9 +77,9 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
     ["Encerramento", formatDateTimeBR(assembleia.data_encerramento)],
     [],
     ["PARTICIPAÇÃO"],
-    ["Convites enviados", apuracao.total_enviados],
-    ["Responderam", apuracao.total_respondidos],
-    ["Taxa de participação", taxaPart],
+    ["Imóveis cadastrados", apuracao.imoveis_cadastrados],
+    ["Imóveis votantes", apuracao.imoveis_votantes],
+    ["Participação", taxaPart],
     [],
     // Auditoria de assembleias — Fase 1/2: quórum sobre o peso do
     // CONDOMÍNIO INTEIRO (todas as unidades), métrica diferente da

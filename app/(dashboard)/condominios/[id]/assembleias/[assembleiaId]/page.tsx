@@ -56,6 +56,8 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
     })),
     total_enviados: 0,
     total_respondidos: 0,
+    imoveis_cadastrados: 0,
+    imoveis_votantes: 0,
     peso_total_condominio: 0,
     peso_representado: 0,
     percentual_quorum: null,
