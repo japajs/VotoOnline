@@ -118,6 +118,24 @@ export async function addUnidadeAction(
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
   if (!numero.trim()) return { success: false, error: "Número da unidade obrigatório." }
+
+  // Pedido do Carlos: quem já votou numa assembleia em andamento não pode
+  // ganhar novo imóvel — o peso do voto é congelado no momento do voto, então
+  // somar uma unidade depois bagunçaria o encerramento. Mesma checagem (peso
+  // congelado por voto ou por procuração) usada na transferência de unidade.
+  try {
+    const assembleiaIdsEmAndamento = await getAssembleiaIdsEmAndamento(condominioId)
+    if (await pesoJaFoiCongeladoEmAssembleiaAtiva(assembleiaIdsEmAndamento, proprietarioId)) {
+      return {
+        success: false,
+        error:
+          "Este proprietário já votou em uma assembleia em andamento. Não é possível adicionar imóvel agora — o peso do voto já foi registrado.",
+      }
+    }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao validar." }
+  }
+
   try {
     await createUnidade({ proprietario_id: proprietarioId, numero: numero.trim(), bloco: null })
     revalidatePath(`${ROUTES.condominios}/${condominioId}`)
