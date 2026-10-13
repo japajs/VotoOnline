@@ -188,16 +188,25 @@ export function AtaPDF({
           const { pauta } = item
           const multiplaEscolha = pauta.tipo === "multipla_escolha"
           const opcoesOrdenadas = [...(item.opcoes_resultado ?? [])].sort((a, b) => b.ponderado - a.ponderado)
+          // Empate no topo da múltipla escolha: o sistema não decide — registra
+          // o empate; o desempate cabe à mesa.
+          const empateMultipla =
+            multiplaEscolha &&
+            opcoesOrdenadas.length >= 2 &&
+            opcoesOrdenadas[0]!.ponderado > 0 &&
+            opcoesOrdenadas[0]!.ponderado === opcoesOrdenadas[1]!.ponderado
           const vencedora =
-            multiplaEscolha && opcoesOrdenadas.length > 0 && opcoesOrdenadas[0]!.ponderado > 0
+            multiplaEscolha && opcoesOrdenadas.length > 0 && opcoesOrdenadas[0]!.ponderado > 0 && !empateMultipla
               ? opcoesOrdenadas[0]
               : null
 
           let resultadoTexto: string
           if (multiplaEscolha) {
-            resultadoTexto = vencedora
-              ? `Opção mais votada: ${vencedora.label} (${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(vencedora.ponderado, condominio.criterio_peso)} da fração ideal` : `${vencedora.ponderado} ${pluralImovel(vencedora.ponderado, "ponderado")}`}).`
-              : "Sem votos registrados."
+            resultadoTexto = empateMultipla
+              ? "Empate entre as opções mais votadas; o critério de desempate cabe à mesa da reunião."
+              : vencedora
+                ? `Opção mais votada: ${vencedora.label} (${condominio.criterio_peso === "fracao_ideal" ? `${fmtPonderado(vencedora.ponderado, condominio.criterio_peso)} da fração ideal` : `${vencedora.ponderado} ${pluralImovel(vencedora.ponderado, "ponderado")}`}).`
+                : "Sem votos registrados."
           } else if (item.empate) {
             // Empate: o sistema não decide (regra validada com o Carlos) — o
             // critério de desempate cabe à mesa da reunião.

@@ -455,7 +455,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
             className="group flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[11px]"
           >
             {formatUnidade(u)}
-            {podeEditar && (
+            {podeEditar && !votou && (
               <button
                 type="button"
                 onClick={() => setUnidadeExcluir(u.id)}

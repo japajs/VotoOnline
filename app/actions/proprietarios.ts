@@ -180,6 +180,19 @@ export async function removeUnidadeAction(
   const senhaOk = await verificarSenhaUsuarioAtual(senha)
   if (!senhaOk.ok) return { success: false, error: senhaOk.error }
   try {
+    // Mesma trava do adicionar/transferir: quem já votou numa assembleia em
+    // andamento tem o peso congelado — remover um imóvel depois desbalancearia
+    // o encerramento. Cobre também o caso de procuração.
+    const unidade = await getUnidadeById(unidadeId)
+    if (!unidade) return { success: false, error: "Unidade não encontrada." }
+    const assembleiaIdsEmAndamento = await getAssembleiaIdsEmAndamento(condominioId)
+    if (await pesoJaFoiCongeladoEmAssembleiaAtiva(assembleiaIdsEmAndamento, unidade.proprietario_id)) {
+      return {
+        success: false,
+        error:
+          "Este proprietário já votou em uma assembleia em andamento. Não é possível remover imóvel agora — o peso do voto já foi registrado.",
+      }
+    }
     await deleteUnidade(unidadeId)
     revalidatePath(`${ROUTES.condominios}/${condominioId}`)
     return { success: true }

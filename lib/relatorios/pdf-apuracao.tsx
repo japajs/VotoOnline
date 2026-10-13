@@ -342,7 +342,11 @@ function PautaMultiplaEscolha({
   const { ponderado, por_participantes, opcoes_resultado = [] } = item
   const opcoes = [...opcoes_resultado].sort((a, b) => b.ponderado - a.ponderado)
   const tw = opcoes.reduce((sum, o) => sum + o.ponderado, 0) + ponderado.abstencao
-  const vencedora = tw > 0 && opcoes.length > 0 ? opcoes[0] : null
+  // Empate no topo da múltipla escolha: o sistema NÃO decide (mesma regra do
+  // Sim/Não, validada com o Carlos) — mostra EMPATE e a mesa resolve.
+  const empateMultipla =
+    opcoes.length >= 2 && opcoes[0]!.ponderado > 0 && opcoes[0]!.ponderado === opcoes[1]!.ponderado
+  const vencedora = tw > 0 && opcoes.length > 0 && !empateMultipla ? opcoes[0] : null
 
   const wide = full ? { ...s.tcWide, paddingVertical: 8, paddingHorizontal: 10 } : s.tcWide
   const narrow = full ? { ...s.tcNarrow, paddingVertical: 8, paddingHorizontal: 10 } : s.tcNarrow
@@ -404,6 +408,13 @@ function PautaMultiplaEscolha({
         <View style={[s.verdict, { backgroundColor: CORES_OPCOES[opcoes.indexOf(vencedora) % CORES_OPCOES.length] }, full ? { paddingVertical: 8 } : {}]}>
           <Text style={full ? { ...s.verdictText, fontSize: 11 } : s.verdictText}>{vencedora.label.toUpperCase()}</Text>
           <Text style={s.verdictSub}>Opção mais votada com {pctStr(vencedora.ponderado, tw)}</Text>
+        </View>
+      ) : empateMultipla ? (
+        <View style={[s.verdict, { backgroundColor: C.muted }, full ? { paddingVertical: 8 } : {}]}>
+          <Text style={full ? { ...s.verdictText, fontSize: 11 } : s.verdictText}>EMPATE</Text>
+          <Text style={s.verdictSub}>
+            Empate entre as mais votadas ({pctStr(opcoes[0]!.ponderado, tw)} cada) — decisão da mesa.
+          </Text>
         </View>
       ) : (
         <View style={[s.verdict, { backgroundColor: C.muted }]}>

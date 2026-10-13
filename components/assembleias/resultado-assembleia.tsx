@@ -262,9 +262,17 @@ export function ResultadoAssembleia({
           // servidor respeitando pauta.quorum_aprovacao (maioria simples,
           // 2/3, unanimidade etc.) — nunca mais ">50%" fixo aqui no client.
           const { aprovada, empate } = item
-          const vencedora = multiplaEscolha && opcoesOrdenadas.length > 0 && opcoesOrdenadas[0]!.ponderado > 0
-            ? opcoesOrdenadas[0]
-            : null
+          // Empate no topo da múltipla escolha: o sistema não decide — mostra
+          // "Empate" e a mesa resolve (mesma regra do Sim/Não).
+          const empateMultipla =
+            multiplaEscolha &&
+            opcoesOrdenadas.length >= 2 &&
+            opcoesOrdenadas[0]!.ponderado > 0 &&
+            opcoesOrdenadas[0]!.ponderado === opcoesOrdenadas[1]!.ponderado
+          const vencedora =
+            multiplaEscolha && opcoesOrdenadas.length > 0 && opcoesOrdenadas[0]!.ponderado > 0 && !empateMultipla
+              ? opcoesOrdenadas[0]
+              : null
 
           return (
             <div key={pauta.id} className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
@@ -290,11 +298,21 @@ export function ResultadoAssembleia({
                   )}
                 </div>
                 {multiplaEscolha ? (
-                  vencedora && (
-                    <div className="flex shrink-0 items-center gap-1 rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {vencedora.label}
+                  empateMultipla ? (
+                    <div
+                      className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
+                      title="Empate entre as mais votadas — a decisão cabe à mesa da reunião"
+                    >
+                      <Scale className="h-3.5 w-3.5" />
+                      Empate
                     </div>
+                  ) : (
+                    vencedora && (
+                      <div className="flex shrink-0 items-center gap-1 rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {vencedora.label}
+                      </div>
+                    )
                   )
                 ) : empate ? (
                   <div
