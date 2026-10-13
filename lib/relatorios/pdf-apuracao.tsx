@@ -208,8 +208,10 @@ function verdictColor(v: string): string {
   return C.muted
 }
 
-function calcVerdict(sim: number, nao: number, total: number): string {
-  if (total === 0) return "SEM VOTOS"
+function calcVerdict(sim: number, nao: number): string {
+  // Sem voto Sim nem Não (ex.: só abstenções) NÃO é empate — é "sem votos".
+  // Empate só quando há votos Sim/Não e eles se igualam.
+  if (sim + nao === 0) return "SEM VOTOS"
   if (sim > nao) return "SIM"
   if (nao > sim) return "NÃO"
   return "EMPATE"
@@ -637,7 +639,7 @@ export function ApuracaoPDF({
           const tp =
             por_participantes.sim + por_participantes.nao + por_participantes.abstencao
           const tw = ponderado.sim + ponderado.nao + ponderado.abstencao
-          const vP = calcVerdict(por_participantes.sim, por_participantes.nao, tp)
+          const vP = calcVerdict(por_participantes.sim, por_participantes.nao)
           const vW = item.empate ? "EMPATE" : verdictAprovacao(item.aprovada)
           const votosPauta = votosDetalhados.filter((v) => v.pauta_id === pauta.id)
 

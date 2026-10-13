@@ -660,8 +660,11 @@ function SimNaoApuracao({ item, criterioPeso }: { item: PautaApuracao; criterioP
     { value: ponderado.abstencao, color: "#f59e0b" },
   ]
 
+  // Só há veredito (SIM/NÃO/EMPATE) quando existem votos Sim/Não. Com apenas
+  // abstenções (ou nada), não é empate — fica "—". Empate só com Sim == Não > 0.
+  const decididosP = por_participantes.sim + por_participantes.nao
   const vencedorP =
-    totalP > 0
+    decididosP > 0
       ? por_participantes.sim > por_participantes.nao
         ? "SIM"
         : por_participantes.nao > por_participantes.sim
