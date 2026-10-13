@@ -164,8 +164,10 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
   const resRows = pautasSimNao.map((p, i) => {
     const tp = p.por_participantes.sim + p.por_participantes.nao + p.por_participantes.abstencao
     const tw = p.ponderado.sim + p.ponderado.nao + p.ponderado.abstencao
+    // Só abstenções (ou nada) não é empate — é "sem votos". Empate só com
+    // votos Sim/Não que se igualam.
     const vP =
-      tp === 0
+      p.por_participantes.sim + p.por_participantes.nao === 0
         ? "SEM VOTOS"
         : p.por_participantes.sim > p.por_participantes.nao
           ? "SIM"
