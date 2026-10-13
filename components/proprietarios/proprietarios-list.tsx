@@ -155,12 +155,18 @@ export function ProprietariosList({
     return ordenados
   }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta, presentesLocal])
 
+  // Totalizações por IMÓVEL, não por pessoa (pedido do Carlos): a assembleia
+  // gira em torno do imóvel — um proprietário com 2 imóveis conta como 2
+  // (presença, voto e quórum). Os botões abaixo mostram contagem de imóveis;
+  // a lista continua uma linha por proprietário.
+  const imoveisDe = (p: Proprietario) => p.unidades?.length ?? 0
+  const totalImoveis = proprietarios.reduce((n, p) => n + imoveisDe(p), 0)
   const nVotaram = votouNaAberta
-    ? proprietarios.reduce((n, p) => n + (votouNaAberta.has(p.id) ? 1 : 0), 0)
+    ? proprietarios.reduce((n, p) => n + (votouNaAberta.has(p.id) ? imoveisDe(p) : 0), 0)
     : 0
-  const nNao = proprietarios.length - nVotaram
+  const nNao = totalImoveis - nVotaram
   const nPresentes = votouNaAberta
-    ? proprietarios.reduce((n, p) => n + (presentesLocal.has(p.id) ? 1 : 0), 0)
+    ? proprietarios.reduce((n, p) => n + (presentesLocal.has(p.id) ? imoveisDe(p) : 0), 0)
     : 0
 
   if (proprietarios.length === 0) {
@@ -209,13 +215,13 @@ export function ProprietariosList({
         <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             Votação de{" "}
-            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — quem já
-            votou nesta assembleia.
+            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — totais por{" "}
+            <span className="font-medium text-foreground">imóvel</span>.
           </p>
           <div className="flex flex-wrap gap-1">
             {(
               [
-                ["todos", "Total", proprietarios.length],
+                ["todos", "Total", totalImoveis],
                 ["presentes", "Presentes", nPresentes],
                 ["votaram", "Votaram", nVotaram],
                 ["nao", "Não votaram", nNao],
@@ -320,7 +326,12 @@ const ProprietarioRow = memo(function ProprietarioRow({
   const [isPendingAdd, startAddTransition] = useTransition()
 
   const peso = getPesoParticipante(proprietario, criterioPeso)
-  const unidades = proprietario.unidades ?? []
+  // Padroniza a exibição dos imóveis de quem tem mais de um em ordem CRESCENTE
+  // (pedido do Carlos): 40 antes de 41, independente da ordem de cadastro.
+  const unidades = [...(proprietario.unidades ?? [])].sort((a, b) => {
+    const bloco = (a.bloco ?? "").localeCompare(b.bloco ?? "", undefined, { numeric: true })
+    return bloco !== 0 ? bloco : a.numero.localeCompare(b.numero, undefined, { numeric: true })
+  })
   const celular = proprietario.telefone ? formatCelular(proprietario.telefone) : null
   const unidadeAlvo = unidades.find((u) => u.id === unidadeExcluir)
 
@@ -456,7 +467,11 @@ const ProprietarioRow = memo(function ProprietarioRow({
           </span>
         ))}
 
-        {podeEditar && (showAdd ? (
+        {/* Quem já votou na assembleia aberta não pode ganhar novo imóvel
+            (pedido do Carlos): o peso do voto é congelado no momento do voto,
+            mexer nas unidades depois bagunça o encerramento. A trava real está
+            no servidor (addUnidadeAction). */}
+        {podeEditar && !votou && (showAdd ? (
           <div className="flex items-center gap-1">
             <Input
               placeholder="Nº"
