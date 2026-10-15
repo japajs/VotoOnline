@@ -453,7 +453,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
           <span className="truncate">{proprietario.nome}</span>
           {proprietario.inadimplente && (
             <span
-              className="shrink-0 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
+              className="shrink-0 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[11px] font-medium text-destructive"
               title="Inadimplente — não pode votar"
             >
               Inadimplente
@@ -464,19 +464,19 @@ const ProprietarioRow = memo(function ProprietarioRow({
               (verde — votou em todas as pautas em votação). */}
           {mostrarVoto &&
             (!votou ? (
-              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                 Não votou
               </span>
             ) : parcial ? (
               <span
-                className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
                 title={`Votou em ${pautasVotadas} de ${totalPautas} ${totalPautas === 1 ? "pauta" : "pautas"} em votação — ainda falta votar`}
               >
                 Parcial{totalPautas > 0 ? ` ${pautasVotadas}/${totalPautas}` : ""}
               </span>
             ) : (
               <span
-                className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
                 title="Votou em todas as pautas em votação"
               >
                 Votou
@@ -501,7 +501,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
           </div>
           <span className="min-w-0 shrink-0 truncate">{celular ?? "—"}</span>
           <span
-            className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary lg:ml-0 lg:w-fit"
+            className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary lg:ml-0 lg:w-fit"
             title={
               criterioPeso === "fracao_ideal"
                 ? "Percentual de peso de voto deste proprietário, somado a partir da fração ideal de cada unidade vinculada."
@@ -518,13 +518,13 @@ const ProprietarioRow = memo(function ProprietarioRow({
       {/* Linha 2: unidades — sempre em linha própria, nunca disputando
           espaço com nome, e-mail, celular ou peso. */}
       <div className="mt-1 flex flex-wrap items-center gap-1 pl-0.5">
-        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/60">
+        <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
           Imóvel
         </span>
         {unidades.map((u) => (
           <span
             key={u.id}
-            className="group flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[11px]"
+            className="group flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-xs"
           >
             {formatUnidade(u)}
             {podeEditar && !votou && (
@@ -573,7 +573,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="flex min-h-[28px] items-center gap-0.5 rounded border border-dashed border-border/60 px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            className="flex min-h-[28px] items-center gap-0.5 rounded border border-dashed border-border/60 px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
           >
             <Plus className="h-3 w-3" />
             Add
