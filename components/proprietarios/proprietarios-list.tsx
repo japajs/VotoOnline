@@ -24,7 +24,7 @@ import { marcarPresencaAction } from "@/app/actions/presenca"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
-import { formatCelular, normalizarBusca } from "@/lib/format"
+import { formatCelular, formatCpf, normalizarBusca } from "@/lib/format"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import type { Proprietario, CriterioPeso } from "@/types"
 
@@ -38,6 +38,12 @@ interface ProprietariosListProps {
   // Quem está marcado PRESENTE na assembleia aberta (filtro "Presentes" +
   // estado inicial da caixa de presença por linha).
   presentesNaAberta?: Set<string>
+  // Quantas pautas distintas cada proprietário já respondeu na assembleia
+  // aberta — distingue voto TOTAL (respondeu todas) de PARCIAL (só algumas).
+  pautasVotadasNaAberta?: Map<string, number>
+  // Denominador do "voto total": nº de pautas em votação (todas, ou só as já
+  // abertas pela mesa no modo pauta-por-pauta). undefined/0 → sem distinção.
+  totalPautasVotaveis?: number
   // Id da assembleia aberta — habilita marcar presença direto na lista (sem
   // abrir a Apuração). undefined = sem assembleia aberta → sem caixa.
   assembleiaAbertaId?: string
@@ -48,7 +54,7 @@ interface ProprietariosListProps {
   criterioPeso?: CriterioPeso
 }
 
-type FiltroVoto = "todos" | "presentes" | "votaram" | "nao"
+type FiltroVoto = "todos" | "presentes" | "votaram" | "parcial" | "nao"
 
 function formatPeso(peso: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(peso * 100).toFixed(4)}%`
@@ -68,6 +74,8 @@ export function ProprietariosList({
   proprietariosQueJaVotaram,
   votouNaAberta,
   presentesNaAberta,
+  pautasVotadasNaAberta,
+  totalPautasVotaveis,
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
   isAdmin = false,
@@ -116,13 +124,30 @@ export function ProprietariosList({
     setMarcandoId(null)
   }
 
+  // Quem votou em ALGUMAS pautas, mas não em todas as que estavam em votação
+  // (voto parcial). Só faz sentido quando há denominador (pautas em votação).
+  const parciaisNaAberta = useMemo(() => {
+    const s = new Set<string>()
+    if (!votouNaAberta || !totalPautasVotaveis) return s
+    for (const p of proprietarios) {
+      if (!votouNaAberta.has(p.id)) continue
+      const votadas = pautasVotadasNaAberta?.get(p.id) ?? 0
+      if (votadas < totalPautasVotaveis) s.add(p.id)
+    }
+    return s
+  }, [proprietarios, votouNaAberta, pautasVotadasNaAberta, totalPautasVotaveis])
+
   const proprietariosExibidos = useMemo(() => {
     const porVoto =
       votouNaAberta && filtroVoto !== "todos"
         ? proprietarios.filter((p) => {
             if (filtroVoto === "presentes") return presentesLocal.has(p.id)
             if (filtroVoto === "votaram") return votouNaAberta.has(p.id)
-            return !votouNaAberta.has(p.id) // "nao" — não votaram
+            if (filtroVoto === "parcial") return parciaisNaAberta.has(p.id)
+            // "nao" — presentes que AINDA não votaram (não soma quem nem está
+            // na assembleia): pedido do Carlos, "Não votaram = presentes sem
+            // voto", não "todos menos os que votaram".
+            return presentesLocal.has(p.id) && !votouNaAberta.has(p.id)
           })
         : proprietarios
 
@@ -153,7 +178,7 @@ export function ProprietariosList({
       })
     }
     return ordenados
-  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta, presentesLocal])
+  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta, presentesLocal, parciaisNaAberta])
 
   // Totalizações por IMÓVEL, não por pessoa (pedido do Carlos): a assembleia
   // gira em torno do imóvel — um proprietário com 2 imóveis conta como 2
@@ -164,9 +189,20 @@ export function ProprietariosList({
   const nVotaram = votouNaAberta
     ? proprietarios.reduce((n, p) => n + (votouNaAberta.has(p.id) ? imoveisDe(p) : 0), 0)
     : 0
-  const nNao = totalImoveis - nVotaram
+  const nParcial = votouNaAberta
+    ? proprietarios.reduce((n, p) => n + (parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0), 0)
+    : 0
   const nPresentes = votouNaAberta
     ? proprietarios.reduce((n, p) => n + (presentesLocal.has(p.id) ? imoveisDe(p) : 0), 0)
+    : 0
+  // "Não votaram" = imóveis de quem está PRESENTE e ainda não votou (pedido do
+  // Carlos). Antes era total − votaram, que somava também quem nem participou
+  // da assembleia — número sem sentido para a gestão cobrar quem falta votar.
+  const nNao = votouNaAberta
+    ? proprietarios.reduce(
+        (n, p) => n + (presentesLocal.has(p.id) && !votouNaAberta.has(p.id) ? imoveisDe(p) : 0),
+        0
+      )
     : 0
 
   if (proprietarios.length === 0) {
@@ -219,14 +255,18 @@ export function ProprietariosList({
             <span className="font-medium text-foreground">imóvel</span>.
           </p>
           <div className="flex flex-wrap gap-1">
-            {(
-              [
+            {(() => {
+              const chips: [FiltroVoto, string, number][] = [
                 ["todos", "Total", totalImoveis],
                 ["presentes", "Presentes", nPresentes],
                 ["votaram", "Votaram", nVotaram],
-                ["nao", "Não votaram", nNao],
-              ] as const
-            ).map(([val, label, count]) => (
+              ]
+              // "Parcial" só aparece quando há alguém nessa situação — evita
+              // poluir a barra quando todo mundo votou em tudo (ou ninguém).
+              if (nParcial > 0) chips.push(["parcial", "Parcial", nParcial])
+              chips.push(["nao", "Não votaram", nNao])
+              return chips
+            })().map(([val, label, count]) => (
               <button
                 key={val}
                 type="button"
@@ -274,6 +314,9 @@ export function ProprietariosList({
                 jaVotou={proprietariosQueJaVotaram?.has(p.id) ?? false}
                 mostrarVoto={!!votouNaAberta}
                 votou={votouNaAberta?.has(p.id) ?? false}
+                parcial={parciaisNaAberta.has(p.id)}
+                pautasVotadas={pautasVotadasNaAberta?.get(p.id) ?? 0}
+                totalPautas={totalPautasVotaveis ?? 0}
                 mostrarPresenca={podeMarcarPresenca}
                 presente={presentesLocal.has(p.id)}
                 marcandoPresenca={marcandoId === p.id}
@@ -297,6 +340,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
   jaVotou,
   mostrarVoto,
   votou,
+  parcial,
+  pautasVotadas,
+  totalPautas,
   mostrarPresenca,
   presente,
   marcandoPresenca,
@@ -311,6 +357,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
   jaVotou: boolean
   mostrarVoto: boolean
   votou: boolean
+  parcial: boolean
+  pautasVotadas: number
+  totalPautas: number
   mostrarPresenca: boolean
   presente: boolean
   marcandoPresenca: boolean
@@ -333,6 +382,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
     return bloco !== 0 ? bloco : a.numero.localeCompare(b.numero, undefined, { numeric: true })
   })
   const celular = proprietario.telefone ? formatCelular(proprietario.telefone) : null
+  const cpfFmt = formatCpf(proprietario.cpf)
   const unidadeAlvo = unidades.find((u) => u.id === unidadeExcluir)
 
   function handleAddUnidade() {
@@ -409,14 +459,27 @@ const ProprietarioRow = memo(function ProprietarioRow({
               Inadimplente
             </span>
           )}
+          {/* Três estados (pedido do Carlos): "Não votou" (cinza), "Parcial
+              X/Y" (âmbar — votou em algumas pautas, falta terminar) e "Votou"
+              (verde — votou em todas as pautas em votação). */}
           {mostrarVoto &&
-            (votou ? (
-              <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                Votou
-              </span>
-            ) : (
+            (!votou ? (
               <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 Não votou
+              </span>
+            ) : parcial ? (
+              <span
+                className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                title={`Votou em ${pautasVotadas} de ${totalPautas} ${totalPautas === 1 ? "pauta" : "pautas"} em votação — ainda falta votar`}
+              >
+                Parcial{totalPautas > 0 ? ` ${pautasVotadas}/${totalPautas}` : ""}
+              </span>
+            ) : (
+              <span
+                className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                title="Votou em todas as pautas em votação"
+              >
+                Votou
               </span>
             ))}
         </p>
@@ -425,9 +488,18 @@ const ProprietarioRow = memo(function ProprietarioRow({
             `lg:contents` eles viram itens da grade do pai, um por coluna;
             se um filho sumisse condicionalmente, os seguintes deslizariam
             para a coluna errada. */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground lg:contents">
-          <span className="min-w-0 truncate lg:text-sm">{proprietario.email || "—"}</span>
-          <span className="min-w-0 shrink-0 truncate lg:text-sm">{celular ?? "—"}</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground lg:contents">
+          {/* E-mail com o CPF logo abaixo: o operador confere rápido o CPF
+              quando alguém diz que o link de entrada acusou "CPF ou unidade
+              inválida" (pedido do Carlos). Mantém-se 3 filhos diretos pro
+              lg:contents distribuir nas colunas certas. */}
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate">{proprietario.email || "—"}</span>
+            {cpfFmt && (
+              <span className="truncate text-xs text-muted-foreground/70">CPF {cpfFmt}</span>
+            )}
+          </div>
+          <span className="min-w-0 shrink-0 truncate">{celular ?? "—"}</span>
           <span
             className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary lg:ml-0 lg:w-fit"
             title={

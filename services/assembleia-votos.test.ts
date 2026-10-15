@@ -58,7 +58,10 @@ vi.mock("@/services/procuracoes", () => ({
   getOutorgantesIds: () => Promise.resolve([]),
 }))
 
-import { createAssembleiaRespostas } from "@/services/assembleia-votos"
+import {
+  createAssembleiaRespostas,
+  getPautasVotadasPorProprietario,
+} from "@/services/assembleia-votos"
 
 function sendRow(opts?: {
   status?: string
@@ -162,5 +165,41 @@ describe("createAssembleiaRespostas — integridade do voto", () => {
     await expect(
       createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
     ).rejects.toThrow(/já foram respondidas/i)
+  })
+})
+
+// Distinção voto TOTAL × PARCIAL na lista de proprietários (pedido do Carlos):
+// contar quantas pautas DISTINTAS cada proprietário já respondeu.
+describe("getPautasVotadasPorProprietario", () => {
+  it("conta pautas distintas por proprietário (duplicata não soma de novo)", async () => {
+    h.state.responses = {
+      assembleia_respostas: {
+        data: [
+          { pauta_id: "p1", assembleia_sends: { proprietario_id: "owner-a" } },
+          { pauta_id: "p2", assembleia_sends: { proprietario_id: "owner-a" } },
+          { pauta_id: "p1", assembleia_sends: { proprietario_id: "owner-a" } }, // repetida
+          { pauta_id: "p1", assembleia_sends: { proprietario_id: "owner-b" } },
+        ],
+        error: null,
+      },
+    }
+    const mapa = await getPautasVotadasPorProprietario("a1")
+    expect(mapa.get("owner-a")).toBe(2) // votou p1 e p2 → total se a assembleia tem 2 pautas
+    expect(mapa.get("owner-b")).toBe(1) // votou só p1 → parcial
+  })
+
+  it("ignora respostas sem proprietário vinculado", async () => {
+    h.state.responses = {
+      assembleia_respostas: {
+        data: [
+          { pauta_id: "p1", assembleia_sends: null },
+          { pauta_id: "p1", assembleia_sends: { proprietario_id: "owner-a" } },
+        ],
+        error: null,
+      },
+    }
+    const mapa = await getPautasVotadasPorProprietario("a1")
+    expect(mapa.size).toBe(1)
+    expect(mapa.get("owner-a")).toBe(1)
   })
 })

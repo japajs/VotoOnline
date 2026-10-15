@@ -9,6 +9,7 @@ import {
   getProprietariosQueJaVotaram,
   getProprietarioIdsVotaram,
   getProprietarioIdsPresentes,
+  getPautasVotadasPorProprietario,
 } from "@/services/assembleia-votos"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
@@ -58,12 +59,23 @@ export default async function CondominioDetailPage({ params }: Props) {
   // Marcar quem já votou NA ASSEMBLEIA ABERTA agora (não "em qualquer") direto
   // na lista de proprietários, pra filtrar/cobrar sem precisar ir à apuração.
   const assembleiaAberta = assembleias.find((a) => isEmAndamento(a.status))
-  const [votouNaAberta, presentesNaAberta] = assembleiaAberta
+  const [votouNaAberta, presentesNaAberta, pautasVotadasNaAberta] = assembleiaAberta
     ? await Promise.all([
         getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>()),
         getProprietarioIdsPresentes(assembleiaAberta.id).catch(() => new Set<string>()),
+        getPautasVotadasPorProprietario(assembleiaAberta.id).catch(() => new Map<string, number>()),
       ])
-    : [undefined, undefined]
+    : [undefined, undefined, undefined]
+
+  // Denominador do "voto total" (vs. parcial): no modo pauta-por-pauta só
+  // contam as pautas já abertas pela mesa — as demais ninguém poderia ter
+  // votado ainda, então quem votou em tudo que estava disponível aparece como
+  // "Votou" (total), não "Parcial". No modo normal, todas as pautas valem.
+  const totalPautasVotaveis = assembleiaAberta
+    ? assembleiaAberta.votacao_por_pauta
+      ? (assembleiaAberta.pautas ?? []).filter((p) => p.votacao_aberta_em != null).length
+      : (assembleiaAberta.pautas ?? []).length
+    : undefined
 
   // Escala das frações ideais cadastradas (ver FracaoEscalaAviso).
   const fracoesCadastradas = proprietarios
@@ -144,6 +156,8 @@ export default async function CondominioDetailPage({ params }: Props) {
           proprietariosQueJaVotaram={proprietariosQueJaVotaram}
           votouNaAberta={votouNaAberta}
           presentesNaAberta={presentesNaAberta}
+          pautasVotadasNaAberta={pautasVotadasNaAberta}
+          totalPautasVotaveis={totalPautasVotaveis}
           assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           isAdmin={session?.perfil === "administrador"}

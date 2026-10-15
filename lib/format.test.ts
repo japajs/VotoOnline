@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   normalizarCpf,
   cpfCompleto,
+  formatCpf,
   validarEmailFormato,
   normalizarCelular,
   formatCelular,
@@ -29,6 +30,26 @@ describe("cpfCompleto", () => {
     expect(cpfCompleto("")).toBe(false)
     expect(cpfCompleto(null)).toBe(false)
     expect(cpfCompleto(undefined)).toBe(false)
+  })
+})
+
+describe("formatCpf", () => {
+  it("aplica a máscara 000.000.000-00 com 11 dígitos", () => {
+    expect(formatCpf("12345678901")).toBe("123.456.789-01")
+    expect(formatCpf("123.456.789-01")).toBe("123.456.789-01")
+    expect(formatCpf(" 12345678901 ")).toBe("123.456.789-01")
+  })
+
+  it("devolve o valor como veio quando não tem 11 dígitos", () => {
+    expect(formatCpf("1234567890")).toBe("1234567890")
+    expect(formatCpf("abc")).toBe("abc")
+  })
+
+  it("null para vazio/ausente (não renderiza a linha de CPF)", () => {
+    expect(formatCpf("")).toBeNull()
+    expect(formatCpf("   ")).toBeNull()
+    expect(formatCpf(null)).toBeNull()
+    expect(formatCpf(undefined)).toBeNull()
   })
 })
 
