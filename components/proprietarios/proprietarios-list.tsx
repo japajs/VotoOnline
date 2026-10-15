@@ -274,13 +274,13 @@ export function ProprietariosList({
               // {votaram tudo | parcial | não votaram}. Os três últimos somam
               // os presentes, sem sobreposição.
               const chips: [FiltroVoto, string, number][] = [
-                ["todos", "Total", totalImoveis],
+                ["todos", "Imóveis", totalImoveis],
                 ["presentes", "Presentes", nPresentes],
-                ["votaram", "Votaram tudo", nVotaram],
+                ["votaram", "Votou geral", nVotaram],
               ]
-              // "Parcial" só aparece quando há alguém nessa situação — evita
-              // poluir a barra quando todo mundo votou em tudo (ou ninguém).
-              if (nParcial > 0) chips.push(["parcial", "Parcial", nParcial])
+              // "Votou parcial" só aparece quando há alguém nessa situação —
+              // evita poluir a barra quando todo mundo votou geral (ou ninguém).
+              if (nParcial > 0) chips.push(["parcial", "Votou parcial", nParcial])
               chips.push(["nao", "Não votaram", nNao])
               return chips
             })().map(([val, label, count]) => (
@@ -476,9 +476,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
               Inadimplente
             </span>
           )}
-          {/* Três estados (pedido do Carlos): "Não votou" (cinza), "Parcial
-              X/Y" (âmbar — votou em algumas pautas, falta terminar) e "Votou"
-              (verde — votou em todas as pautas em votação). */}
+          {/* Três estados (termo do Carlos): "Não votou" (cinza), "Votou
+              parcial X/Y" (âmbar — votou em algumas pautas, falta terminar) e
+              "Votou geral" (verde — votou em todas as pautas em votação). */}
           {mostrarVoto &&
             (!votou ? (
               <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -489,14 +489,14 @@ const ProprietarioRow = memo(function ProprietarioRow({
                 className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
                 title={`Votou em ${pautasVotadas} de ${totalPautas} ${totalPautas === 1 ? "pauta" : "pautas"} em votação — ainda falta votar`}
               >
-                Parcial{totalPautas > 0 ? ` ${pautasVotadas}/${totalPautas}` : ""}
+                Votou parcial{totalPautas > 0 ? ` ${pautasVotadas}/${totalPautas}` : ""}
               </span>
             ) : (
               <span
                 className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
                 title="Votou em todas as pautas em votação"
               >
-                Votou
+                Votou geral
               </span>
             ))}
         </p>
