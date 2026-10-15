@@ -142,7 +142,12 @@ export function ProprietariosList({
       votouNaAberta && filtroVoto !== "todos"
         ? proprietarios.filter((p) => {
             if (filtroVoto === "presentes") return presentesLocal.has(p.id)
-            if (filtroVoto === "votaram") return votouNaAberta.has(p.id)
+            // "votaram" = votaram TUDO (todas as pautas). Junto com "parcial" e
+            // "nao" formam o funil do Carlos: dos presentes, quem votou tudo,
+            // quem votou em parte e quem não votou nada — três baldes que
+            // somam os presentes, sem sobreposição.
+            if (filtroVoto === "votaram")
+              return votouNaAberta.has(p.id) && !parciaisNaAberta.has(p.id)
             if (filtroVoto === "parcial") return parciaisNaAberta.has(p.id)
             // "nao" — presentes que AINDA não votaram (não soma quem nem está
             // na assembleia): pedido do Carlos, "Não votaram = presentes sem
@@ -186,8 +191,13 @@ export function ProprietariosList({
   // a lista continua uma linha por proprietário.
   const imoveisDe = (p: Proprietario) => p.unidades?.length ?? 0
   const totalImoveis = proprietarios.reduce((n, p) => n + imoveisDe(p), 0)
+  // "Votaram" = votaram TUDO (todas as pautas em votação). Com "Parcial" e
+  // "Não votaram", particiona os presentes (funil do Carlos), sem sobrepor.
   const nVotaram = votouNaAberta
-    ? proprietarios.reduce((n, p) => n + (votouNaAberta.has(p.id) ? imoveisDe(p) : 0), 0)
+    ? proprietarios.reduce(
+        (n, p) => n + (votouNaAberta.has(p.id) && !parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0),
+        0
+      )
     : 0
   const nParcial = votouNaAberta
     ? proprietarios.reduce((n, p) => n + (parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0), 0)
@@ -251,15 +261,19 @@ export function ProprietariosList({
         <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             Votação de{" "}
-            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — totais por{" "}
-            <span className="font-medium text-foreground">imóvel</span>.
+            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — por{" "}
+            <span className="font-medium text-foreground">imóvel</span>: do total, os presentes; dos
+            presentes, quem votou tudo, em parte ou ainda não votou.
           </p>
           <div className="flex flex-wrap gap-1">
             {(() => {
+              // Funil de apuração do Carlos: Total de unidades → Presentes →
+              // {votaram tudo | parcial | não votaram}. Os três últimos somam
+              // os presentes, sem sobreposição.
               const chips: [FiltroVoto, string, number][] = [
                 ["todos", "Total", totalImoveis],
                 ["presentes", "Presentes", nPresentes],
-                ["votaram", "Votaram", nVotaram],
+                ["votaram", "Votaram tudo", nVotaram],
               ]
               // "Parcial" só aparece quando há alguém nessa situação — evita
               // poluir a barra quando todo mundo votou em tudo (ou ninguém).
