@@ -169,7 +169,11 @@ function AssembleiaRow({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5">
+      {/* flex-wrap: no celular a fileira Pausar·Encerrar·Disparar·Gerenciar·
+          Excluir não cabe numa linha só (ex.: Samsung A16 ~360px) e, sem
+          quebrar, estourava a largura da tela empurrando a página inteira
+          (cortava até o conteúdo da esquerda). Agora quebra em 2 linhas. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
         {podeOperar && (
           <>
             {assembleia.status === "rascunho" && (
