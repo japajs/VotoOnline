@@ -91,7 +91,16 @@ export function ApuracaoAssembleia({
   canExport = false,
   criterioPeso = "unidade",
 }: Props) {
-  const { total_enviados, total_respondidos, imoveis_cadastrados, imoveis_votantes } = apuracao
+  const {
+    total_enviados,
+    total_respondidos,
+    imoveis_cadastrados,
+    imoveis_votantes,
+    imoveis_presentes,
+    imoveis_votaram_tudo,
+    imoveis_parcial,
+    imoveis_nao_votaram,
+  } = apuracao
   // Participação por IMÓVEL (a assembleia gira em torno do imóvel). `pendentes`
   // continua por PESSOA porque é a contagem do lembrete de e-mail (quem avisar).
   const participacao =
@@ -345,21 +354,60 @@ export function ApuracaoAssembleia({
         </div>
       </div>
 
-      {/* Participação geral */}
+      {/* Participação geral — funil de apuração do Carlos: do total de
+          unidades, as PRESENTES; das presentes, as que votaram TUDO, em PARTE
+          ou AINDA NÃO votaram. As três últimas somam os presentes. */}
       <div className="rounded-xl border border-border/60 bg-card">
-        <div className="grid grid-cols-1 divide-y divide-border/40 min-[380px]:grid-cols-3 min-[380px]:divide-x min-[380px]:divide-y-0">
+        <div className="border-b border-border/40 px-4 py-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
+            Participação geral — por imóvel
+          </p>
+        </div>
+
+        {/* Universo: total de unidades → presentes */}
+        <div className="grid grid-cols-2 divide-x divide-border/40">
           <div className="px-4 py-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{imoveis_cadastrados}</p>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">Imóveis cadastrados</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Unidades cadastradas</p>
           </div>
           <div className="px-4 py-4 text-center">
-            <p className="text-2xl font-semibold tabular-nums">{imoveis_votantes}</p>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">Imóveis votantes</p>
+            <p className="text-2xl font-semibold tabular-nums">{imoveis_presentes}</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Presentes</p>
           </div>
-          <div className="px-4 py-4 text-center">
-            <p className="text-2xl font-semibold tabular-nums">{participacao}%</p>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">Participação</p>
+        </div>
+
+        {/* Das presentes: votaram tudo / parcial / não votaram (somam os
+            presentes). Cores batem com os badges da lista de proprietários. */}
+        <div className="border-t border-border/40 px-4 pt-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+          Das unidades presentes
+        </div>
+        <div className="grid grid-cols-1 divide-y divide-border/40 min-[380px]:grid-cols-3 min-[380px]:divide-x min-[380px]:divide-y-0">
+          <div className="px-4 py-3.5 text-center">
+            <p className="text-xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+              {imoveis_votaram_tudo}
+            </p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Votaram tudo</p>
           </div>
+          <div className="px-4 py-3.5 text-center">
+            <p className="text-xl font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+              {imoveis_parcial}
+            </p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Parcial</p>
+          </div>
+          <div className="px-4 py-3.5 text-center">
+            <p className="text-xl font-semibold tabular-nums text-muted-foreground">
+              {imoveis_nao_votaram}
+            </p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Não votaram</p>
+          </div>
+        </div>
+
+        <div className="border-t border-border/40 px-4 py-3 text-center">
+          <p className="text-xs text-muted-foreground">
+            Participação:{" "}
+            <span className="font-semibold text-foreground">{participacao}%</span> das unidades (
+            {imoveis_votantes} de {imoveis_cadastrados} votaram)
+          </p>
         </div>
 
         {/* Auditoria de assembleias — Fase 1: quórum mínimo é sobre o peso do

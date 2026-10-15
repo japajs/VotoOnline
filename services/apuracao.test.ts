@@ -10,6 +10,8 @@ import {
   calcularAprovacao,
   apurarSimNao,
   apurarMultiplaEscolha,
+  calcularFunilPresenca,
+  type FunilSend,
 } from "@/services/assembleia-votos"
 
 type Row = { pauta_id: string; resposta: "Sim" | "Não" | "Abstenção" | null; opcao_id: string | null; peso: number }
@@ -122,5 +124,47 @@ describe("apurarMultiplaEscolha", () => {
     // Por peso, "a" vence (5 > 2) mesmo com menos participantes.
     const vencedorPorPeso = [...r.opcoes_resultado].sort((x, y) => y.ponderado - x.ponderado)[0]
     expect(vencedorPorPeso.opcao_id).toBe("a")
+  })
+})
+
+// Funil de apuração do Carlos: das unidades presentes, quantas votaram TUDO,
+// PARCIAL ou NENHUMA. Invariante: presentes = tudo + parcial + nao.
+describe("calcularFunilPresenca (funil por imóvel)", () => {
+  const sends: FunilSend[] = [
+    // votou as 2 pautas → tudo (usa snapshot = 1)
+    { id: "s1", presente: true, unidadesSnapshot: 1, unidadesCadastro: 1 },
+    // votou 1 de 2 → parcial (usa snapshot = 2, ex.: 2 imóveis)
+    { id: "s2", presente: true, unidadesSnapshot: 2, unidadesCadastro: 2 },
+    // presente e não votou nada → nao (usa cadastro = 1)
+    { id: "s3", presente: true, unidadesSnapshot: 0, unidadesCadastro: 1 },
+    // ausente e não votou → fora do funil
+    { id: "s4", presente: false, unidadesSnapshot: 0, unidadesCadastro: 3 },
+  ]
+  const votadas = new Map<string, number>([
+    ["s1", 2],
+    ["s2", 1],
+  ])
+
+  it("particiona os presentes em tudo / parcial / não votaram", () => {
+    const r = calcularFunilPresenca(sends, votadas, 2)
+    expect(r.imoveis_votaram_tudo).toBe(1) // s1
+    expect(r.imoveis_parcial).toBe(2) // s2 (2 imóveis)
+    expect(r.imoveis_nao_votaram).toBe(1) // s3 (cadastro), s4 é ausente → fora
+    expect(r.imoveis_presentes).toBe(4) // 1 + 2 + 1
+  })
+
+  it("invariante: presentes = tudo + parcial + não votaram", () => {
+    const r = calcularFunilPresenca(sends, votadas, 2)
+    expect(r.imoveis_presentes).toBe(
+      r.imoveis_votaram_tudo + r.imoveis_parcial + r.imoveis_nao_votaram
+    )
+  })
+
+  it("quem votou todas as pautas DISPONÍVEIS conta como tudo (pauta por pauta)", () => {
+    // Só 1 pauta aberta até agora; s2 votou essa 1 → tudo (não parcial).
+    const r = calcularFunilPresenca(sends, new Map([["s2", 1]]), 1)
+    expect(r.imoveis_votaram_tudo).toBe(2) // s2
+    expect(r.imoveis_parcial).toBe(0)
+    expect(r.imoveis_nao_votaram).toBe(2) // s1 e s3 presentes sem voto (cadastro 1+1)
   })
 })

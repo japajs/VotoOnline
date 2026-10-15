@@ -383,6 +383,15 @@ export interface AssembleiaApuracao {
   // "Participação Geral" do boletim/telão mostra.
   imoveis_cadastrados: number
   imoveis_votantes: number
+  // Funil de apuração (regra do Carlos): das unidades PRESENTES, quantas
+  // votaram TODAS as pautas em votação, quantas votaram só em PARTE e quantas
+  // ainda não votaram NENHUMA. Invariantes:
+  //   imoveis_presentes = imoveis_votaram_tudo + imoveis_parcial + imoveis_nao_votaram
+  //   imoveis_votantes  = imoveis_votaram_tudo + imoveis_parcial
+  imoveis_presentes: number
+  imoveis_votaram_tudo: number
+  imoveis_parcial: number
+  imoveis_nao_votaram: number
   // Quórum da assembleia (ver assembleias.quorum_minimo/quorum_minimo_2a) —
   // peso de quem já votou sobre o peso total do condomínio inteiro (todas
   // as unidades, não só quem recebeu convite). quorum_atingido é null
