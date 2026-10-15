@@ -211,7 +211,7 @@ export default function AjudaPage() {
             proprietários (a bolinha ao lado do nome, com a assembleia aberta) ou pela{" "}
             <Chip>Chamada</Chip> dentro da assembleia. O <span className="text-emerald-600 dark:text-emerald-400">check verde</span>{" "}
             indica quem está presente — e continua à vista mesmo quando você filtra por
-            &quot;Votaram&quot; ou &quot;Não votaram&quot;.
+            &quot;Votou geral&quot; ou &quot;Não votaram&quot;.
           </li>
           <li>Não é possível desmarcar a presença de quem já votou.</li>
         </ul>
@@ -234,8 +234,10 @@ export default function AjudaPage() {
       <Secao icon={BellRing} titulo="8. Acompanhar e cobrar quem falta">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
-            Na lista de proprietários, use os filtros <Chip>Total</Chip> · <Chip>Presentes</Chip> ·{" "}
-            <Chip>Votaram</Chip> · <Chip>Não votaram</Chip> para enxergar o andamento na hora.
+            Na lista de proprietários, use os filtros <Chip>Imóveis</Chip> · <Chip>Presentes</Chip> ·{" "}
+            <Chip>Votou geral</Chip> · <Chip>Votou parcial</Chip> · <Chip>Não votaram</Chip> para
+            enxergar o andamento na hora (do total de imóveis, os presentes; dos presentes, quem
+            votou geral, parcial ou ainda não votou).
           </li>
           <li>
             O botão <Chip>Lembrar quem não votou</Chip> reenvia o e-mail só para quem ainda está

@@ -28,10 +28,12 @@ function statusDe(h: HistoricoParticipante): Status {
   return "parcial"
 }
 
+// Mesmos termos do funil do Carlos (lista de proprietários e Apuração):
+// completo = "Votou geral", parcial = "Votou parcial", pendente = "Não votou".
 const STATUS_LABEL: Record<Status, string> = {
-  completo: "Completo",
-  pendente: "Não votaram",
-  parcial: "Parcial",
+  completo: "Votou geral",
+  pendente: "Não votou",
+  parcial: "Votou parcial",
 }
 
 const STATUS_CLASS: Record<Status, string> = {

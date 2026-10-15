@@ -386,13 +386,13 @@ export function ApuracaoAssembleia({
             <p className="text-xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
               {imoveis_votaram_tudo}
             </p>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">Votaram tudo</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Votou geral</p>
           </div>
           <div className="px-4 py-3.5 text-center">
             <p className="text-xl font-semibold tabular-nums text-amber-600 dark:text-amber-400">
               {imoveis_parcial}
             </p>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">Parcial</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Votou parcial</p>
           </div>
           <div className="px-4 py-3.5 text-center">
             <p className="text-xl font-semibold tabular-nums text-muted-foreground">
