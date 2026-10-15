@@ -489,6 +489,9 @@ type ApuracaoRow = {
   resposta: AssembleiaRespostaValor | null
   opcao_id: string | null
   peso: number
+  // Só usado no funil de apuração (quem votou tudo × parcial) — apurarSimNao/
+  // apurarMultiplaEscolha ignoram este campo, por isso é opcional.
+  send_id?: string
 }
 
 // Auditoria de assembleias — Fase 1: Sim / (Sim + Não), ponderado —
@@ -600,6 +603,50 @@ export function apurarMultiplaEscolha(pauta: Pauta, pautaRows: ApuracaoRow[]) {
   }
 }
 
+// Funil de apuração por IMÓVEL (regra do Carlos), isolado como função pura pra
+// testar a partição sem precisar do banco. Das unidades PRESENTES: as que
+// votaram TODAS as pautas em votação (tudo), as que votaram só em PARTE
+// (parcial) e as presentes que ainda não votaram NENHUMA. Voto usa o snapshot
+// de unidades (já com procuração); presente-sem-voto usa o cadastro (não há
+// snapshot até o 1º voto). Quem nem está presente fica de fora (é ausente, não
+// "não votou"). Invariante: presentes = tudo + parcial + nao.
+export interface FunilSend {
+  id: string
+  presente: boolean
+  unidadesSnapshot: number
+  unidadesCadastro: number
+}
+export function calcularFunilPresenca(
+  sends: FunilSend[],
+  pautasVotadasPorSend: Map<string, number>,
+  pautasVotaveis: number
+): {
+  imoveis_presentes: number
+  imoveis_votaram_tudo: number
+  imoveis_parcial: number
+  imoveis_nao_votaram: number
+} {
+  let tudo = 0
+  let parcial = 0
+  let nao = 0
+  for (const s of sends) {
+    const votadas = pautasVotadasPorSend.get(s.id) ?? 0
+    if (votadas === 0) {
+      if (s.presente) nao += s.unidadesCadastro
+    } else if (pautasVotaveis > 0 && votadas >= pautasVotaveis) {
+      tudo += s.unidadesSnapshot
+    } else {
+      parcial += s.unidadesSnapshot
+    }
+  }
+  return {
+    imoveis_presentes: tudo + parcial + nao,
+    imoveis_votaram_tudo: tudo,
+    imoveis_parcial: parcial,
+    imoveis_nao_votaram: nao,
+  }
+}
+
 // O peso de cada resposta já vem congelado em `peso` (ver createAssembleiaRespostas)
 // — a apuração só soma o que foi gravado no momento do voto, nunca recalcula
 // a partir das unidades atuais do proprietário.
@@ -616,11 +663,11 @@ export async function getApuracaoAssembleia(
 ): Promise<AssembleiaApuracao> {
   const db = createServerClient()
 
-  const [respostasRes, sendsCount, respondidosCount, pesoRepresentadoRes, quorumMinimoRes, condominio, unidadesCondominio] =
+  const [respostasRes, sendsCount, respondidosCount, pesoRepresentadoRes, funilSendsRes, quorumMinimoRes, condominio, unidadesCondominio] =
     await Promise.all([
       db
         .from("assembleia_respostas")
-        .select("pauta_id, resposta, opcao_id, peso, assembleia_sends!inner(assembleia_id)")
+        .select("pauta_id, resposta, opcao_id, peso, send_id, assembleia_sends!inner(assembleia_id)")
         .eq("assembleia_sends.assembleia_id", assembleiaId),
       db
         .from("assembleia_sends")
@@ -647,9 +694,17 @@ export async function getApuracaoAssembleia(
         .select("peso_snapshot, quantidade_unidades_snapshot")
         .eq("assembleia_id", assembleiaId)
         .not("votado_em", "is", null),
+      // Funil (votaram tudo × parcial × não votaram): TODOS os sends com
+      // presença, snapshot de unidades (voto, já com procuração) e unidades do
+      // cadastro (pra contar os presentes que ainda não votaram, que não têm
+      // snapshot).
+      db
+        .from("assembleia_sends")
+        .select("id, presente_em, quantidade_unidades_snapshot, proprietarios(unidades(id))")
+        .eq("assembleia_id", assembleiaId),
       db
         .from("assembleias")
-        .select("quorum_minimo, data_1a_convocacao, quorum_minimo_2a, data_encerramento")
+        .select("quorum_minimo, data_1a_convocacao, quorum_minimo_2a, data_encerramento, votacao_por_pauta")
         .eq("id", assembleiaId)
         .single(),
       getCondominioById(condominioId),
@@ -660,6 +715,7 @@ export async function getApuracaoAssembleia(
   if (sendsCount.error) throw new Error(sendsCount.error.message)
   if (respondidosCount.error) throw new Error(respondidosCount.error.message)
   if (pesoRepresentadoRes.error) throw new Error(pesoRepresentadoRes.error.message)
+  if (funilSendsRes.error) throw new Error(funilSendsRes.error.message)
   if (quorumMinimoRes.error) throw new Error(quorumMinimoRes.error.message)
 
   const rows = (respostasRes.data ?? []) as unknown as ApuracaoRow[]
@@ -690,6 +746,7 @@ export async function getApuracaoAssembleia(
     data_1a_convocacao: string | null
     quorum_minimo_2a: number | null
     data_encerramento: string | null
+    votacao_por_pauta: boolean | null
   } | null
   const dataReferencia = quorumRow?.data_encerramento ? new Date(quorumRow.data_encerramento) : new Date()
   const { quorumAplicavel, convocacaoAplicada } = getQuorumEfetivo({
@@ -710,6 +767,44 @@ export async function getApuracaoAssembleia(
     percentual_quorum = peso_representado / peso_total_condominio
     quorum_atingido = percentual_quorum >= quorumAplicavel
   }
+
+  // Funil de apuração por IMÓVEL (regra do Carlos): das unidades PRESENTES,
+  // quantas votaram TODAS as pautas em votação (tudo), quantas votaram só em
+  // PARTE (parcial) e quantas ainda não votaram NENHUMA. Denominador do "votou
+  // tudo" = pautas em votação; no modo pauta-por-pauta só contam as já abertas
+  // pela mesa (as demais ninguém poderia ter votado ainda).
+  const pautasVotaveis = (quorumRow?.votacao_por_pauta ?? false)
+    ? pautas.filter((p) => p.votacao_aberta_em != null).length
+    : pautas.length
+  // Pautas DISTINTAS respondidas por send (um send pode votar em pautas
+  // diferentes em momentos diferentes no modo pauta-por-pauta).
+  const votadasPorSend = new Map<string, Set<string>>()
+  for (const row of rows) {
+    if (!row.send_id) continue
+    const set = votadasPorSend.get(row.send_id) ?? new Set<string>()
+    set.add(row.pauta_id)
+    votadasPorSend.set(row.send_id, set)
+  }
+  const pautasVotadasPorSend = new Map(
+    [...votadasPorSend].map(([sendId, pautasSet]) => [sendId, pautasSet.size])
+  )
+  const funilRows = (funilSendsRes.data ?? []) as unknown as {
+    id: string
+    presente_em: string | null
+    quantidade_unidades_snapshot: number | null
+    proprietarios: { unidades: { id: string }[] | null } | null
+  }[]
+  const { imoveis_presentes, imoveis_votaram_tudo, imoveis_parcial, imoveis_nao_votaram } =
+    calcularFunilPresenca(
+      funilRows.map((s) => ({
+        id: s.id,
+        presente: s.presente_em != null,
+        unidadesSnapshot: s.quantidade_unidades_snapshot ?? 0,
+        unidadesCadastro: s.proprietarios?.unidades?.length ?? 0,
+      })),
+      pautasVotadasPorSend,
+      pautasVotaveis
+    )
 
   // Agrupa respostas por pauta
   const byPauta = new Map<string, ApuracaoRow[]>()
@@ -735,6 +830,10 @@ export async function getApuracaoAssembleia(
     total_respondidos,
     imoveis_cadastrados,
     imoveis_votantes,
+    imoveis_presentes,
+    imoveis_votaram_tudo,
+    imoveis_parcial,
+    imoveis_nao_votaram,
     peso_total_condominio,
     peso_representado,
     percentual_quorum,
