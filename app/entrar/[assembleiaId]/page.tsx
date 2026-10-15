@@ -7,7 +7,7 @@ import { getAssembleiaById } from "@/services/assembleias"
 import { getExigePresenca } from "@/services/presenca"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { EntrarForm } from "@/components/assembleias/entrar-form"
-import { APP_NAME } from "@/lib/constants"
+import { APP_NAME, APP_AUTORIA } from "@/lib/constants"
 
 interface Props {
   params: Promise<{ assembleiaId: string }>
@@ -40,11 +40,20 @@ export default async function EntrarPage({ params }: Props) {
 
   const header = (
     <div className="border-b border-border/40 bg-card/40 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
-        <p className="text-xs font-medium text-muted-foreground">{APP_NAME}</p>
+      <div className="mx-auto flex max-w-md items-center justify-between gap-3 px-4 py-3">
+        {/* Autoria/licenciamento também no link de entrada (pedido do Cleiton):
+            deixa claro pro condômino que a ferramenta é proprietária. Completo
+            no tablet, curto no celular. */}
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground">{APP_NAME}</p>
+          <p className="truncate text-[10px] text-muted-foreground/60">
+            <span className="hidden sm:inline">{APP_AUTORIA}</span>
+            <span className="sm:hidden">© Cleiton Salazar</span>
+          </p>
+        </div>
         <Link
           href="/privacidade"
-          className="text-[11px] text-muted-foreground/70 underline underline-offset-2 hover:text-foreground"
+          className="shrink-0 text-[11px] text-muted-foreground/70 underline underline-offset-2 hover:text-foreground"
         >
           Privacidade
         </Link>
