@@ -88,7 +88,12 @@ export function DashboardShell({ user, children }: Props) {
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col overflow-y-auto">
+        {/* overflow-x-hidden: trava de segurança contra estouro horizontal —
+            se algum elemento ficar mais largo que a tela num celular, ele não
+            empurra a página toda (que cortava o conteúdo da esquerda). O
+            conteúdo legitimamente largo (tabelas, calendário) tem rolagem
+            própria interna (overflow-x-auto), então nada fica inacessível. */}
+        <main className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
           {/* Selo de autoria/licenciamento no canto superior direito (pedido
               do Carlos): deixa claro pro síndico que a ferramenta é
               proprietária e locada por sessão. Curto no celular, completo a
