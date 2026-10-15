@@ -256,9 +256,12 @@ export function ProprietariosList({
       </div>
 
       {/* Filtro por voto na assembleia aberta (pedido do Carlos): ver quem já
-          votou direto aqui, sem ir à apuração, pra cobrar quem falta. */}
+          votou direto aqui, sem ir à apuração, pra cobrar quem falta. Texto em
+          cima e chips numa linha própria de largura total: com 5 filtros, lado
+          a lado o último ("Não votaram") quebrava sozinho pra baixo e ficava
+          órfão; empilhado, os chips quebram alinhados à esquerda. */}
       {votouNaAberta && (
-        <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
             Votação de{" "}
             <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — por{" "}
