@@ -796,6 +796,39 @@ export async function getProprietarioIdsPresentes(assembleiaId: string): Promise
   return new Set(((data ?? []) as { proprietario_id: string }[]).map((r) => r.proprietario_id))
 }
 
+// Quantas pautas DISTINTAS cada proprietário já respondeu nesta assembleia —
+// usado para distinguir, na lista de proprietários, voto TOTAL (respondeu
+// todas as pautas em votação) de voto PARCIAL (respondeu só algumas). Carlos:
+// "no filtro Votaram temos 2 vertentes: voto total e voto parcial".
+export async function getPautasVotadasPorProprietario(
+  assembleiaId: string
+): Promise<Map<string, number>> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_respostas")
+    .select("pauta_id, assembleia_sends!inner(proprietario_id, assembleia_id)")
+    .eq("assembleia_sends.assembleia_id", assembleiaId)
+
+  if (error) throw new Error(error.message)
+
+  type Row = {
+    pauta_id: string
+    assembleia_sends: { proprietario_id: string | null } | null
+  }
+  // Conjunto de pautas por proprietário (distingue pautas distintas — um
+  // mesmo proprietário pode ter votado em várias pautas em momentos diferentes
+  // no modo pauta-por-pauta).
+  const porProp = new Map<string, Set<string>>()
+  for (const r of (data ?? []) as unknown as Row[]) {
+    const pid = r.assembleia_sends?.proprietario_id
+    if (!pid) continue
+    const set = porProp.get(pid) ?? new Set<string>()
+    set.add(r.pauta_id)
+    porProp.set(pid, set)
+  }
+  return new Map([...porProp].map(([k, v]) => [k, v.size]))
+}
+
 export interface SendJaVotado {
   id: string
   token: string

@@ -77,6 +77,18 @@ export function cpfCompleto(valor: string | null | undefined): boolean {
   return normalizarCpf(valor ?? "").length === 11
 }
 
+// CPF formatado 000.000.000-00 para exibição (só formata quando tem os 11
+// dígitos; caso contrário devolve o que veio, ou null se vazio). Usado na
+// lista de proprietários pro operador conferir rápido o CPF quando alguém diz
+// que o link de entrada retornou "CPF ou unidade inválida" (pedido do Carlos).
+export function formatCpf(valor: string | null | undefined): string | null {
+  const bruto = (valor ?? "").trim()
+  if (!bruto) return null
+  const d = normalizarCpf(bruto)
+  if (d.length !== 11) return bruto
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+}
+
 // Remove acentos, hífens e espaços, e baixa a caixa — assim buscar "joao",
 // "C0502", "C-0502" ou "c 0502" encontra "João" ou a unidade "C-0502"
 // independente de como foi digitado. Compartilhada entre toda busca de
