@@ -121,23 +121,28 @@ export function CalendarioAssembleias({ assembleias }: Props) {
 
   return (
     <div className="rounded-xl border border-border/60 bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 border-b border-border/60 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        {/* No celular o grupo de navegação ocupa a largura toda e o nome do
+            mês flexiona ao centro — assim "< Mês de Ano > Hoje" se distribui e
+            nunca vaza pra fora do card (antes o título tinha largura fixa e o
+            botão "Hoje" saía da grade num Samsung A16). A partir de sm volta a
+            ser compacto à esquerda, com a legenda à direita. */}
+        <div className="flex w-full items-center gap-1.5 sm:w-auto sm:gap-2">
           <button
             type="button"
             onClick={irParaMesAnterior}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/60 hover:text-foreground"
             aria-label="Mês anterior"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <h2 className="w-40 text-center text-sm font-semibold sm:w-48">
+          <h2 className="min-w-0 flex-1 truncate text-center text-sm font-semibold sm:w-48 sm:flex-none">
             {MESES[mes]} de {ano}
           </h2>
           <button
             type="button"
             onClick={irParaProximoMes}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/60 hover:text-foreground"
             aria-label="Próximo mês"
           >
             <ChevronRight className="h-4 w-4" />
@@ -145,7 +150,7 @@ export function CalendarioAssembleias({ assembleias }: Props) {
           <button
             type="button"
             onClick={irParaHoje}
-            className="ml-1 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+            className="ml-1 shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground"
           >
             Hoje
           </button>
