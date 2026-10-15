@@ -347,18 +347,18 @@ export function ApuracaoAssembleia({
 
       {/* Participação geral */}
       <div className="rounded-xl border border-border/60 bg-card">
-        <div className="grid grid-cols-3 divide-x divide-border/40">
-          <div className="px-5 py-4 text-center">
+        <div className="grid grid-cols-1 divide-y divide-border/40 min-[380px]:grid-cols-3 min-[380px]:divide-x min-[380px]:divide-y-0">
+          <div className="px-4 py-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{imoveis_cadastrados}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Imóveis cadastrados</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Imóveis cadastrados</p>
           </div>
-          <div className="px-5 py-4 text-center">
+          <div className="px-4 py-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{imoveis_votantes}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Imóveis votantes</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Imóveis votantes</p>
           </div>
-          <div className="px-5 py-4 text-center">
+          <div className="px-4 py-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{participacao}%</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Participação</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Participação</p>
           </div>
         </div>
 

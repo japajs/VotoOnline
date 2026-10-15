@@ -133,7 +133,7 @@ export function AssembleiaVotoForm({
               </p>
               <p className="mt-1 text-sm font-medium leading-snug">{pauta.titulo}</p>
               {pauta.descricao && (
-                <p className="mt-1 whitespace-pre-line text-justify text-xs leading-relaxed text-muted-foreground">
+                <p className="mt-1 whitespace-pre-line text-justify text-sm leading-relaxed text-muted-foreground">
                   {pauta.descricao}
                 </p>
               )}
