@@ -24,7 +24,12 @@ interface MockBuilder {
 }
 
 const h = vi.hoisted(() => {
-  const state: { responses: Record<string, QueryResult> } = { responses: {} }
+  // `outorgou` controla o mock de outorgouProcuracao por teste (quem outorgou
+  // procuração não vota por si — trava de integridade no núcleo do registro).
+  const state: { responses: Record<string, QueryResult>; outorgou: boolean } = {
+    responses: {},
+    outorgou: false,
+  }
   function makeBuilder(result: QueryResult): MockBuilder {
     const chain = (): MockBuilder => makeBuilder(result)
     return {
@@ -52,9 +57,10 @@ const h = vi.hoisted(() => {
 })
 
 vi.mock("@/lib/supabase/server", () => ({ createServerClient: () => h.makeDb() }))
-// Sem procuração: isola a trava de pauta (a procuração é checada antes dela).
+// outorgouProcuracao controlado por h.state.outorgou (default false, pra isolar
+// as outras travas; um teste liga pra verificar o bloqueio de procuração).
 vi.mock("@/services/procuracoes", () => ({
-  outorgouProcuracao: () => Promise.resolve(false),
+  outorgouProcuracao: () => Promise.resolve(h.state.outorgou),
   getOutorgantesIds: () => Promise.resolve([]),
 }))
 
@@ -97,6 +103,7 @@ function sendRow(opts?: {
 
 beforeEach(() => {
   h.state.responses = {}
+  h.state.outorgou = false
 })
 
 describe("createAssembleiaRespostas — trava pauta por pauta", () => {
@@ -165,6 +172,28 @@ describe("createAssembleiaRespostas — integridade do voto", () => {
     await expect(
       createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
     ).rejects.toThrow(/já foram respondidas/i)
+  })
+
+  it("recusa voto de quem outorgou procuração (quem vota é o representante)", async () => {
+    h.state.responses = {
+      assembleia_sends: sendRow(),
+      pautas: { data: [{ id: "p1", votacao_aberta: true }], error: null },
+    }
+    h.state.outorgou = true
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
+    ).rejects.toThrow(/procuração/i)
+  })
+
+  it("a procuração barra até o lançamento manual da mesa (viaMesa não isenta)", async () => {
+    h.state.responses = {
+      assembleia_sends: sendRow(),
+      pautas: { data: [{ id: "p1", votacao_aberta: true }], error: null },
+    }
+    h.state.outorgou = true
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }], {}, { viaMesa: true })
+    ).rejects.toThrow(/procuração/i)
   })
 })
 
