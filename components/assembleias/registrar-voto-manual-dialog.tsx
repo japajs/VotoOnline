@@ -136,23 +136,54 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
                     : "Nenhum proprietário encontrado."}
                 </p>
               ) : (
-                proprietariosFiltrados.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleEscolher(p)}
-                    disabled={isPendingIniciar}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 text-left text-sm transition-colors hover:border-primary/40 hover:bg-accent/30 disabled:opacity-50"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{p.nome}</p>
-                      <p className="truncate text-xs text-muted-foreground">{p.email ?? "sem e-mail cadastrado"}</p>
-                    </div>
-                    {isPendingIniciar && proprietarioSelecionado?.id === p.id && (
-                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
-                    )}
-                  </button>
-                ))
+                proprietariosFiltrados.map((p) => {
+                  // Quem outorgou procuração não vota por si — quem vota é o
+                  // representante. Fica desabilitado JÁ NA LISTA (pedido do
+                  // Carlos: bloquear no acesso, não deixar entrar na rotina de
+                  // voto e só avisar na confirmação). O servidor também recusa.
+                  const bloqueado = p.outorgouPara !== null
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleEscolher(p)}
+                      disabled={isPendingIniciar || bloqueado}
+                      title={
+                        bloqueado
+                          ? `Outorgou procuração a ${p.outorgouPara} — quem vota é o representante`
+                          : undefined
+                      }
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                        bloqueado
+                          ? "cursor-not-allowed border-amber-400/40 bg-amber-500/5"
+                          : "border-border/60 hover:border-primary/40 hover:bg-accent/30 disabled:opacity-50"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{p.nome}</p>
+                        {bloqueado ? (
+                          <p className="truncate text-xs text-amber-700 dark:text-amber-400">
+                            Procuração → {p.outorgouPara} · quem vota é o representante
+                          </p>
+                        ) : (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {p.email ?? "sem e-mail cadastrado"}
+                          </p>
+                        )}
+                      </div>
+                      {bloqueado ? (
+                        <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                          Procuração
+                        </span>
+                      ) : (
+                        isPendingIniciar &&
+                        proprietarioSelecionado?.id === p.id && (
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                        )
+                      )}
+                    </button>
+                  )
+                })
               )}
             </div>
 

@@ -3,7 +3,7 @@ import { getPesoParticipante, getPesoTotalCondominio, getQuorumEfetivo } from "@
 import { marcarPautaEmVotacaoSeNecessario } from "@/services/pautas"
 import { getCondominioById } from "@/services/condominios"
 import { getUnidadesByCondominioId } from "@/services/unidades"
-import { outorgouProcuracao, getOutorgantesIds } from "@/services/procuracoes"
+import { outorgouProcuracao, getOutorgantesIds, getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { getIdsInadimplentes } from "@/services/proprietarios"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 import type {
@@ -1064,6 +1064,10 @@ export interface ProprietarioSemVoto {
   id: string
   nome: string
   email: string | null
+  // Nome do representante quando este proprietário outorgou procuração nesta
+  // assembleia — quem vota é o representante, então ele NÃO pode votar por si
+  // (bloqueado no acesso ao voto manual). null = não outorgou.
+  outorgouPara: string | null
 }
 
 // Auditoria de assembleias — Fase 7: proprietários do condomínio que ainda
@@ -1077,7 +1081,7 @@ export async function getProprietariosSemVoto(
 ): Promise<ProprietarioSemVoto[]> {
   const db = createServerClient()
 
-  const [{ data: proprietarios, error: propError }, { data: votados, error: votadosError }] =
+  const [{ data: proprietarios, error: propError }, { data: votados, error: votadosError }, procuracoes] =
     await Promise.all([
       db.from("proprietarios").select("id, nome, email").eq("condominio_id", condominioId),
       db
@@ -1085,14 +1089,18 @@ export async function getProprietariosSemVoto(
         .select("proprietario_id")
         .eq("assembleia_id", assembleiaId)
         .not("votado_em", "is", null),
+      getProcuracoesByAssembleia(assembleiaId),
     ])
 
   if (propError) throw new Error(propError.message)
   if (votadosError) throw new Error(votadosError.message)
 
   const idsVotados = new Set((votados ?? []).map((v) => v.proprietario_id as string))
+  // Quem outorgou procuração → nome do representante (quem realmente vota).
+  const outorgouPara = new Map(procuracoes.map((p) => [p.outorgante_id, p.outorgado_nome]))
 
   return ((proprietarios ?? []) as { id: string; nome: string; email: string | null }[])
     .filter((p) => !idsVotados.has(p.id))
+    .map((p) => ({ ...p, outorgouPara: outorgouPara.get(p.id) ?? null }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
 }

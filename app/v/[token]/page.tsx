@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { CheckCircle2, Clock, PauseCircle } from "lucide-react"
+import { CheckCircle2, Clock, PauseCircle, ShieldCheck } from "lucide-react"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
+import { outorgouProcuracao } from "@/services/procuracoes"
 import {
   getAssembleiaSendByToken,
   getRespostasBySendId,
@@ -193,6 +194,34 @@ export default async function PublicVotoPage({ params }: Props) {
               </p>
             </div>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Outorgante: delegou o voto por procuração ──────────────────────────────
+  // Quem outorgou procuração nesta assembleia NÃO vota por si — quem vota é o
+  // representante. Bloqueia JÁ NO ACESSO (pedido do Carlos: não deixar o
+  // outorgante achar que vai votar e só avisar na confirmação). Vem depois da
+  // tela de "encerrada" (aí ele ainda pode ver o resultado), antes de qualquer
+  // tela de voto.
+  if (await outorgouProcuracao(assembleia.id, send.proprietario_id).catch(() => false)) {
+    return (
+      <div className="min-h-screen bg-background">
+        {header}
+        <div className="mx-auto max-w-2xl px-4 py-10">
+          {heading}
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-amber-400/40 bg-amber-500/5 px-6 py-10 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/10 ring-1 ring-amber-400/20">
+              <ShieldCheck className="h-7 w-7 text-amber-500" />
+            </div>
+            <div>
+              <p className="font-medium">Você outorgou procuração nesta assembleia</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Seu voto será dado pelo seu representante. Por isso, você não vota por este link.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     )
