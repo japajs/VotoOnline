@@ -3,6 +3,7 @@ import { normalizarChaveUnidade } from "@/lib/unidade-format"
 import { generateSurveyToken } from "@/lib/tokens"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { getAllProprietarios } from "@/services/proprietarios"
+import { outorgouProcuracao, getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { normalizarCpf, cpfCompleto } from "@/lib/format"
 import type { AssembleiaStatus } from "@/types"
 
@@ -74,6 +75,18 @@ export async function registrarPresenca(
     }
   }
   if (cpfInformado !== cpfCadastro) return { ok: false, error: erroGenerico }
+
+  // Outorgante não entra/vota por si: ao dar procuração, passou a representação
+  // (presença e voto) ao procurador. Deixar entrar marcaria presença dele e o
+  // imóvel seria contado 2x (aqui e no voto do procurador). Mensagem clara — a
+  // pessoa já provou a identidade (unidade+CPF), então não há enumeração.
+  if (await outorgouProcuracao(assembleiaId, prop.id)) {
+    return {
+      ok: false,
+      error:
+        "Você outorgou procuração nesta assembleia — quem participa e vota é o seu representante.",
+    }
+  }
 
   const { data: existente, error: exErr } = await db
     .from("assembleia_sends")
@@ -185,6 +198,9 @@ export interface ChamadaItem {
   unidades: { numero: string; bloco: string | null }[]
   presente: boolean
   votou: boolean
+  // Outorgou procuração nesta assembleia — não pode ser marcado presente (a
+  // presença é representada pelo procurador): o toggle fica desabilitado.
+  outorgante: boolean
   // Token de voto — existe só pra quem tem send (presente/convidado). Permite
   // a mesa copiar o link direto de voto da pessoa (útil pra quem não tem CPF).
   token: string | null
@@ -208,7 +224,11 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
     .single()
   if (aErr) throw new Error(aErr.message)
 
-  const proprietarios = await getAllProprietarios(assembleia.condominio_id)
+  const [proprietarios, procuracoes] = await Promise.all([
+    getAllProprietarios(assembleia.condominio_id),
+    getProcuracoesByAssembleia(assembleiaId),
+  ])
+  const outorgantes = new Set(procuracoes.map((p) => p.outorgante_id))
 
   const { data: sends, error: sErr } = await db
     .from("assembleia_sends")
@@ -240,6 +260,7 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
       unidades: (p.unidades ?? []).map((u) => ({ numero: u.numero, bloco: u.bloco })),
       presente: st?.presente ?? false,
       votou: st?.votou ?? false,
+      outorgante: outorgantes.has(p.id),
       token: st?.token ?? null,
     }
   })
@@ -266,6 +287,15 @@ export async function marcarPresenca(
   if (error) throw new Error(error.message)
 
   if (presente) {
+    // Não marca presente quem outorgou procuração: a presença dele é
+    // representada pelo procurador (regra validada com o Carlos). Marcar
+    // contaria o imóvel 2x (aqui e no voto do procurador). Desmarcar (abaixo)
+    // continua livre — inclusive pra tirar da lista quem delegou depois.
+    if (await outorgouProcuracao(assembleiaId, proprietarioId)) {
+      throw new Error(
+        "Este proprietário outorgou procuração nesta assembleia — a presença é representada pelo procurador."
+      )
+    }
     const agora = new Date().toISOString()
     if (existente) {
       if (!existente.presente_em) {

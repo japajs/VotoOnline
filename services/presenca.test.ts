@@ -171,6 +171,16 @@ describe("registrarPresenca", () => {
     const r = await registrarPresenca("inexistente", { numero: "B108", bloco: null, cpf: "1" })
     expect(r.ok).toBe(false)
   })
+
+  it("outorgante: quem deu procuração não entra por si (quem participa é o procurador)", async () => {
+    setup({ exigePresenca: false, unidade: UNIDADE, proprietario: PROP, send: null })
+    h.state.responses.procuracoes = { data: [{ id: "pr1" }], error: null }
+    const r = await registrarPresenca("a1", { numero: "B108", bloco: null, cpf: "12345678901" })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.toLowerCase()).toContain("procuração")
+    // Não marcou presença (não criou send nem gravou presente_em).
+    expect(h.state.inserts).toHaveLength(0)
+  })
 })
 
 // marcarPresenca é o que a mesa aciona na Chamada E na caixa de presença da
@@ -228,5 +238,15 @@ describe("marcarPresenca", () => {
     await marcarPresenca("a1", "p1", false)
     expect(h.state.updates).toHaveLength(0)
     expect(h.state.inserts).toHaveLength(0)
+  })
+
+  it("marcar: recusa quem outorgou procuração (presença é representada pelo procurador)", async () => {
+    h.state.responses = {
+      assembleia_sends: { data: null, error: null },
+      procuracoes: { data: [{ id: "pr1" }], error: null },
+    }
+    await expect(marcarPresenca("a1", "p1", true)).rejects.toThrow(/procuração/i)
+    expect(h.state.inserts).toHaveLength(0)
+    expect(h.state.updates).toHaveLength(0)
   })
 })

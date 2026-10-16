@@ -149,6 +149,18 @@ export async function createProcuracao(
     }
     throw new Error(error.message)
   }
+
+  // Ao delegar, o outorgante deixa de participar por si — a presença passa a
+  // ser representada pelo procurador. Se ele já tinha sido marcado presente
+  // antes da procuração, limpa a marcação pra o imóvel não contar 2x (aqui e
+  // no voto do procurador). Seguro: outorganteVotou já foi checado como false.
+  await db
+    .from("assembleia_sends")
+    .update({ presente_em: null })
+    .eq("assembleia_id", assembleiaId)
+    .eq("proprietario_id", outorganteId)
+    .is("votado_em", null)
+
   return rowToProcuracao(data)
 }
 
