@@ -9,6 +9,7 @@ import { EditarAssembleiaDialog } from "@/components/assembleias/editar-assemble
 import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-dialog"
 import { EditarPautaDialog } from "@/components/assembleias/editar-pauta-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
+import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
@@ -235,6 +236,12 @@ export function ApuracaoAssembleia({
                   <DoorOpen className="h-3.5 w-3.5" />
                   Link de entrada
                 </Button>
+              )}
+              {/* QR do link de entrada (pedido do Carlos): projetar no telão,
+                  copiar ou imprimir cartaz pra colar na entrada. Liberado
+                  também em rascunho pra a mesa preparar/imprimir antes. */}
+              {canExport && assembleia.status !== "encerrada" && (
+                <QrEntradaDialog assembleiaId={assembleia.id} assembleiaTitulo={assembleia.titulo} />
               )}
               {canExport && assembleia.status !== "rascunho" && (
                 <PresencaDialog
