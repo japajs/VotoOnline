@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ResultadoAssembleia } from "@/components/assembleias/resultado-assembleia"
+import { QrEntrada, useEntradaUrl } from "@/components/assembleias/qr-entrada"
 import { getTelaoDataAction } from "@/app/actions/telao"
 import { APP_NAME } from "@/lib/constants"
 import type { TelaoData } from "@/services/telao"
@@ -37,6 +38,7 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
   }, [assembleiaId, condominioId])
 
   const parcial = data.status !== "encerrada"
+  const entradaUrl = useEntradaUrl(assembleiaId)
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,6 +69,24 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
       </div>
 
       <div className="mx-auto max-w-5xl px-6 py-8">
+        {/* QR de entrada no telão (pedido do Carlos: visível em todo ponto
+            possível). Enquanto a votação está aberta, quem chega escaneia e
+            cai direto na tela de votar (unidade + CPF). Some quando encerra. */}
+        {parcial && (
+          <div className="mb-8 flex flex-col items-center justify-center gap-5 rounded-2xl border border-border/60 bg-card p-6 text-center sm:flex-row sm:gap-8 sm:text-left">
+            <div className="shrink-0 rounded-xl border border-border/60 bg-white p-3">
+              <QrEntrada url={entradaUrl} size={168} />
+            </div>
+            <div>
+              <p className="text-xl font-bold sm:text-2xl">Escaneie para votar</p>
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                Aponte a câmera do celular para o código e entre com a sua{" "}
+                <span className="font-semibold text-foreground">unidade</span> e o seu{" "}
+                <span className="font-semibold text-foreground">CPF</span> cadastrados.
+              </p>
+            </div>
+          </div>
+        )}
         <ResultadoAssembleia
           condominio_nome={data.condominioNome}
           data_abertura={data.dataAbertura}
