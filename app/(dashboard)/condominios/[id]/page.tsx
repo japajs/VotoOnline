@@ -11,6 +11,7 @@ import {
   getProprietarioIdsPresentes,
   getPautasVotadasPorProprietario,
 } from "@/services/assembleia-votos"
+import { getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
 import { CriarProprietarioDialog } from "@/components/proprietarios/criar-proprietario-dialog"
@@ -59,13 +60,19 @@ export default async function CondominioDetailPage({ params }: Props) {
   // Marcar quem já votou NA ASSEMBLEIA ABERTA agora (não "em qualquer") direto
   // na lista de proprietários, pra filtrar/cobrar sem precisar ir à apuração.
   const assembleiaAberta = assembleias.find((a) => isEmAndamento(a.status))
-  const [votouNaAberta, presentesNaAberta, pautasVotadasNaAberta] = assembleiaAberta
-    ? await Promise.all([
-        getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>()),
-        getProprietarioIdsPresentes(assembleiaAberta.id).catch(() => new Set<string>()),
-        getPautasVotadasPorProprietario(assembleiaAberta.id).catch(() => new Map<string, number>()),
-      ])
-    : [undefined, undefined, undefined]
+  const [votouNaAberta, presentesNaAberta, pautasVotadasNaAberta, outorgantesNaAberta] =
+    assembleiaAberta
+      ? await Promise.all([
+          getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>()),
+          getProprietarioIdsPresentes(assembleiaAberta.id).catch(() => new Set<string>()),
+          getPautasVotadasPorProprietario(assembleiaAberta.id).catch(() => new Map<string, number>()),
+          // Quem outorgou procuração: não pode ser marcado presente (quem
+          // participa é o procurador) — a presença fica desabilitada na lista.
+          getProcuracoesByAssembleia(assembleiaAberta.id)
+            .then((ps) => new Set(ps.map((p) => p.outorgante_id)))
+            .catch(() => new Set<string>()),
+        ])
+      : [undefined, undefined, undefined, undefined]
 
   // Denominador do "voto total" (vs. parcial): no modo pauta-por-pauta só
   // contam as pautas já abertas pela mesa — as demais ninguém poderia ter
@@ -157,6 +164,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           votouNaAberta={votouNaAberta}
           presentesNaAberta={presentesNaAberta}
           pautasVotadasNaAberta={pautasVotadasNaAberta}
+          outorgantesNaAberta={outorgantesNaAberta}
           totalPautasVotaveis={totalPautasVotaveis}
           assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}

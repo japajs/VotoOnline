@@ -227,7 +227,12 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
                       <button
                         type="button"
                         onClick={() => handleMarcar(i)}
-                        disabled={marcando}
+                        disabled={marcando || i.outorgante}
+                        title={
+                          i.outorgante
+                            ? "Outorgou procuração — a presença é representada pelo procurador"
+                            : undefined
+                        }
                         className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm disabled:opacity-60"
                       >
                         <div className="min-w-0">
@@ -235,13 +240,23 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
                             {uni} · {i.nome}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {i.votou ? "já votou" : i.email ? i.email : "sem e-mail"}
-                            {!i.temCpf && " · sem CPF (só voto manual)"}
+                            {i.outorgante
+                              ? "outorgou procuração"
+                              : i.votou
+                                ? "já votou"
+                                : i.email
+                                  ? i.email
+                                  : "sem e-mail"}
+                            {!i.outorgante && !i.temCpf && " · sem CPF (só voto manual)"}
                           </p>
                         </div>
                         <span className="flex shrink-0 items-center text-xs font-medium">
                           {marcando ? (
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : i.outorgante ? (
+                            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                              Procuração
+                            </span>
                           ) : i.presente ? (
                             <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                               <CheckCircle2 className="h-4 w-4" /> Presente

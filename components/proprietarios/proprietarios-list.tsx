@@ -44,6 +44,9 @@ interface ProprietariosListProps {
   // Denominador do "voto total": nº de pautas em votação (todas, ou só as já
   // abertas pela mesa no modo pauta-por-pauta). undefined/0 → sem distinção.
   totalPautasVotaveis?: number
+  // Quem outorgou procuração na assembleia aberta — não pode ser marcado
+  // presente (a presença é representada pelo procurador): toggle desabilitado.
+  outorgantesNaAberta?: Set<string>
   // Id da assembleia aberta — habilita marcar presença direto na lista (sem
   // abrir a Apuração). undefined = sem assembleia aberta → sem caixa.
   assembleiaAbertaId?: string
@@ -76,6 +79,7 @@ export function ProprietariosList({
   presentesNaAberta,
   pautasVotadasNaAberta,
   totalPautasVotaveis,
+  outorgantesNaAberta,
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
   isAdmin = false,
@@ -334,6 +338,7 @@ export function ProprietariosList({
                 parcial={parciaisNaAberta.has(p.id)}
                 pautasVotadas={pautasVotadasNaAberta?.get(p.id) ?? 0}
                 totalPautas={totalPautasVotaveis ?? 0}
+                outorgante={outorgantesNaAberta?.has(p.id) ?? false}
                 mostrarPresenca={podeMarcarPresenca}
                 presente={presentesLocal.has(p.id)}
                 marcandoPresenca={marcandoId === p.id}
@@ -360,6 +365,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   parcial,
   pautasVotadas,
   totalPautas,
+  outorgante,
   mostrarPresenca,
   presente,
   marcandoPresenca,
@@ -377,6 +383,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   parcial: boolean
   pautasVotadas: number
   totalPautas: number
+  outorgante: boolean
   mostrarPresenca: boolean
   presente: boolean
   marcandoPresenca: boolean
@@ -448,13 +455,21 @@ const ProprietarioRow = memo(function ProprietarioRow({
             <button
               type="button"
               onClick={() => onTogglePresente(proprietario.id, !presente)}
-              disabled={marcandoPresenca}
+              disabled={marcandoPresenca || outorgante}
               aria-pressed={presente}
-              title={presente ? "Presente — toque para desmarcar" : "Marcar presente"}
+              title={
+                outorgante
+                  ? "Outorgou procuração — a presença é representada pelo procurador"
+                  : presente
+                    ? "Presente — toque para desmarcar"
+                    : "Marcar presente"
+              }
               className={`flex min-h-[28px] min-w-[28px] shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
-                presente
-                  ? "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-                  : "text-muted-foreground/40 hover:text-emerald-600 dark:hover:text-emerald-400"
+                outorgante
+                  ? "cursor-not-allowed text-muted-foreground/30"
+                  : presente
+                    ? "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                    : "text-muted-foreground/40 hover:text-emerald-600 dark:hover:text-emerald-400"
               }`}
             >
               {marcandoPresenca ? (
@@ -476,10 +491,21 @@ const ProprietarioRow = memo(function ProprietarioRow({
               Inadimplente
             </span>
           )}
-          {/* Três estados (termo do Carlos): "Não votou" (cinza), "Votou
-              parcial X/Y" (âmbar — votou em algumas pautas, falta terminar) e
-              "Votou geral" (verde — votou em todas as pautas em votação). */}
-          {mostrarVoto &&
+          {/* Outorgante: delegou presença e voto ao procurador — mostra
+              "Procuração" em vez de "Não votou" (que seria enganoso, já que ele
+              não pode votar por si). */}
+          {outorgante ? (
+            <span
+              className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+              title="Outorgou procuração — quem participa e vota é o procurador"
+            >
+              Procuração
+            </span>
+          ) : (
+            /* Três estados (termo do Carlos): "Não votou" (cinza), "Votou
+               parcial X/Y" (âmbar — votou em algumas pautas, falta terminar) e
+               "Votou geral" (verde — votou em todas as pautas em votação). */
+            mostrarVoto &&
             (!votou ? (
               <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                 Não votou
@@ -498,7 +524,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
               >
                 Votou geral
               </span>
-            ))}
+            )))}
         </p>
 
         {/* Sempre 3 filhos diretos (mesmo quando falta e-mail/celular) — com
