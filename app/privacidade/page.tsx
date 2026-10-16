@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { Gavel } from "lucide-react"
 import { APP_NAME } from "@/lib/constants"
+import { VoltarLink } from "./voltar-link"
 
 export const metadata: Metadata = {
   title: "Política de Privacidade",
@@ -193,12 +193,7 @@ export default function PrivacidadePage() {
         </div>
 
         <div className="mt-10 border-t border-border/40 pt-5">
-          <Link
-            href="/login"
-            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            Voltar
-          </Link>
+          <VoltarLink className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" />
           <p className="mt-3 text-[11px] text-muted-foreground/60">
             © Cleiton Salazar · {APP_NAME} · uso licenciado por sessão de assembleia.
           </p>
