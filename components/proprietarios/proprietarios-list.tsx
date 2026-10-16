@@ -264,9 +264,9 @@ export function ProprietariosList({
         <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
             Votação de{" "}
-            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — por{" "}
-            <span className="font-medium text-foreground">imóvel</span>: do total, os presentes; dos
-            presentes, quem votou tudo, em parte ou ainda não votou.
+            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — peso por{" "}
+            <span className="font-medium text-foreground">imóvel</span>. Dos presentes na assembleia:
+            quem votou todas as pautas (geral), quem votou parcialmente, e quem ainda não votou.
           </p>
           <div className="flex flex-wrap gap-1">
             {(() => {

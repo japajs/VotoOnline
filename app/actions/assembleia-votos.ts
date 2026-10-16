@@ -5,6 +5,7 @@ import { headers } from "next/headers"
 import { getAssembleiaById } from "@/services/assembleias"
 import { getCondominioById } from "@/services/condominios"
 import { getProprietarioById } from "@/services/proprietarios"
+import { outorgouProcuracao } from "@/services/procuracoes"
 import { getPesoParticipante } from "@/lib/peso"
 import {
   upsertAssembleiaSend,
@@ -475,6 +476,15 @@ export async function iniciarVotoManualAction(
     }
     if (proprietario.inadimplente) {
       return { success: false, error: "Proprietário inadimplente não pode votar." }
+    }
+    // Bloqueia JÁ NO ACESSO (não só na confirmação): quem outorgou procuração
+    // nesta assembleia não vota por si — quem vota é o representante (pedido do
+    // Carlos: o outorgante não pode nem entrar na rotina de voto).
+    if (await outorgouProcuracao(assembleiaId, proprietarioId)) {
+      return {
+        success: false,
+        error: `${proprietario.nome} outorgou procuração nesta assembleia — quem vota é o representante. O voto não pode ser lançado por ele.`,
+      }
     }
 
     const send = await upsertAssembleiaSend({
