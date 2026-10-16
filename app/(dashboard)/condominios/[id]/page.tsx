@@ -111,9 +111,15 @@ export default async function CondominioDetailPage({ params }: Props) {
       {/* Informações do condomínio */}
       <CondominioInfoCard condominio={condominio} />
 
-      {fracoesCadastradas.length > 0 && divisorEscalaFracao !== 1 && (
-        <FracaoEscalaAviso condominioId={id} soma={somaFracoes} divisor={divisorEscalaFracao} />
-      )}
+      {/* O aviso de escala da fração ideal só importa quando a apuração é POR
+          FRAÇÃO IDEAL. No critério "por unidade" (1 unidade = 1 voto) as frações
+          cadastradas não entram na conta, então avisar sobre a escala delas é só
+          ruído (Carlos: "a apuração vai ser por imóvel, por que aparece isso?"). */}
+      {condominio.criterio_peso === "fracao_ideal" &&
+        fracoesCadastradas.length > 0 &&
+        divisorEscalaFracao !== 1 && (
+          <FracaoEscalaAviso condominioId={id} soma={somaFracoes} divisor={divisorEscalaFracao} />
+        )}
 
       {/* Assembleias */}
       <section className="space-y-4">
