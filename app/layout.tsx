@@ -21,6 +21,13 @@ const sourceSans = Source_Sans_3({
   variable: "--font-sans-body",
   subsets: ["latin"],
   display: "swap",
+  // É a fonte do corpo (usada em tudo), mas o preload automático + display:swap
+  // dispara no Chrome o aviso "preloaded but not used within a few seconds"
+  // (falso-positivo de timing: o texto pinta na fonte de fallback primeiro e a
+  // troca acontece fora da janela medida). Desligar o preload remove o aviso;
+  // a fonte continua carregando normalmente pelo @font-face (swap), com FOUT
+  // imperceptível e sem deslocamento de layout (adjustFontFallback do Next).
+  preload: false,
 })
 
 const plexMono = IBM_Plex_Mono({
