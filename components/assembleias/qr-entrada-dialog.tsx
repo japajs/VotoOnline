@@ -20,6 +20,20 @@ interface Props {
   condominioNome?: string | null
 }
 
+// Escapa texto antes de injetar no HTML do cartaz de impressão — um título
+// legítimo com "&", "<" ou aspas (ex.: "Prestação de contas & orçamento")
+// quebraria o documento sem isso.
+const ESC: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+}
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ESC[c]!)
+}
+
 // QR de entrada pro operador: projetar no telão, copiar o link ou IMPRIMIR um
 // cartaz pra colar na entrada do salão (pedido do Carlos: QR em todo ponto
 // possível, inclusive impresso pras reuniões presenciais). O condômino que
@@ -47,13 +61,18 @@ export function QrEntradaDialog({ assembleiaId, assembleiaTitulo, condominioNome
   // o cartaz e dispara a impressão.
   function imprimir() {
     const svg = qrRef.current?.querySelector("svg")?.outerHTML
-    if (!svg || !url) return
+    if (!svg || !url) {
+      toast.message("Aguarde o QR carregar e tente de novo.")
+      return
+    }
     const win = window.open("", "_blank", "width=720,height=900")
     if (!win) {
       toast.error("Permita pop-ups neste site para imprimir o cartaz.")
       return
     }
-    const tituloCartaz = condominioNome ? `${condominioNome} — ${assembleiaTitulo}` : assembleiaTitulo
+    const tituloCartaz = escapeHtml(
+      condominioNome ? `${condominioNome} — ${assembleiaTitulo}` : assembleiaTitulo
+    )
     win.document.write(`<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8" />
 <title>QR de entrada — ${tituloCartaz}</title>
@@ -63,6 +82,7 @@ export function QrEntradaDialog({ assembleiaId, assembleiaTitulo, condominioNome
   h1{font-size:34px;margin:0 0 6px}
   h2{font-size:18px;font-weight:600;color:#555;margin:0 0 32px}
   .qr{display:inline-block;padding:20px;border:1px solid #D8D2C2;border-radius:16px}
+  .qr svg{width:320px;height:320px;display:block}
   .instr{font-size:18px;line-height:1.6;max-width:460px;margin:32px auto 0}
   .instr b{color:#16233F}
   .url{font-size:12px;color:#999;margin-top:20px;word-break:break-all}
@@ -73,7 +93,7 @@ export function QrEntradaDialog({ assembleiaId, assembleiaTitulo, condominioNome
   <h2>${tituloCartaz}</h2>
   <div class="qr">${svg}</div>
   <p class="instr">Aponte a câmera do seu celular para o código. Em seguida, informe a sua <b>unidade</b> e o seu <b>CPF</b> cadastrados para entrar e votar.</p>
-  <div class="url">${url}</div>
+  <div class="url">${escapeHtml(url)}</div>
   <div class="rodape">© Cleiton Salazar · VotoOnline · uso licenciado por sessão de assembleia</div>
 </body></html>`)
     win.document.close()
