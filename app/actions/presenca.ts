@@ -13,6 +13,9 @@ import {
   type PresenteItem,
   type ChamadaData,
 } from "@/services/presenca"
+import { getPautasVotadasPorProprietario } from "@/services/assembleia-votos"
+import { getProcuracoesByAssembleia } from "@/services/procuracoes"
+import { getAssembleiaById } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit"
 import { normalizarChaveUnidade } from "@/lib/unidade-format"
@@ -150,23 +153,69 @@ export async function getTentandoEntrarAction(
   }
 }
 
-// Status de presença AO VIVO pra a tela de gestão sincronizar entre dispositivos
-// (duas secretárias) — devolve presentes + "tentando entrar" numa ida só. Falha
-// devolve sucesso=false sem dados (o polling do cliente ignora e tenta de novo,
-// sem zerar o que já está marcado). Substitui o getTentandoEntrarAction na lista.
-export async function getPresencaLiveAction(
+export type EstadoVotacaoLive = {
+  success: boolean
+  presentes: string[]
+  votaram: string[]
+  // Quantas pautas DISTINTAS cada proprietário respondeu — pares [id, nº] pra
+  // serializar (o cliente remonta o Map). Distingue voto total de parcial.
+  pautasVotadas: [string, number][]
+  outorgantes: string[]
+  // Denominador do voto total: nº de pautas em votação (todas, ou só as já
+  // abertas pela mesa no modo pauta-por-pauta). Muda ao vivo nesse modo.
+  totalPautasVotaveis: number
+  tentando: { id: string; em: string }[]
+}
+
+const ESTADO_VOTACAO_VAZIO: EstadoVotacaoLive = {
+  success: false,
+  presentes: [],
+  votaram: [],
+  pautasVotadas: [],
+  outorgantes: [],
+  totalPautasVotaveis: 0,
+  tentando: [],
+}
+
+// Estado de votação AO VIVO pra a tela de gestão sincronizar entre dispositivos
+// (duas secretárias) — presença, quem votou, voto total vs parcial, procurações
+// e "tentando entrar", tudo numa rodada. Visualizador também lê (read-only).
+// IMPORTANTE: em QUALQUER falha devolve success:false SEM dados — o polling do
+// cliente ignora (`if (!r.success) return`) e PRESERVA o estado atual, em vez de
+// zerar presença/votos na tela por um soluço do banco.
+export async function getEstadoVotacaoLiveAction(
   assembleiaId: string,
   condominioId: string
-): Promise<{ success: boolean; presentes: string[]; tentando: { id: string; em: string }[] }> {
-  const auth = await requirePerfil(["administrador", "operador"])
-  if (!auth.ok) return { success: false, presentes: [], tentando: [] }
+): Promise<EstadoVotacaoLive> {
+  const auth = await requirePerfil(["administrador", "operador", "visualizador"])
+  if (!auth.ok) return ESTADO_VOTACAO_VAZIO
   const acesso = await requireAcessoCondominio(condominioId)
-  if (!acesso.ok) return { success: false, presentes: [], tentando: [] }
+  if (!acesso.ok) return ESTADO_VOTACAO_VAZIO
   try {
-    const { presentes, tentando } = await getStatusPresencaLive(assembleiaId)
-    return { success: true, presentes, tentando }
+    const [status, pautasMap, procuracoes, assembleia] = await Promise.all([
+      getStatusPresencaLive(assembleiaId),
+      getPautasVotadasPorProprietario(assembleiaId),
+      getProcuracoesByAssembleia(assembleiaId),
+      getAssembleiaById(assembleiaId),
+    ])
+    // Mesmo cálculo da página (condominios/[id]): no modo pauta-por-pauta só
+    // contam as pautas já abertas pela mesa; no normal, todas.
+    const totalPautasVotaveis = assembleia
+      ? assembleia.votacao_por_pauta
+        ? (assembleia.pautas ?? []).filter((p) => p.votacao_aberta_em != null).length
+        : (assembleia.pautas ?? []).length
+      : 0
+    return {
+      success: true,
+      presentes: status.presentes,
+      votaram: status.votaram,
+      pautasVotadas: [...pautasMap.entries()],
+      outorgantes: procuracoes.map((p) => p.outorgante_id),
+      totalPautasVotaveis,
+      tentando: status.tentando,
+    }
   } catch {
-    return { success: false, presentes: [], tentando: [] }
+    return ESTADO_VOTACAO_VAZIO
   }
 }
 
