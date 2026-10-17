@@ -305,13 +305,16 @@ async function validarVotoOuFalhar(
   }
 
   // Presença controlada pela mesa: quando a assembleia exige presença, só vota
-  // quem a mesa marcou como presente (presente_em). A trava fica aqui no
-  // núcleo do registro — nem pelo link direto passa um voto de ausente. O
-  // lançamento manual do síndico (viaMesa) está isento: é a própria mesa
-  // registrando o voto de quem está no salão.
-  if (exigePresenca && !presenteEm && !viaMesa) {
+  // quem a mesa marcou como presente (presente_em). A trava fica aqui no núcleo
+  // do registro — nem pelo link direto, nem pelo lançamento manual da mesa
+  // (viaMesa) passa voto de ausente (pedido do Carlos: a mesa estava conseguindo
+  // registrar voto de quem não estava presente; no voto manual a lista já só
+  // mostra os presentes, e aqui reforçamos no núcleo). A própria entrada/voto
+  // marca presente em quem ainda não está (ver presente_em no snapshot abaixo),
+  // então no modo normal (sem exigir presença) nada muda.
+  if (exigePresenca && !presenteEm) {
     throw new Error(
-      "Você ainda não foi marcado como presente pela mesa. Assine a lista na mesa de entrada para poder votar."
+      "Ainda não há presença confirmada pela mesa. Marque a presença na Chamada (voto manual) ou assine a lista na mesa de entrada (voto pelo link) para poder votar."
     )
   }
 
