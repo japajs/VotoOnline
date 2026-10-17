@@ -96,7 +96,8 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
               id="nome-prop"
               placeholder="Nome completo"
               value={nome}
-              onChange={(e) => setNome(e.target.value)}
+              // Nome não tem números — remove dígitos conforme digita (Carlos).
+              onChange={(e) => setNome(e.target.value.replace(/[0-9]/g, ""))}
               autoFocus
             />
           </div>
@@ -108,7 +109,8 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
               inputMode="numeric"
               placeholder="Somente números"
               value={cpf}
-              onChange={(e) => setCpf(e.target.value)}
+              // CPF só tem dígitos — remove não-números e limita a 11 (Carlos).
+              onChange={(e) => setCpf(e.target.value.replace(/\D/g, "").slice(0, 11))}
             />
             <p className="text-xs text-muted-foreground">
               Chave de acesso ao link de voto (o condômino entra com a unidade + o CPF).
@@ -137,7 +139,9 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
               type="tel"
               placeholder="(64) 98146-9800"
               value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
+              // Celular não tem letras — mantém só dígitos e pontuação de
+              // telefone, bloqueia letras conforme digita (Carlos).
+              onChange={(e) => setTelefone(e.target.value.replace(/[^\d()+\-\s]/g, ""))}
             />
           </div>
 

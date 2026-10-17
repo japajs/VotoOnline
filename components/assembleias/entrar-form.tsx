@@ -25,7 +25,19 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
 
       <div className="space-y-1.5">
         <Label htmlFor="cpf">CPF</Label>
-        <Input id="cpf" name="cpf" inputMode="numeric" placeholder="Somente números" autoComplete="off" required />
+        <Input
+          id="cpf"
+          name="cpf"
+          inputMode="numeric"
+          placeholder="Somente números"
+          autoComplete="off"
+          required
+          // Reforço no celular: bloqueia letras conforme digita (só dígitos,
+          // máx. 11). O servidor também normaliza antes de comparar.
+          onChange={(e) => {
+            e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "").slice(0, 11)
+          }}
+        />
       </div>
 
       {state?.error && (
