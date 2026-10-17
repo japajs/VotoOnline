@@ -17,7 +17,15 @@ import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit"
 import { normalizarChaveUnidade } from "@/lib/unidade-format"
 import { ROUTES } from "@/lib/constants"
 
-export type EntrarState = { error?: string } | null
+export type EntrarState = {
+  error?: string
+  // Identidade confere, mas a mesa ainda não confirmou presença: o form fica
+  // "aguardando" e entra sozinho quando confirmarem (polling com estes dados).
+  aguardando?: boolean
+  numero?: string
+  bloco?: string | null
+  cpf?: string
+} | null
 
 // Ação do link público de entrada (Opção A). Recebe o assembleiaId via bind
 // (não por campo do formulário). Em caso de sucesso, redireciona pro /v/[token]
@@ -46,10 +54,38 @@ export async function entrarAssembleiaAction(
   if (!numero || !cpf) return { error: "Preencha a sua unidade e o CPF." }
 
   const result = await registrarPresenca(assembleiaId, { numero, bloco, cpf })
-  if (!result.ok) return { error: result.error }
+  if (!result.ok) {
+    // Identidade confere mas falta a mesa confirmar → devolve "aguardando" +
+    // os dados pra o form pollar e entrar sozinho quando confirmarem. Erro de
+    // identidade (CPF/unidade) volta como erro normal.
+    if (result.aguardando) return { aguardando: true, numero, bloco, cpf, error: result.error }
+    return { error: result.error }
+  }
 
   // redirect() lança NEXT_REDIRECT — fica fora de qualquer try/catch de propósito.
   redirect(ROUTES.publicCondoVoto(result.token))
+}
+
+// Polling do form de entrada enquanto a mesa não confirma a presença: re-checa
+// identidade + presença e, quando a mesa confirmar, devolve o token (o cliente
+// redireciona pro /v/[token] sem re-digitar). Mesmo rate limit por IP+unidade
+// (intervalo ~7s no cliente fica bem abaixo do teto).
+export async function verificarEntradaAction(
+  assembleiaId: string,
+  numero: string,
+  bloco: string | null,
+  cpf: string
+): Promise<{ ok: boolean; token?: string; aguardando?: boolean; error?: string }> {
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown"
+  const chaveUnidade = normalizarChaveUnidade({ numero, bloco })
+  if (!(await checkRateLimit(rateLimitKey.entrada(ip, chaveUnidade)))) {
+    return { ok: false, error: "Muitas tentativas. Aguarde um momento." }
+  }
+  if (!numero || !cpf) return { ok: false, error: "Dados incompletos." }
+
+  const result = await registrarPresenca(assembleiaId, { numero, bloco, cpf })
+  if (result.ok) return { ok: true, token: result.token }
+  return { ok: false, aguardando: result.aguardando ?? false, error: result.error }
 }
 
 // Lista de presença pro admin (read-only). Visualizador também pode ver (é só

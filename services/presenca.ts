@@ -9,7 +9,11 @@ import type { AssembleiaStatus } from "@/types"
 
 export type RegistrarPresencaResult =
   | { ok: true; token: string }
-  | { ok: false; error: string }
+  // `aguardando`: identidade confere (unidade + CPF), mas a mesa ainda não
+  // marcou presente. O link fica "aguardando" e entra sozinho quando a mesa
+  // confirmar (ver verificarEntradaAction + EntrarForm). Erros de identidade
+  // (CPF/unidade errados) vêm SEM aguardando.
+  | { ok: false; error: string; aguardando?: boolean }
 
 // Presença online (Opção A — auto check-in). A partir do link público de
 // entrada (/entrar/[assembleiaId]), o próprio proprietário se identifica por
@@ -128,6 +132,7 @@ export async function registrarPresenca(
     }
     return {
       ok: false,
+      aguardando: true,
       error:
         "Você ainda não foi marcado como presente pela mesa. Assine a lista na mesa de entrada para poder votar.",
     }
