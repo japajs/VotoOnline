@@ -1,9 +1,11 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, Loader2, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { DonutChart } from "@/components/ui/donut-chart"
 import { EditarAssembleiaDialog } from "@/components/assembleias/editar-assembleia-dialog"
 import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-dialog"
@@ -20,7 +22,7 @@ import {
   fecharVotacaoPautaAction,
 } from "@/app/actions/assembleias"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
-import { APP_NAME } from "@/lib/constants"
+import { APP_NAME, ROUTES } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
 import {
   STATUS_EXIBIDO_LABEL as STATUS_LABEL,
@@ -186,6 +188,21 @@ export function ApuracaoAssembleia({
               {STATUS_LABEL[statusExibido]}
             </span>
             <div className="flex flex-wrap items-center gap-2 print:hidden">
+              {/* Navegação clara pro operador leigo (pedido do Carlos): volta
+                  pra tela de gestão do condomínio (cadastro/presença), onde a
+                  secretária fica o tempo todo — em vez de depender só do "<-"
+                  discreto no topo. Primeiro item, destacado. */}
+              <Link
+                href={`${ROUTES.condominios}/${condominioId}`}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "gap-1.5 border-primary/40 font-medium text-primary hover:bg-primary/5"
+                )}
+                title="Voltar à tela de gestão do condomínio (proprietários e presença)"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Voltar à gestão
+              </Link>
               {canExport && (
                 <EditarAssembleiaDialog
                   assembleia={assembleia}
