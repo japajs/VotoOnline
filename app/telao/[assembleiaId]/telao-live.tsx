@@ -22,18 +22,32 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
   const [data, setData] = useState<TelaoData>(inicial)
   const [atualizadoEm, setAtualizadoEm] = useState<Date>(() => new Date())
 
+  // setTimeout ENCADEADO (não setInterval): o próximo refresh só é agendado
+  // depois que o atual termina. O telão fica projetado a assembleia inteira e é
+  // o poller mais pesado (apuração + votos detalhados); com setInterval fixo, um
+  // banco lento faria as consultas EMPILHAREM (feedback loop de carga). Falha de
+  // refresh é tolerada — mantém os últimos dados na tela em vez de quebrar.
   useEffect(() => {
     let ativo = true
-    const id = setInterval(async () => {
-      const r = await getTelaoDataAction(assembleiaId, condominioId)
-      if (ativo && r.success && r.data) {
-        setData(r.data)
-        setAtualizadoEm(new Date())
-      }
-    }, INTERVALO_MS)
+    let timer: ReturnType<typeof setTimeout>
+    const agendar = () => {
+      timer = setTimeout(async () => {
+        try {
+          const r = await getTelaoDataAction(assembleiaId, condominioId)
+          if (ativo && r.success && r.data) {
+            setData(r.data)
+            setAtualizadoEm(new Date())
+          }
+        } catch {
+          // mantém os últimos dados projetados; tenta de novo no próximo ciclo
+        }
+        if (ativo) agendar()
+      }, INTERVALO_MS)
+    }
+    agendar()
     return () => {
       ativo = false
-      clearInterval(id)
+      clearTimeout(timer)
     }
   }, [assembleiaId, condominioId])
 
