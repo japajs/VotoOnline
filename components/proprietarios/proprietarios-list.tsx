@@ -57,7 +57,15 @@ interface ProprietariosListProps {
   criterioPeso?: CriterioPeso
 }
 
-type FiltroVoto = "todos" | "presentes" | "votaram" | "parcial" | "nao"
+type FiltroVoto =
+  | "todos"
+  | "presentes"
+  | "ausentes"
+  | "votaram"
+  | "parcial"
+  | "nao"
+  | "procuracao"
+  | "inadimplentes"
 
 function formatPeso(peso: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(peso * 100).toFixed(4)}%`
@@ -145,7 +153,15 @@ export function ProprietariosList({
     const porVoto =
       votouNaAberta && filtroVoto !== "todos"
         ? proprietarios.filter((p) => {
+            const ehOutorgante = outorgantesNaAberta?.has(p.id) ?? false
             if (filtroVoto === "presentes") return presentesLocal.has(p.id)
+            // "ausentes": quem ainda não confirmou presença (e não é procuração
+            // — essa tem balde próprio). Pedido do Carlos: no início todo mundo
+            // é "Ausente"; ao marcar presente vira "Não votou".
+            if (filtroVoto === "ausentes")
+              return !presentesLocal.has(p.id) && !ehOutorgante
+            if (filtroVoto === "procuracao") return ehOutorgante
+            if (filtroVoto === "inadimplentes") return p.inadimplente
             // "votaram" = votaram TUDO (todas as pautas). Junto com "parcial" e
             // "nao" formam o funil do Carlos: dos presentes, quem votou tudo,
             // quem votou em parte e quem não votou nada — três baldes que
@@ -187,7 +203,16 @@ export function ProprietariosList({
       })
     }
     return ordenados
-  }, [proprietarios, busca, ordenacao, filtroVoto, votouNaAberta, presentesLocal, parciaisNaAberta])
+  }, [
+    proprietarios,
+    busca,
+    ordenacao,
+    filtroVoto,
+    votouNaAberta,
+    presentesLocal,
+    parciaisNaAberta,
+    outorgantesNaAberta,
+  ])
 
   // Totalizações por IMÓVEL, não por pessoa (pedido do Carlos): a assembleia
   // gira em torno do imóvel — um proprietário com 2 imóveis conta como 2
@@ -217,6 +242,28 @@ export function ProprietariosList({
         (n, p) => n + (presentesLocal.has(p.id) && !votouNaAberta.has(p.id) ? imoveisDe(p) : 0),
         0
       )
+    : 0
+  // Ausentes (imóveis de quem não confirmou presença e não é procuração) +
+  // Procuração (outorgantes) + Inadimplentes. Partição: Total = Presentes +
+  // Ausentes + Procuração. Inadimplentes cruza as demais (só informativo).
+  const nAusentes = votouNaAberta
+    ? proprietarios.reduce(
+        (n, p) =>
+          n +
+          (!presentesLocal.has(p.id) && !(outorgantesNaAberta?.has(p.id) ?? false)
+            ? imoveisDe(p)
+            : 0),
+        0
+      )
+    : 0
+  const nProcuracao = votouNaAberta
+    ? proprietarios.reduce(
+        (n, p) => n + ((outorgantesNaAberta?.has(p.id) ?? false) ? imoveisDe(p) : 0),
+        0
+      )
+    : 0
+  const nInadimplentes = votouNaAberta
+    ? proprietarios.reduce((n, p) => n + (p.inadimplente ? imoveisDe(p) : 0), 0)
     : 0
 
   if (proprietarios.length === 0) {
@@ -274,18 +321,21 @@ export function ProprietariosList({
           </p>
           <div className="flex flex-wrap gap-1">
             {(() => {
-              // Funil de apuração do Carlos: Total de unidades → Presentes →
-              // {votaram tudo | parcial | não votaram}. Os três últimos somam
-              // os presentes, sem sobreposição.
+              // Funil do Carlos: Total → Presentes (+ Ausentes) → dos presentes,
+              // {votou geral | parcial | não votaram}. Procuração e Inadimplentes
+              // são baldes extras (só aparecem quando há alguém).
               const chips: [FiltroVoto, string, number][] = [
                 ["todos", "Imóveis", totalImoveis],
                 ["presentes", "Presentes", nPresentes],
+                ["ausentes", "Ausentes", nAusentes],
                 ["votaram", "Votou geral", nVotaram],
               ]
-              // "Votou parcial" só aparece quando há alguém nessa situação —
-              // evita poluir a barra quando todo mundo votou geral (ou ninguém).
+              // Os condiconais só aparecem quando há alguém na situação — evita
+              // poluir a barra quando ninguém se encaixa.
               if (nParcial > 0) chips.push(["parcial", "Votou parcial", nParcial])
               chips.push(["nao", "Não votaram", nNao])
+              if (nProcuracao > 0) chips.push(["procuracao", "Procuração", nProcuracao])
+              if (nInadimplentes > 0) chips.push(["inadimplentes", "Inadimplentes", nInadimplentes])
               return chips
             })().map(([val, label, count]) => (
               <button
@@ -507,9 +557,23 @@ const ProprietarioRow = memo(function ProprietarioRow({
                "Votou geral" (verde — votou em todas as pautas em votação). */
             mostrarVoto &&
             (!votou ? (
-              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                Não votou
-              </span>
+              // Pedido do Carlos: quem AINDA não confirmou presença é "Ausente";
+              // só depois de marcado presente passa a "Não votou".
+              presente ? (
+                <span
+                  className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                  title="Presente — ainda não votou"
+                >
+                  Não votou
+                </span>
+              ) : (
+                <span
+                  className="shrink-0 rounded-full bg-muted/50 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground/70"
+                  title="Ainda não confirmou presença na assembleia"
+                >
+                  Ausente
+                </span>
+              )
             ) : parcial ? (
               <span
                 className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
