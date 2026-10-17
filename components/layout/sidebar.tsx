@@ -12,6 +12,7 @@ import {
   Gavel,
   HelpCircle,
   LogOut,
+  Repeat,
   Settings,
   Users,
   X,
@@ -202,6 +203,18 @@ export function Sidebar({ user, open, onClose }: Props) {
             </p>
           </div>
         </div>
+
+        {/* Trocar conta: abre a tela de login (mantendo a sessão) pra entrar
+            com outro usuário — útil pra testar/alternar contas sem precisar
+            deslogar. Pedido do Carlos. */}
+        <Link
+          href="/login?trocar=1"
+          onClick={onClose}
+          className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-[0.9375rem] font-medium text-sidebar-muted-foreground outline-none transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 lg:min-h-0 lg:py-2 lg:text-sm"
+        >
+          <Repeat className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={1.75} />
+          Trocar conta
+        </Link>
 
         {/* Logout */}
         <form action={logoutAction}>

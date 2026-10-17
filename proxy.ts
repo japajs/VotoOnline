@@ -37,10 +37,14 @@ export async function proxy(request: NextRequest) {
   const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
 
-  // Usuário já autenticado não deve acessar /login ou /setup
+  // Usuário já autenticado não deve acessar /login ou /setup — EXCETO
+  // /login?trocar=1, usado pra entrar com outra conta sem precisar deslogar
+  // (ex.: a mesa testando/alternando usuários). Pedido do Carlos: um caminho
+  // pro login inicial mesmo com a sessão em cache.
   if (isPublic && token) {
     const valid = await isValidSession(token)
-    if (valid && (pathname.startsWith("/login") || pathname.startsWith("/setup"))) {
+    const trocandoConta = pathname.startsWith("/login") && request.nextUrl.searchParams.has("trocar")
+    if (valid && !trocandoConta && (pathname.startsWith("/login") || pathname.startsWith("/setup"))) {
       return NextResponse.redirect(new URL("/dashboard", request.url))
     }
   }
