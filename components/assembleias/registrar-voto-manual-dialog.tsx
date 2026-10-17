@@ -43,6 +43,9 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
   const [etapa, setEtapa] = useState<Etapa>("escolher")
   const [carregando, setCarregando] = useState(false)
   const [proprietarios, setProprietarios] = useState<ProprietarioSemVoto[]>([])
+  // Modo presença pela mesa: a lista já vem só com os presentes (filtrado no
+  // servidor). Guardamos o flag só pra ajustar a mensagem de lista vazia.
+  const [exigePresenca, setExigePresenca] = useState(false)
   const [busca, setBusca] = useState("")
   const [proprietarioSelecionado, setProprietarioSelecionado] = useState<ProprietarioSemVoto | null>(null)
   const [sendId, setSendId] = useState<string | null>(null)
@@ -51,6 +54,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
   function reset() {
     setEtapa("escolher")
     setProprietarios([])
+    setExigePresenca(false)
     setBusca("")
     setProprietarioSelecionado(null)
     setSendId(null)
@@ -64,6 +68,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
         setCarregando(false)
         if (result.success) {
           setProprietarios(result.proprietarios)
+          setExigePresenca(result.exigePresenca)
         } else {
           toast.error(result.error)
         }
@@ -107,6 +112,14 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
             <DialogDescription>
               Pra quem votou presencialmente, por procuração em papel, ou não tem e-mail cadastrado.
               O voto fica registrado com seu nome como responsável pelo lançamento.
+              {exigePresenca && (
+                <>
+                  {" "}
+                  <span className="font-medium text-foreground">
+                    Só aparecem proprietários já marcados como presentes pela mesa.
+                  </span>
+                </>
+              )}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -132,7 +145,9 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
               ) : proprietariosFiltrados.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   {proprietarios.length === 0
-                    ? "Todos os proprietários já votaram."
+                    ? exigePresenca
+                      ? "Ninguém marcado como presente ainda. Marque a presença na Chamada antes de lançar o voto."
+                      : "Todos os proprietários já votaram."
                     : "Nenhum proprietário encontrado."}
                 </p>
               ) : (

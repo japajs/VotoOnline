@@ -14,11 +14,13 @@ import {
   getSendsJaVotaram,
   getSendsNaoVotaram,
   getProprietariosSemVoto,
+  getProprietarioIdsPresentes,
   getAssembleiaSendByToken,
   getRespostasBySendId,
   type RespostaInput,
   type ProprietarioSemVoto,
 } from "@/services/assembleia-votos"
+import { getExigePresenca } from "@/services/presenca"
 import type { AssembleiaStatus, PautaTipo } from "@/types"
 import { sendAssembleiaEmailBatch, sendNovaPautaEmailBatch, sendLembreteVotoEmailBatch } from "@/services/email"
 import { generateSurveyToken } from "@/lib/tokens"
@@ -430,19 +432,42 @@ export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | n
 export async function getProprietariosSemVotoAction(
   assembleiaId: string,
   condominioId: string
-): Promise<{ success: boolean; proprietarios: ProprietarioSemVoto[]; error?: string }> {
+): Promise<{
+  success: boolean
+  proprietarios: ProprietarioSemVoto[]
+  // Modo presença pela mesa ligado? O dialog usa pra ajustar a mensagem de
+  // lista vazia ("ninguém presente ainda" vs "todos já votaram").
+  exigePresenca: boolean
+  error?: string
+}> {
   const auth = await requirePerfil(["administrador", "operador"])
-  if (!auth.ok) return { success: false, proprietarios: [], error: auth.error }
+  if (!auth.ok) return { success: false, proprietarios: [], exigePresenca: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
-  if (!acesso.ok) return { success: false, proprietarios: [], error: acesso.error }
+  if (!acesso.ok) return { success: false, proprietarios: [], exigePresenca: false, error: acesso.error }
 
   try {
-    const proprietarios = await getProprietariosSemVoto(condominioId, assembleiaId)
-    return { success: true, proprietarios }
+    const [proprietarios, exigePresenca] = await Promise.all([
+      getProprietariosSemVoto(condominioId, assembleiaId),
+      getExigePresenca(assembleiaId),
+    ])
+    // Pedido do Carlos: no modo com presença controlada pela mesa, o voto manual
+    // só lista quem JÁ está marcado como presente — assim a mesa não lança voto
+    // de quem não está no salão (reforçado também no núcleo, validarVotoOuFalhar).
+    // Fora desse modo, mostra todos os sem-voto (voto manual marca presença).
+    if (exigePresenca) {
+      const presentes = await getProprietarioIdsPresentes(assembleiaId)
+      return {
+        success: true,
+        proprietarios: proprietarios.filter((p) => presentes.has(p.id)),
+        exigePresenca: true,
+      }
+    }
+    return { success: true, proprietarios, exigePresenca: false }
   } catch (err) {
     return {
       success: false,
       proprietarios: [],
+      exigePresenca: false,
       error: err instanceof Error ? err.message : "Erro ao buscar proprietários.",
     }
   }

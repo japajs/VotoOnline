@@ -163,7 +163,19 @@ describe("createAssembleiaRespostas — integridade do voto", () => {
     }
     await expect(
       createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }])
-    ).rejects.toThrow(/presente/i)
+    ).rejects.toThrow(/presen[çc]a|presente/i)
+  })
+
+  it("recusa voto MANUAL da mesa (viaMesa) quando exige presença e não está presente", async () => {
+    // Antes a mesa (viaMesa) era isenta da checagem de presença e conseguia
+    // lançar voto de ausente (pedido do Carlos: isso não pode). Agora a trava
+    // vale também pro lançamento manual.
+    h.state.responses = {
+      assembleia_sends: sendRow({ exigePresenca: true, presenteEm: null }),
+    }
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }], {}, { viaMesa: true })
+    ).rejects.toThrow(/presen[çc]a|presente/i)
   })
 
   it("recusa reenviar voto numa pauta já respondida (voto não pode ser alterado)", async () => {
