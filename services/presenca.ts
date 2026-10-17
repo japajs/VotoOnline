@@ -374,8 +374,14 @@ export async function getStatusPresencaLive(
       .select("proprietario_id, presente_em")
       .eq("assembleia_id", assembleiaId)
     if (semTentou.error) {
-      console.warn("[getStatusPresencaLive] consulta falhou, devolvendo vazio:", semTentou.error.message)
-      return { presentes: [], tentando: [] }
+      // Falha DURA (os dois selects falharam = banco fora/timeout, não é só a
+      // coluna faltando). LANÇA em vez de devolver vazio: devolver [] faria a
+      // action responder success:true com presentes=[], e o polling da lista
+      // ZERARIA todas as marcações de presença na tela por ~7s num soluço do
+      // banco (pânico na mesa). Lançando, a action cai no catch (success:false)
+      // e o cliente PRESERVA o estado atual até o próximo ciclo bem-sucedido.
+      console.error("[getStatusPresencaLive] consulta falhou:", semTentou.error.message)
+      throw new Error(semTentou.error.message)
     }
     rows = semTentou.data as Row[] | null
   } else {
