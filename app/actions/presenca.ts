@@ -6,6 +6,7 @@ import {
   registrarPresenca,
   getPresencaAssembleia,
   getChamada,
+  getProprietariosTentandoEntrar,
   marcarPresenca,
   setExigePresenca,
   type PresenteItem,
@@ -90,6 +91,25 @@ export async function getChamadaAction(
     return { success: true, data }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao carregar a chamada." }
+  }
+}
+
+// Alerta "tentando entrar" na tela geral de cadastro (polling leve, pedido do
+// Carlos): quem abriu o link/QR e ainda não foi marcado presente. Falha devolve
+// lista vazia (não atrapalha a gestão).
+export async function getTentandoEntrarAction(
+  assembleiaId: string,
+  condominioId: string
+): Promise<{ success: boolean; tentando: { id: string; em: string }[] }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, tentando: [] }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, tentando: [] }
+  try {
+    const tentando = await getProprietariosTentandoEntrar(assembleiaId)
+    return { success: true, tentando }
+  } catch {
+    return { success: false, tentando: [] }
   }
 }
 

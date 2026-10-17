@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo, useState, useTransition } from "react"
+import { memo, useMemo, useState, useTransition, useEffect, useCallback } from "react"
 import {
   Users,
   Trash2,
@@ -20,7 +20,7 @@ import {
   addUnidadeAction,
   removeUnidadeAction,
 } from "@/app/actions/proprietarios"
-import { marcarPresencaAction } from "@/app/actions/presenca"
+import { marcarPresencaAction, getTentandoEntrarAction } from "@/app/actions/presenca"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
@@ -66,6 +66,11 @@ type FiltroVoto =
   | "nao"
   | "procuracao"
   | "inadimplentes"
+  | "tentando"
+
+function horaBR(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+}
 
 function formatPeso(peso: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(peso * 100).toFixed(4)}%`
@@ -108,6 +113,38 @@ export function ProprietariosList({
   const [marcandoId, setMarcandoId] = useState<string | null>(null)
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
 
+  // Alerta "tentando entrar" na própria tela de cadastro (pedido do Carlos: é a
+  // tela que a secretária fica o tempo todo). id → horário da tentativa. Buscado
+  // por polling leve enquanto há assembleia aberta e o operador pode marcar.
+  const [tentandoEntrar, setTentandoEntrar] = useState<Map<string, string>>(new Map())
+
+  const buscarTentandoEntrar = useCallback(async () => {
+    if (!assembleiaAbertaId) return
+    const r = await getTentandoEntrarAction(assembleiaAbertaId, condominioId)
+    if (r.success) setTentandoEntrar(new Map(r.tentando.map((t) => [t.id, t.em])))
+  }, [assembleiaAbertaId, condominioId])
+
+  // setTimeout ENCADEADO (não setInterval): só reagenda após a consulta
+  // terminar — não empilha se o banco lentear. Primeira busca imediata.
+  useEffect(() => {
+    if (!podeMarcarPresenca) return
+    let ativo = true
+    let timer: ReturnType<typeof setTimeout>
+    const ciclo = async () => {
+      try {
+        await buscarTentandoEntrar()
+      } catch {
+        // falha de rede não derruba a lista; tenta de novo no próximo ciclo
+      }
+      if (ativo) timer = setTimeout(ciclo, 10000)
+    }
+    ciclo()
+    return () => {
+      ativo = false
+      clearTimeout(timer)
+    }
+  }, [podeMarcarPresenca, buscarTentandoEntrar])
+
   async function handleTogglePresente(proprietarioId: string, presente: boolean) {
     if (!assembleiaAbertaId) return
     setMarcandoId(proprietarioId)
@@ -117,6 +154,15 @@ export function ProprietariosList({
       else next.delete(proprietarioId)
       return next
     })
+    // Confirmou presença → some do alerta "tentando entrar" (otimista).
+    if (presente) {
+      setTentandoEntrar((prev) => {
+        if (!prev.has(proprietarioId)) return prev
+        const next = new Map(prev)
+        next.delete(proprietarioId)
+        return next
+      })
+    }
     const result = await marcarPresencaAction(
       assembleiaAbertaId,
       condominioId,
@@ -162,6 +208,7 @@ export function ProprietariosList({
               return !presentesLocal.has(p.id) && !ehOutorgante
             if (filtroVoto === "procuracao") return ehOutorgante
             if (filtroVoto === "inadimplentes") return p.inadimplente
+            if (filtroVoto === "tentando") return tentandoEntrar.has(p.id)
             // "votaram" = votaram TUDO (todas as pautas). Junto com "parcial" e
             // "nao" formam o funil do Carlos: dos presentes, quem votou tudo,
             // quem votou em parte e quem não votou nada — três baldes que
@@ -212,6 +259,7 @@ export function ProprietariosList({
     presentesLocal,
     parciaisNaAberta,
     outorgantesNaAberta,
+    tentandoEntrar,
   ])
 
   // Totalizações por IMÓVEL, não por pessoa (pedido do Carlos): a assembleia
@@ -277,6 +325,33 @@ export function ProprietariosList({
 
   return (
     <div className="space-y-3">
+      {/* Alerta "tentando entrar" NA PRÓPRIA tela de cadastro (pedido do Carlos):
+          é onde a secretária fica o tempo todo. Quem abriu o link/QR e ainda não
+          foi marcado presente aparece aqui em tempo real. Clicar filtra pra ver
+          só eles e confirmar a presença na hora. */}
+      {podeMarcarPresenca && tentandoEntrar.size > 0 && (
+        <button
+          type="button"
+          onClick={() => setFiltroVoto("tentando")}
+          className="flex w-full items-center gap-3 rounded-xl border border-amber-400/60 bg-amber-500/10 px-4 py-3 text-left transition-colors hover:bg-amber-500/15"
+        >
+          <span className="relative flex h-3 w-3 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+          </span>
+          <span className="min-w-0 flex-1 text-sm text-amber-800 dark:text-amber-300">
+            <strong>
+              {tentandoEntrar.size}{" "}
+              {tentandoEntrar.size === 1 ? "pessoa tentando entrar" : "pessoas tentando entrar"}
+            </strong>{" "}
+            — confirme a presença.
+          </span>
+          <span className="shrink-0 rounded-md border border-amber-400/60 px-2 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+            Ver
+          </span>
+        </button>
+      )}
+
       {/* Painel de ferramentas — fundo e borda diferentes da listagem abaixo,
           para deixar claro à primeira vista que esta área serve para
           localizar/organizar registros, não faz parte da tabela em si. */}
@@ -389,6 +464,7 @@ export function ProprietariosList({
                 pautasVotadas={pautasVotadasNaAberta?.get(p.id) ?? 0}
                 totalPautas={totalPautasVotaveis ?? 0}
                 outorgante={outorgantesNaAberta?.has(p.id) ?? false}
+                tentouEntrarEm={tentandoEntrar.get(p.id) ?? null}
                 mostrarPresenca={podeMarcarPresenca}
                 presente={presentesLocal.has(p.id)}
                 marcandoPresenca={marcandoId === p.id}
@@ -416,6 +492,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   pautasVotadas,
   totalPautas,
   outorgante,
+  tentouEntrarEm,
   mostrarPresenca,
   presente,
   marcandoPresenca,
@@ -434,6 +511,8 @@ const ProprietarioRow = memo(function ProprietarioRow({
   pautasVotadas: number
   totalPautas: number
   outorgante: boolean
+  // Horário (ISO) em que tentou entrar pelo link/QR sem estar presente, ou null.
+  tentouEntrarEm: string | null
   mostrarPresenca: boolean
   presente: boolean
   marcandoPresenca: boolean
@@ -558,13 +637,22 @@ const ProprietarioRow = memo(function ProprietarioRow({
             mostrarVoto &&
             (!votou ? (
               // Pedido do Carlos: quem AINDA não confirmou presença é "Ausente";
-              // só depois de marcado presente passa a "Não votou".
+              // só depois de marcado presente passa a "Não votou". E quem tentou
+              // entrar pelo link/QR e ainda não foi confirmado ganha destaque
+              // "Tentou entrar HH:MM" (âmbar) — a mesa confirma na hora.
               presente ? (
                 <span
                   className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
                   title="Presente — ainda não votou"
                 >
                   Não votou
+                </span>
+              ) : tentouEntrarEm ? (
+                <span
+                  className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300"
+                  title="Abriu o link/QR e ainda não foi marcado presente — confirme a presença"
+                >
+                  Tentou entrar {horaBR(tentouEntrarEm)}
                 </span>
               ) : (
                 <span
