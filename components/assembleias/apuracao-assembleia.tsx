@@ -378,6 +378,25 @@ export function ApuracaoAssembleia({
         </div>
       </div>
 
+      {/* Instrução de onde ficam os controles de abrir/fechar cada pauta
+          (pedido do Carlos: "não localizo a opção de bloquear/liberar pauta por
+          pauta"). Só no modo ligado + assembleia em andamento + quem pode operar. */}
+      {votacaoPorPauta &&
+        canExport &&
+        (assembleia.status === "aberta" || assembleia.status === "pausada") && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm print:hidden">
+            <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">Modo pauta por pauta ligado.</span> A
+              votação de cada pauta é aberta e fechada pela mesa, uma de cada vez — use o botão{" "}
+              <span className="font-medium text-foreground">
+                &ldquo;Abrir votação&rdquo; / &ldquo;Fechar votação&rdquo;
+              </span>{" "}
+              no card de cada pauta, logo abaixo.
+            </p>
+          </div>
+        )}
+
       {/* Participação geral — funil de apuração do Carlos: do total de
           unidades, as PRESENTES; das presentes, as que votaram TUDO, em PARTE
           ou AINDA NÃO votaram. As três últimas somam os presentes. */}

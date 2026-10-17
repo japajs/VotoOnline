@@ -16,6 +16,7 @@ interface MockBuilder {
   limit: () => MockBuilder
   order: () => MockBuilder
   update: () => MockBuilder
+  delete: () => MockBuilder
   upsert: () => MockBuilder
   insert: () => Promise<QueryResult>
   maybeSingle: () => Promise<QueryResult>
@@ -41,6 +42,7 @@ const h = vi.hoisted(() => {
       limit: chain,
       order: chain,
       update: chain,
+      delete: chain,
       upsert: chain,
       insert: () => Promise.resolve({ data: null, error: null }),
       maybeSingle: () => Promise.resolve(result),
@@ -67,6 +69,7 @@ vi.mock("@/services/procuracoes", () => ({
 import {
   createAssembleiaRespostas,
   getPautasVotadasPorProprietario,
+  anularVotosDoProprietario,
 } from "@/services/assembleia-votos"
 
 function sendRow(opts?: {
@@ -230,5 +233,27 @@ describe("getPautasVotadasPorProprietario", () => {
     const mapa = await getPautasVotadasPorProprietario("a1")
     expect(mapa.size).toBe(1)
     expect(mapa.get("owner-a")).toBe(1)
+  })
+})
+
+// Anular o voto de quem vira INADIMPLENTE e já tinha votado (pedido do Carlos).
+describe("anularVotosDoProprietario", () => {
+  it("anula os votos e devolve quantos sends foram zerados", async () => {
+    h.state.responses = {
+      assembleia_sends: { data: [{ id: "s1" }, { id: "s2" }], error: null },
+    }
+    const n = await anularVotosDoProprietario("p1", ["a1"])
+    expect(n).toBe(2)
+  })
+
+  it("no-op quando não há assembleia em andamento (lista vazia)", async () => {
+    const n = await anularVotosDoProprietario("p1", [])
+    expect(n).toBe(0)
+  })
+
+  it("no-op quando o proprietário não tinha voto nessas assembleias", async () => {
+    h.state.responses = { assembleia_sends: { data: [], error: null } }
+    const n = await anularVotosDoProprietario("p1", ["a1"])
+    expect(n).toBe(0)
   })
 })

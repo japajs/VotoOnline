@@ -484,6 +484,41 @@ export async function createAssembleiaRespostas(
   if (snapshotError) throw new Error(snapshotError.message)
 }
 
+// Anula o voto de um proprietário nas assembleias informadas — usado quando ele
+// é marcado INADIMPLENTE e já tinha votado (Código Civil, art. 1.335, §único:
+// inadimplente não vota; pra liberar, a mesa remove o status). Remove as
+// respostas e zera votado_em, então ele deixa de contar na apuração (some de
+// "votantes" e do placar de cada pauta). O chamador passa só as assembleias EM
+// ANDAMENTO — uma assembleia encerrada tem resultado/ata definitivos e não é
+// tocada. Devolve quantos sends foram anulados.
+export async function anularVotosDoProprietario(
+  proprietarioId: string,
+  assembleiaIds: string[]
+): Promise<number> {
+  if (assembleiaIds.length === 0) return 0
+  const db = createServerClient()
+  const { data: sends, error } = await db
+    .from("assembleia_sends")
+    .select("id")
+    .eq("proprietario_id", proprietarioId)
+    .in("assembleia_id", assembleiaIds)
+    .not("votado_em", "is", null)
+  if (error) throw new Error(error.message)
+  const sendIds = ((sends ?? []) as { id: string }[]).map((s) => s.id)
+  if (sendIds.length === 0) return 0
+
+  const { error: delErr } = await db.from("assembleia_respostas").delete().in("send_id", sendIds)
+  if (delErr) throw new Error(delErr.message)
+  // Zera votado_em (some da apuração). presente_em fica — a pessoa continua
+  // presente na assembleia; só o VOTO é anulado.
+  const { error: upErr } = await db
+    .from("assembleia_sends")
+    .update({ votado_em: null })
+    .in("id", sendIds)
+  if (upErr) throw new Error(upErr.message)
+  return sendIds.length
+}
+
 type ApuracaoRow = {
   pauta_id: string
   resposta: AssembleiaRespostaValor | null

@@ -15,6 +15,7 @@ import {
   updateUnidade,
 } from "@/services/unidades"
 import { getAssembleiaIdsEmAndamento, pesoJaFoiCongeladoEmAssembleiaAtiva } from "@/services/assembleias"
+import { anularVotosDoProprietario } from "@/services/assembleia-votos"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
@@ -312,6 +313,23 @@ export async function updateProprietarioAction(input: {
         valor_novo: m.valorNovo,
       }))
     )
+
+    // Virou INADIMPLENTE agora e já tinha votado numa assembleia EM ANDAMENTO →
+    // anula o voto dele (pedido do Carlos: "precisamos anular o voto dela";
+    // regra legal). Best-effort: se falhar, não desfaz a marcação (o flag é o
+    // principal) — loga pra rastrear. Caso raro (inadimplentes entram antes da
+    // assembleia), mas tratado por correção.
+    if (!atual.inadimplente && input.inadimplente) {
+      try {
+        const emAndamento = await getAssembleiaIdsEmAndamento(input.condominioId)
+        await anularVotosDoProprietario(input.id, emAndamento)
+      } catch (e) {
+        console.error(
+          "[updateProprietario] falha ao anular voto do inadimplente:",
+          e instanceof Error ? e.message : e
+        )
+      }
+    }
 
     revalidatePath(`${ROUTES.condominios}/${input.condominioId}`)
     return { success: true }
