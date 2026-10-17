@@ -36,6 +36,22 @@ export async function getIdsInadimplentes(
   )
 }
 
+// Checa se UM proprietário está inadimplente (só este flag, consulta leve).
+// Usado pra bloquear o inadimplente JÁ NO ACESSO ao link de voto — não só na
+// confirmação (regra do Carlos: inadimplente não vota de forma alguma; pra
+// liberar, a mesa remove o status). O voto em si também bloqueia no núcleo
+// (validarVotoOuFalhar) — isto é defesa em camadas + clareza na tela.
+export async function isProprietarioInadimplente(proprietarioId: string): Promise<boolean> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("proprietarios")
+    .select("inadimplente")
+    .eq("id", proprietarioId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data as { inadimplente: boolean } | null)?.inadimplente ?? false
+}
+
 function rowToProprietario(row: JoinedProprietario): Proprietario {
   return {
     id: row.id,

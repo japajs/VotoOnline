@@ -1068,6 +1068,8 @@ export interface ProprietarioSemVoto {
   // assembleia — quem vota é o representante, então ele NÃO pode votar por si
   // (bloqueado no acesso ao voto manual). null = não outorgou.
   outorgouPara: string | null
+  // Inadimplente não pode votar (nem pela mesa) — desabilitado na lista.
+  inadimplente: boolean
 }
 
 // Auditoria de assembleias — Fase 7: proprietários do condomínio que ainda
@@ -1083,7 +1085,7 @@ export async function getProprietariosSemVoto(
 
   const [{ data: proprietarios, error: propError }, { data: votados, error: votadosError }, procuracoes] =
     await Promise.all([
-      db.from("proprietarios").select("id, nome, email").eq("condominio_id", condominioId),
+      db.from("proprietarios").select("id, nome, email, inadimplente").eq("condominio_id", condominioId),
       db
         .from("assembleia_sends")
         .select("proprietario_id")
@@ -1099,8 +1101,16 @@ export async function getProprietariosSemVoto(
   // Quem outorgou procuração → nome do representante (quem realmente vota).
   const outorgouPara = new Map(procuracoes.map((p) => [p.outorgante_id, p.outorgado_nome]))
 
-  return ((proprietarios ?? []) as { id: string; nome: string; email: string | null }[])
+  return (
+    (proprietarios ?? []) as { id: string; nome: string; email: string | null; inadimplente: boolean }[]
+  )
     .filter((p) => !idsVotados.has(p.id))
-    .map((p) => ({ ...p, outorgouPara: outorgouPara.get(p.id) ?? null }))
+    .map((p) => ({
+      id: p.id,
+      nome: p.nome,
+      email: p.email,
+      outorgouPara: outorgouPara.get(p.id) ?? null,
+      inadimplente: p.inadimplente ?? false,
+    }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
 }

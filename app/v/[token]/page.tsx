@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { CheckCircle2, Clock, PauseCircle, ShieldCheck } from "lucide-react"
+import { CheckCircle2, Clock, PauseCircle, ShieldCheck, Ban } from "lucide-react"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 import { outorgouProcuracao } from "@/services/procuracoes"
+import { isProprietarioInadimplente } from "@/services/proprietarios"
 import {
   getAssembleiaSendByToken,
   getRespostasBySendId,
@@ -300,6 +301,36 @@ export default async function PublicVotoPage({ params }: Props) {
               />
             </div>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Inadimplente: não vota (Código Civil, art. 1.335, §único) ──────────────
+  // Barra JÁ NO ACESSO, antes de qualquer formulário (pedido do Carlos:
+  // "inadimplente não vota de forma alguma; pra liberar, a mesa remove o
+  // status"). O voto em si também bloqueia no núcleo (validarVotoOuFalhar) —
+  // isto é defesa em camadas + deixa claro na tela, em vez de só errar ao
+  // confirmar. Vem depois do "já votou" (quem votou antes de ser marcado vê o
+  // resultado) e antes de qualquer tela de voto.
+  if (await isProprietarioInadimplente(send.proprietario_id).catch(() => false)) {
+    return (
+      <div className="min-h-screen bg-background">
+        {header}
+        <div className="mx-auto max-w-2xl px-4 py-10">
+          {heading}
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-rose-400/40 bg-rose-500/5 px-6 py-10 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-400/10 ring-1 ring-rose-400/20">
+              <Ban className="h-7 w-7 text-rose-500" />
+            </div>
+            <div>
+              <p className="font-medium">Você consta como inadimplente</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Por isso, não é possível votar nesta assembleia. Em caso de dúvida, procure a
+                administração/mesa da assembleia.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     )
