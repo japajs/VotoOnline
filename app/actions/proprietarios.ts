@@ -18,7 +18,7 @@ import { getAssembleiaIdsEmAndamento, pesoJaFoiCongeladoEmAssembleiaAtiva } from
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
-import { normalizarCelular, validarEmailFormato } from "@/lib/format"
+import { normalizarCelular, validarEmailFormato, normalizarCpf, cpfCompleto } from "@/lib/format"
 
 // Auditoria funcional: antes, qualquer erro de constraint única virava
 // sempre "já existe... com esse e-mail", mesmo quando o CPF é que estava
@@ -38,7 +38,10 @@ function mensagemErroDuplicidade(msg: string): string | null {
 export async function createProprietarioAction(input: {
   condominio_id: string
   nome: string
-  email: string
+  email?: string
+  // CPF é a CHAVE de acesso ao link de voto (unidade + CPF). Pedido do Carlos:
+  // o cadastro manual precisa aceitar CPF, inclusive pra registrar procuradores.
+  cpf?: string
   telefone?: string
   unidades: string[] // numeros de apartamento
 }): Promise<{ success: boolean; error?: string }> {
@@ -47,9 +50,20 @@ export async function createProprietarioAction(input: {
   const acesso = await requireAcessoCondominio(input.condominio_id)
   if (!acesso.ok) return { success: false, error: acesso.error }
   if (!input.nome.trim()) return { success: false, error: "Nome obrigatório." }
-  if (!input.email.trim()) return { success: false, error: "E-mail obrigatório." }
-  if (!validarEmailFormato(input.email)) {
+
+  // E-mail passou a ser opcional (quem vota pelo link presencial usa unidade +
+  // CPF, não e-mail), mas é preciso pelo menos um: e-mail (pra convite) OU CPF
+  // (pra entrar pelo link). Sem nenhum, só sobraria o voto manual pela mesa.
+  const emailInformado = input.email?.trim() ?? ""
+  const cpfInformado = input.cpf?.trim() ?? ""
+  if (!emailInformado && !cpfInformado) {
+    return { success: false, error: "Informe o e-mail ou o CPF do proprietário." }
+  }
+  if (emailInformado && !validarEmailFormato(emailInformado)) {
     return { success: false, error: "E-mail em formato inválido." }
+  }
+  if (cpfInformado && !cpfCompleto(cpfInformado)) {
+    return { success: false, error: "CPF deve ter 11 dígitos." }
   }
 
   let telefoneNormalizado: string | null = null
@@ -64,7 +78,8 @@ export async function createProprietarioAction(input: {
     const proprietario = await createProprietario({
       condominio_id: input.condominio_id,
       nome: input.nome.trim(),
-      email: input.email.trim() || null,
+      email: emailInformado || null,
+      cpf: cpfInformado ? normalizarCpf(cpfInformado) : null,
       telefone: telefoneNormalizado,
     })
 

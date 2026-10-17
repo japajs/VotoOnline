@@ -24,6 +24,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
   const [open, setOpen] = useState(false)
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
+  const [cpf, setCpf] = useState("")
   const [telefone, setTelefone] = useState("")
   const [unidades, setUnidades] = useState<string[]>([""])
   const [isPending, startTransition] = useTransition()
@@ -31,6 +32,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
   function reset() {
     setNome("")
     setEmail("")
+    setCpf("")
     setTelefone("")
     setUnidades([""])
   }
@@ -58,6 +60,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
         condominio_id: condominioId,
         nome,
         email,
+        cpf,
         telefone,
         unidades: unidades.filter((u) => u.trim()),
       })
@@ -70,18 +73,20 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
     })
   }
 
-  const canSubmit = nome.trim() && email.trim()
+  // E-mail OU CPF: o condômino que vota pelo link presencial entra por unidade
+  // + CPF; quem recebe convite por e-mail usa o e-mail. Pelo menos um é preciso.
+  const canSubmit = nome.trim() && (email.trim() || cpf.trim())
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button size="sm" variant="outline" />}>
         <Plus className="h-4 w-4" />
-        Novo proprietário
+        Novo proprietário / procurador
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Novo proprietário</DialogTitle>
+          <DialogTitle>Novo proprietário / procurador</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -97,7 +102,23 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="email-prop">E-mail</Label>
+            <Label htmlFor="cpf-prop">CPF</Label>
+            <Input
+              id="cpf-prop"
+              inputMode="numeric"
+              placeholder="Somente números"
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Chave de acesso ao link de voto (o condômino entra com a unidade + o CPF).
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="email-prop">
+              E-mail <span className="font-normal text-muted-foreground">(opcional)</span>
+            </Label>
             <Input
               id="email-prop"
               type="email"
