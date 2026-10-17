@@ -95,6 +95,9 @@ export type CriterioPeso = "unidade" | "fracao_ideal"
 export interface Condominio {
   id: string
   nome: string
+  // CNPJ do condomínio — exigência do cartório pro registro da ata; impresso
+  // nos relatórios de apuração e na ata. Texto livre (como digitado).
+  cnpj: string | null
   endereco: string | null
   sindico_nome: string | null
   sindico_contato: string | null

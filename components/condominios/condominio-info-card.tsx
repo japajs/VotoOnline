@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { MapPin, User, Phone, Pencil, Loader2, Save, X, Scale } from "lucide-react"
+import { MapPin, User, Phone, Pencil, Loader2, Save, X, Scale, Building2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,16 +28,19 @@ const CRITERIO_LABEL: Record<CriterioPeso, string> = {
 export function CondominioInfoCard({ condominio }: Props) {
   const [editing, setEditing] = useState(false)
   const [nome, setNome] = useState(condominio.nome)
+  const [cnpj, setCnpj] = useState(condominio.cnpj ?? "")
   const [endereco, setEndereco] = useState(condominio.endereco ?? "")
   const [sindicoNome, setSindicoNome] = useState(condominio.sindico_nome ?? "")
   const [sindicoContato, setSindicoContato] = useState(condominio.sindico_contato ?? "")
   const [criterioPeso, setCriterioPeso] = useState<CriterioPeso>(condominio.criterio_peso)
   const [isPending, startTransition] = useTransition()
 
-  const hasInfo = condominio.endereco || condominio.sindico_nome || condominio.sindico_contato
+  const hasInfo =
+    condominio.cnpj || condominio.endereco || condominio.sindico_nome || condominio.sindico_contato
 
   function handleCancel() {
     setNome(condominio.nome)
+    setCnpj(condominio.cnpj ?? "")
     setEndereco(condominio.endereco ?? "")
     setSindicoNome(condominio.sindico_nome ?? "")
     setSindicoContato(condominio.sindico_contato ?? "")
@@ -48,6 +51,7 @@ export function CondominioInfoCard({ condominio }: Props) {
   function handleSave() {
     startTransition(async () => {
       const result = await updateCondominioInfoAction(condominio.id, nome, {
+        cnpj,
         endereco,
         sindico_nome: sindicoNome,
         sindico_contato: sindicoContato,
@@ -76,6 +80,21 @@ export function CondominioInfoCard({ condominio }: Props) {
               onChange={(e) => setNome(e.target.value)}
               placeholder="Residencial das Flores"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ci-cnpj" className="text-xs">CNPJ</Label>
+            <Input
+              id="ci-cnpj"
+              value={cnpj}
+              // Só dígitos e a pontuação do CNPJ — bloqueia letras conforme
+              // digita (mesma ideia dos campos de CPF/celular).
+              onChange={(e) => setCnpj(e.target.value.replace(/[^\d./-]/g, ""))}
+              placeholder="00.000.000/0000-00"
+              inputMode="numeric"
+            />
+            <p className="text-xs text-muted-foreground">
+              Exigido pelo cartório para o registro da ata — sai nos relatórios.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ci-endereco" className="text-xs">Endereço</Label>
@@ -161,6 +180,12 @@ export function CondominioInfoCard({ condominio }: Props) {
   return (
     <div className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-card px-4 py-3.5">
       <div className="flex flex-wrap gap-x-8 gap-y-2">
+        {condominio.cnpj && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Building2 className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+            <span>CNPJ: <span className="font-medium text-foreground">{condominio.cnpj}</span></span>
+          </div>
+        )}
         {condominio.endereco && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/60" />

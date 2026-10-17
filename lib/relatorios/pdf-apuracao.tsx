@@ -561,6 +561,12 @@ export function ApuracaoPDF({
             <Text style={s.infoLbl}>CONDOMÍNIO</Text>
             <Text style={s.infoVal}>{condominio.nome}</Text>
           </View>
+          {condominio.cnpj ? (
+            <View style={s.infoCell}>
+              <Text style={s.infoLbl}>CNPJ</Text>
+              <Text style={s.infoVal}>{condominio.cnpj}</Text>
+            </View>
+          ) : null}
           <View style={s.infoCell}>
             <Text style={s.infoLbl}>STATUS</Text>
             <Text style={s.infoVal}>{statusLabelPT(assembleia.status)}</Text>

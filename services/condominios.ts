@@ -4,6 +4,7 @@ import type { Condominio } from "@/types"
 type DbRow = {
   id: string
   nome: string
+  cnpj: string | null
   endereco: string | null
   sindico_nome: string | null
   sindico_contato: string | null
@@ -15,6 +16,7 @@ function rowToCondominio(row: DbRow): Condominio {
   return {
     id: row.id,
     nome: row.nome,
+    cnpj: row.cnpj ?? null,
     endereco: row.endereco,
     sindico_nome: row.sindico_nome,
     sindico_contato: row.sindico_contato,
@@ -84,6 +86,7 @@ export async function updateCondominio(
 export async function updateCondominioInfo(
   id: string,
   input: {
+    cnpj?: string | null
     endereco?: string | null
     sindico_nome?: string | null
     sindico_contato?: string | null

@@ -52,6 +52,7 @@ create table if not exists usuarios (
 create table if not exists condominios (
   id              uuid        primary key default uuid_generate_v4(),
   nome            text        not null,
+  cnpj            text,
   endereco        text,
   sindico_nome    text,
   sindico_contato text,
@@ -480,6 +481,10 @@ alter table condominios add column if not exists criterio_peso text not null def
 alter table condominios drop constraint if exists condominios_criterio_peso_check;
 alter table condominios add constraint condominios_criterio_peso_check
   check (criterio_peso in ('unidade', 'fracao_ideal'));
+
+-- condominios: CNPJ (exigência do cartório pro registro da ata; impresso nos
+-- relatórios de apuração e na ata). Texto livre, opcional.
+alter table condominios add column if not exists cnpj text;
 
 -- unidades: fração ideal (opcional — só obrigatória, em código, quando o
 -- condomínio usa criterio_peso = 'fracao_ideal').
