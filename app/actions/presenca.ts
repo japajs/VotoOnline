@@ -7,6 +7,7 @@ import {
   getPresencaAssembleia,
   getChamada,
   getProprietariosTentandoEntrar,
+  getStatusPresencaLive,
   marcarPresenca,
   setExigePresenca,
   type PresenteItem,
@@ -146,6 +147,26 @@ export async function getTentandoEntrarAction(
     return { success: true, tentando }
   } catch {
     return { success: false, tentando: [] }
+  }
+}
+
+// Status de presença AO VIVO pra a tela de gestão sincronizar entre dispositivos
+// (duas secretárias) — devolve presentes + "tentando entrar" numa ida só. Falha
+// devolve sucesso=false sem dados (o polling do cliente ignora e tenta de novo,
+// sem zerar o que já está marcado). Substitui o getTentandoEntrarAction na lista.
+export async function getPresencaLiveAction(
+  assembleiaId: string,
+  condominioId: string
+): Promise<{ success: boolean; presentes: string[]; tentando: { id: string; em: string }[] }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, presentes: [], tentando: [] }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, presentes: [], tentando: [] }
+  try {
+    const { presentes, tentando } = await getStatusPresencaLive(assembleiaId)
+    return { success: true, presentes, tentando }
+  } catch {
+    return { success: false, presentes: [], tentando: [] }
   }
 }
 
