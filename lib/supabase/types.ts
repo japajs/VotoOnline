@@ -321,6 +321,7 @@ export type Database = {
           ip_snapshot: string | null
           user_agent_snapshot: string | null
           presente_em: string | null
+          tentou_entrar_em: string | null
           created_at: string
         }
         Insert: {
@@ -341,6 +342,7 @@ export type Database = {
           ip_snapshot?: string | null
           user_agent_snapshot?: string | null
           presente_em?: string | null
+          tentou_entrar_em?: string | null
           created_at?: string
         }
         Update: {
@@ -358,6 +360,7 @@ export type Database = {
           ip_snapshot?: string | null
           user_agent_snapshot?: string | null
           presente_em?: string | null
+          tentou_entrar_em?: string | null
         }
         Relationships: []
       }

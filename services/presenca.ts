@@ -105,6 +105,25 @@ export async function registrarPresenca(
     if (existente && existente.presente_em) {
       return { ok: true, token: existente.token }
     }
+    // Registra a tentativa pra a mesa VER que tem alguém esperando ser
+    // confirmado (a Chamada destaca). Não libera o voto — segue dependendo da
+    // mesa marcar presente. Defensivo: se a coluna tentou_entrar_em ainda não
+    // existir (migração não rodada), o erro é ignorado e a entrada não quebra.
+    const agora = new Date().toISOString()
+    if (existente) {
+      await db
+        .from("assembleia_sends")
+        .update({ tentou_entrar_em: agora })
+        .eq("id", existente.id)
+    } else {
+      await db.from("assembleia_sends").insert({
+        assembleia_id: assembleiaId,
+        proprietario_id: prop.id,
+        token: generateSurveyToken(),
+        status: "pending",
+        tentou_entrar_em: agora,
+      })
+    }
     return {
       ok: false,
       error:
@@ -201,6 +220,10 @@ export interface ChamadaItem {
   // Outorgou procuração nesta assembleia — não pode ser marcado presente (a
   // presença é representada pelo procurador): o toggle fica desabilitado.
   outorgante: boolean
+  // Tentou entrar pelo link/QR (unidade + CPF corretos) e ainda NÃO foi marcado
+  // presente pela mesa — a Chamada destaca pra confirmação rápida. null quando
+  // não tentou, ou quando já está presente.
+  tentouEntrarEm: string | null
   // Token de voto — existe só pra quem tem send (presente/convidado). Permite
   // a mesa copiar o link direto de voto da pessoa (útil pra quem não tem CPF).
   token: string | null
@@ -230,23 +253,40 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
   ])
   const outorgantes = new Set(procuracoes.map((p) => p.outorgante_id))
 
-  const { data: sends, error: sErr } = await db
-    .from("assembleia_sends")
-    .select("proprietario_id, token, presente_em, votado_em")
-    .eq("assembleia_id", assembleiaId)
-  if (sErr) throw new Error(sErr.message)
-
-  const porProp = new Map<string, { presente: boolean; votou: boolean; token: string }>()
-  for (const s of (sends ?? []) as {
+  type SendRow = {
     proprietario_id: string
     token: string
     presente_em: string | null
     votado_em: string | null
-  }[]) {
+    tentou_entrar_em?: string | null
+  }
+  const comTentou = await db
+    .from("assembleia_sends")
+    .select("proprietario_id, token, presente_em, votado_em, tentou_entrar_em")
+    .eq("assembleia_id", assembleiaId)
+  // Resiliência: se a coluna tentou_entrar_em ainda não existe (migração
+  // pendente), refaz o select sem ela — a Chamada continua funcionando, só sem
+  // o alerta de "tentando entrar".
+  const semTentou = comTentou.error
+    ? await db
+        .from("assembleia_sends")
+        .select("proprietario_id, token, presente_em, votado_em")
+        .eq("assembleia_id", assembleiaId)
+    : null
+  const sErr = semTentou ? semTentou.error : comTentou.error
+  if (sErr) throw new Error(sErr.message)
+  const sendsData = (semTentou ? semTentou.data : comTentou.data) as SendRow[] | null
+
+  const porProp = new Map<
+    string,
+    { presente: boolean; votou: boolean; token: string; tentouEntrarEm: string | null }
+  >()
+  for (const s of (sendsData ?? []) as SendRow[]) {
     porProp.set(s.proprietario_id, {
       presente: s.presente_em !== null,
       votou: s.votado_em !== null,
       token: s.token,
+      tentouEntrarEm: s.tentou_entrar_em ?? null,
     })
   }
 
@@ -261,6 +301,9 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
       presente: st?.presente ?? false,
       votou: st?.votou ?? false,
       outorgante: outorgantes.has(p.id),
+      // Tentou entrar pelo link e ainda não foi marcado presente — a mesa vê o
+      // destaque e confirma rápido. Zera quando marcado presente (irrelevante aí).
+      tentouEntrarEm: st && !st.presente ? st.tentouEntrarEm : null,
       token: st?.token ?? null,
     }
   })
@@ -299,9 +342,11 @@ export async function marcarPresenca(
     const agora = new Date().toISOString()
     if (existente) {
       if (!existente.presente_em) {
+        // Marca presente e zera a "tentativa de entrada" (já foi confirmado,
+        // some o alerta da Chamada).
         const { error: upErr } = await db
           .from("assembleia_sends")
-          .update({ presente_em: agora })
+          .update({ presente_em: agora, tentou_entrar_em: null })
           .eq("id", existente.id)
         if (upErr) throw new Error(upErr.message)
       }

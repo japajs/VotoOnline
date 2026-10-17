@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useTransition, useCallback } from "react"
-import { Users, Loader2, BellRing, CheckCircle2, Search, Circle, Link2 } from "lucide-react"
+import { useState, useTransition, useCallback, useEffect, useRef } from "react"
+import { Users, Loader2, BellRing, CheckCircle2, Search, Circle, Link2, DoorOpen } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -22,6 +22,10 @@ import {
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { formatUnidade } from "@/lib/unidade-format"
 import type { ChamadaItem } from "@/services/presenca"
+
+function formatHora(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+}
 
 function copiarLinkVoto(token: string) {
   const url = `${window.location.origin}/v/${token}`
@@ -54,19 +58,35 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
   const [busca, setBusca] = useState("")
   const [marcandoId, setMarcandoId] = useState<string | null>(null)
   const [isPendingLembrete, startLembreteTransition] = useTransition()
+  // Evita que um refresh automático (polling) chegue no meio de uma marcação e
+  // sobrescreva o estado otimista com uma versão antiga do servidor.
+  const marcandoRef = useRef(false)
 
-  const carregar = useCallback(() => {
-    setCarregando(true)
-    getChamadaAction(assembleiaId, condominioId).then((r) => {
-      setCarregando(false)
-      if (r.success && r.data) {
-        setItens(r.data.itens)
-        setExigePresenca(r.data.exigePresenca)
-      } else {
-        toast.error(r.error)
-      }
-    })
-  }, [assembleiaId, condominioId])
+  const carregar = useCallback(
+    (silent = false) => {
+      if (!silent) setCarregando(true)
+      getChamadaAction(assembleiaId, condominioId).then((r) => {
+        if (!silent) setCarregando(false)
+        if (r.success && r.data) {
+          if (marcandoRef.current) return // não atropela uma marcação em curso
+          setItens(r.data.itens)
+          setExigePresenca(r.data.exigePresenca)
+        } else if (!silent) {
+          toast.error(r.error)
+        }
+      })
+    },
+    [assembleiaId, condominioId]
+  )
+
+  // Atualiza sozinha a cada 10s enquanto aberta: o alerta de "tentando entrar"
+  // (quem abriu o link/QR e ainda não foi marcado presente) aparece pra a mesa
+  // sem precisar reabrir a Chamada.
+  useEffect(() => {
+    if (!open) return
+    const id = setInterval(() => carregar(true), 10000)
+    return () => clearInterval(id)
+  }, [open, carregar])
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -100,12 +120,18 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
       return
     }
     const novo = !item.presente
+    marcandoRef.current = true
     setMarcandoId(item.proprietarioId)
     const r = await marcarPresencaAction(assembleiaId, condominioId, item.proprietarioId, novo)
     setMarcandoId(null)
+    marcandoRef.current = false
     if (r.success) {
       setItens((prev) =>
-        prev.map((i) => (i.proprietarioId === item.proprietarioId ? { ...i, presente: novo } : i))
+        prev.map((i) =>
+          i.proprietarioId === item.proprietarioId
+            ? { ...i, presente: novo, tentouEntrarEm: novo ? null : i.tentouEntrarEm }
+            : i
+        )
       )
     } else {
       toast.error(r.error ?? "Erro ao marcar presença.")
@@ -131,6 +157,9 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
   const totalPresentes = itens.filter((i) => i.presente).length
   const totalVotaram = itens.filter((i) => i.votou).length
   const naoVotaramComEmail = itens.filter((i) => i.presente && !i.votou && i.email).length
+  // Quem abriu o link/QR (unidade + CPF corretos) e ainda não foi marcado
+  // presente — a mesa confirma rápido.
+  const tentandoEntrar = itens.filter((i) => i.tentouEntrarEm && !i.presente).length
 
   const filtrados = itens.filter((i) => {
     const q = busca.trim().toLowerCase()
@@ -196,6 +225,22 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
               </span>
             </div>
 
+            {/* Alerta: tem gente que abriu o link/QR (unidade + CPF ok) e ainda
+                não foi marcada presente — a mesa confirma rápido. */}
+            {tentandoEntrar > 0 && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+                </span>
+                <span>
+                  <strong>{tentandoEntrar}</strong>{" "}
+                  {tentandoEntrar === 1 ? "pessoa tentando entrar" : "pessoas tentando entrar"} —
+                  confirme a presença.
+                </span>
+              </div>
+            )}
+
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -217,11 +262,16 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
                     ? i.unidades.map((u) => formatUnidade(u)).join(", ")
                     : "—"
                   const marcando = marcandoId === i.proprietarioId
+                  const tentou = !!i.tentouEntrarEm && !i.presente
                   return (
                     <div
                       key={i.proprietarioId}
                       className={`flex items-center gap-1 rounded-lg border pr-1 transition-colors ${
-                        i.presente ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/60"
+                        tentou
+                          ? "border-amber-400/60 bg-amber-500/10"
+                          : i.presente
+                            ? "border-emerald-500/30 bg-emerald-500/5"
+                            : "border-border/60"
                       }`}
                     >
                       <button
@@ -239,15 +289,23 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
                           <p className="truncate font-medium">
                             {uni} · {i.nome}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p
+                            className={`truncate text-xs ${
+                              tentou
+                                ? "font-medium text-amber-700 dark:text-amber-400"
+                                : "text-muted-foreground"
+                            }`}
+                          >
                             {i.outorgante
                               ? "outorgou procuração"
-                              : i.votou
-                                ? "já votou"
-                                : i.email
-                                  ? i.email
-                                  : "sem e-mail"}
-                            {!i.outorgante && !i.temCpf && " · sem CPF (só voto manual)"}
+                              : tentou
+                                ? `tentou entrar às ${formatHora(i.tentouEntrarEm!)} — confirme`
+                                : i.votou
+                                  ? "já votou"
+                                  : i.email
+                                    ? i.email
+                                    : "sem e-mail"}
+                            {!i.outorgante && !tentou && !i.temCpf && " · sem CPF (só voto manual)"}
                           </p>
                         </div>
                         <span className="flex shrink-0 items-center text-xs font-medium">
@@ -256,6 +314,10 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
                           ) : i.outorgante ? (
                             <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
                               Procuração
+                            </span>
+                          ) : tentou ? (
+                            <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
+                              <DoorOpen className="h-4 w-4" /> Confirmar
                             </span>
                           ) : i.presente ? (
                             <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">

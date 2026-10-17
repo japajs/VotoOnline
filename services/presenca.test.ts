@@ -126,6 +126,17 @@ describe("registrarPresenca", () => {
     if (!r.ok) expect(r.error.toLowerCase()).toContain("presente")
   })
 
+  it("modo mesa: identidade válida sem presença registra a tentativa de entrada", async () => {
+    setup({ exigePresenca: true, unidade: UNIDADE, proprietario: PROP, send: null })
+    const r = await registrarPresenca("a1", { numero: "B108", bloco: null, cpf: "12345678901" })
+    expect(r.ok).toBe(false)
+    // Gravou a tentativa (pra a mesa ver e confirmar), SEM marcar presente.
+    expect(h.state.inserts).toHaveLength(1)
+    const ins = h.state.inserts[0] as Record<string, unknown>
+    expect(ins.tentou_entrar_em).toBeTruthy()
+    expect(ins.presente_em).toBeUndefined()
+  })
+
   it("modo mesa: marcado presente pela mesa libera o voto (retorna o token)", async () => {
     setup({
       exigePresenca: true,
@@ -238,6 +249,15 @@ describe("marcarPresenca", () => {
     await marcarPresenca("a1", "p1", false)
     expect(h.state.updates).toHaveLength(0)
     expect(h.state.inserts).toHaveLength(0)
+  })
+
+  it("marcar: ao confirmar presença, zera a tentativa de entrada", async () => {
+    setupSend({ id: "s1", presente_em: null, votado_em: null })
+    await marcarPresenca("a1", "p1", true)
+    expect(h.state.updates).toHaveLength(1)
+    const up = h.state.updates[0] as Record<string, unknown>
+    expect(up.presente_em).toBeTruthy()
+    expect(up.tentou_entrar_em).toBeNull()
   })
 
   it("marcar: recusa quem outorgou procuração (presença é representada pelo procurador)", async () => {
