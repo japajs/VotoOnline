@@ -354,7 +354,11 @@ export function EditarProprietarioDialog({
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="edit-nome">Nome</Label>
-                <Input id="edit-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+                <Input
+                  id="edit-nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value.replace(/[0-9]/g, ""))}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-email">E-mail</Label>
@@ -371,7 +375,7 @@ export function EditarProprietarioDialog({
                   id="edit-telefone"
                   placeholder="(64) 98146-9800"
                   value={telefone}
-                  onChange={(e) => setTelefone(e.target.value)}
+                  onChange={(e) => setTelefone(e.target.value.replace(/[^\d()+\-\s]/g, ""))}
                 />
               </div>
 
