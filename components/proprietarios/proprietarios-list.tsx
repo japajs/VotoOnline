@@ -121,10 +121,11 @@ export function ProprietariosList({
     () => new Set(presentesNaAberta)
   )
   const [marcandoId, setMarcandoId] = useState<string | null>(null)
-  // Espelho do marcandoId em ref: o polling (closure estável) precisa ler a
-  // marcação EM VOO deste dispositivo pra não revertê-la com dado antigo do
-  // servidor enquanto a gravação não confirmou.
-  const marcandoIdRef = useRef<string | null>(null)
+  // Conjunto das marcações EM VOO deste dispositivo (ref, não re-renderiza): o
+  // polling (closure estável) lê daqui pra não reverter com dado antigo do
+  // servidor enquanto a gravação não confirmou. É um Set (não um id único) pra
+  // aguentar toques rápidos em pessoas diferentes sem piscar nenhuma delas.
+  const marcandoIdsRef = useRef<Set<string>>(new Set())
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
 
   // Alerta "tentando entrar" na própria tela de cadastro (pedido do Carlos: é a
@@ -134,8 +135,8 @@ export function ProprietariosList({
 
   // Polling AO VIVO: traz presentes + "tentando entrar" do servidor. A presença
   // do servidor é a verdade — sincroniza entre dispositivos (bug do Carlos: uma
-  // secretária marcava e a outra não via). Preserva só a marcação EM VOO deste
-  // dispositivo (marcandoIdRef), pra não piscar enquanto a gravação não volta.
+  // secretária marcava e a outra não via). Preserva só as marcações EM VOO deste
+  // dispositivo (marcandoIdsRef), pra não piscar enquanto a gravação não volta.
   const buscarPresencaLive = useCallback(async () => {
     if (!assembleiaAbertaId) return
     const r = await getPresencaLiveAction(assembleiaAbertaId, condominioId)
@@ -143,10 +144,12 @@ export function ProprietariosList({
     setTentandoEntrar(new Map(r.tentando.map((t) => [t.id, t.em])))
     setPresentesLocal((prev) => {
       const servidor = new Set(r.presentes)
-      const emVoo = marcandoIdRef.current
-      if (emVoo) {
-        if (prev.has(emVoo)) servidor.add(emVoo)
-        else servidor.delete(emVoo)
+      // Preserva TODAS as marcações em voo deste dispositivo (o servidor pode
+      // ainda não refletir): mantém o estado otimista de cada uma até a
+      // gravação voltar e o próximo ciclo trazer a verdade.
+      for (const id of marcandoIdsRef.current) {
+        if (prev.has(id)) servidor.add(id)
+        else servidor.delete(id)
       }
       return servidor
     })
@@ -175,7 +178,7 @@ export function ProprietariosList({
 
   async function handleTogglePresente(proprietarioId: string, presente: boolean) {
     if (!assembleiaAbertaId) return
-    marcandoIdRef.current = proprietarioId
+    marcandoIdsRef.current.add(proprietarioId)
     setMarcandoId(proprietarioId)
     setPresentesLocal((prev) => {
       const next = new Set(prev)
@@ -208,8 +211,8 @@ export function ProprietariosList({
       })
       toast.error(result.error ?? "Erro ao marcar presença.")
     }
-    marcandoIdRef.current = null
-    setMarcandoId(null)
+    marcandoIdsRef.current.delete(proprietarioId)
+    setMarcandoId((atual) => (atual === proprietarioId ? null : atual))
   }
 
   // Quem votou em ALGUMAS pautas, mas não em todas as que estavam em votação

@@ -113,9 +113,19 @@ export async function registrarPresenca(
     // confirmado (a Chamada destaca). Não libera o voto — segue dependendo da
     // mesa marcar presente. Defensivo: se a coluna tentou_entrar_em ainda não
     // existir (migração não rodada), o erro é ignorado e a entrada não quebra.
+    //
+    // Grava SÓ na 1ª tentativa: no update, o filtro `.is(tentou_entrar_em,
+    // null)` casa 0 linhas quando já está preenchido — a página de entrada
+    // pesquisa a cada ~7s, então sem isso cada eleitor aguardando reescreveria
+    // a coluna toda vez (write amplification) e o "tentou entrar HH:MM" da mesa
+    // andaria pra ~agora, perdendo o horário de chegada real.
     const agora = new Date().toISOString()
     const tent = existente
-      ? await db.from("assembleia_sends").update({ tentou_entrar_em: agora }).eq("id", existente.id)
+      ? await db
+          .from("assembleia_sends")
+          .update({ tentou_entrar_em: agora })
+          .eq("id", existente.id)
+          .is("tentou_entrar_em", null)
       : await db.from("assembleia_sends").insert({
           assembleia_id: assembleiaId,
           proprietario_id: prop.id,
