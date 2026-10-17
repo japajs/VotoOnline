@@ -317,6 +317,31 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
   return { exigePresenca: assembleia.exige_presenca, itens }
 }
 
+// Proprietários que tentaram entrar pelo link/QR (unidade + CPF corretos) e
+// ainda NÃO foram marcados presentes pela mesa. Usado pra alertar a mesa EM
+// TEMPO REAL também na tela geral de cadastro (não só na Chamada) — é onde a
+// secretária fica a maior parte do tempo (pedido do Carlos). Resiliente: se a
+// coluna tentou_entrar_em não existir (migração pendente) ou houver erro
+// transitório, devolve lista vazia sem quebrar a tela.
+export async function getProprietariosTentandoEntrar(
+  assembleiaId: string
+): Promise<{ id: string; em: string }[]> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select("proprietario_id, tentou_entrar_em")
+    .eq("assembleia_id", assembleiaId)
+    .not("tentou_entrar_em", "is", null)
+    .is("presente_em", null)
+  if (error) {
+    console.warn("[getProprietariosTentandoEntrar] consulta falhou, devolvendo vazio:", error.message)
+    return []
+  }
+  return ((data ?? []) as { proprietario_id: string; tentou_entrar_em: string | null }[])
+    .filter((r) => r.tentou_entrar_em)
+    .map((r) => ({ id: r.proprietario_id, em: r.tentou_entrar_em! }))
+}
+
 // Marca/desmarca um proprietário como presente (a "chamada" da mesa). Marcar
 // cria o send se preciso (com token, pra pessoa conseguir votar pelo link) e
 // grava presente_em; desmarcar limpa presente_em — nunca de quem já votou.
