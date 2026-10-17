@@ -110,19 +110,21 @@ export async function registrarPresenca(
     // mesa marcar presente. Defensivo: se a coluna tentou_entrar_em ainda não
     // existir (migração não rodada), o erro é ignorado e a entrada não quebra.
     const agora = new Date().toISOString()
-    if (existente) {
-      await db
-        .from("assembleia_sends")
-        .update({ tentou_entrar_em: agora })
-        .eq("id", existente.id)
-    } else {
-      await db.from("assembleia_sends").insert({
-        assembleia_id: assembleiaId,
-        proprietario_id: prop.id,
-        token: generateSurveyToken(),
-        status: "pending",
-        tentou_entrar_em: agora,
-      })
+    const tent = existente
+      ? await db.from("assembleia_sends").update({ tentou_entrar_em: agora }).eq("id", existente.id)
+      : await db.from("assembleia_sends").insert({
+          assembleia_id: assembleiaId,
+          proprietario_id: prop.id,
+          token: generateSurveyToken(),
+          status: "pending",
+          tentou_entrar_em: agora,
+        })
+    // Falha aqui NÃO quebra a entrada (a pessoa só vê o aviso pra assinar a
+    // lista), mas logamos pra rastrear em produção — ex.: migração não rodada,
+    // ou corrida de 2 toques simultâneos (um cai no unique de
+    // assembleia_id+proprietario_id, esperado e inofensivo).
+    if (tent.error) {
+      console.error("[registrarPresenca] não registrou tentou_entrar_em:", tent.error.message)
     }
     return {
       ok: false,
@@ -266,7 +268,11 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
     .eq("assembleia_id", assembleiaId)
   // Resiliência: se a coluna tentou_entrar_em ainda não existe (migração
   // pendente), refaz o select sem ela — a Chamada continua funcionando, só sem
-  // o alerta de "tentando entrar".
+  // o alerta de "tentando entrar". Loga pra distinguir "coluna faltando" de
+  // um erro transitório do banco em produção.
+  if (comTentou.error) {
+    console.warn("[getChamada] select com tentou_entrar_em falhou, usando fallback:", comTentou.error.message)
+  }
   const semTentou = comTentou.error
     ? await db
         .from("assembleia_sends")

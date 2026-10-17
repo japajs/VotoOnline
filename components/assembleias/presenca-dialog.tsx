@@ -65,7 +65,7 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
   const carregar = useCallback(
     (silent = false) => {
       if (!silent) setCarregando(true)
-      getChamadaAction(assembleiaId, condominioId).then((r) => {
+      return getChamadaAction(assembleiaId, condominioId).then((r) => {
         if (!silent) setCarregando(false)
         if (r.success && r.data) {
           if (silent) {
@@ -86,13 +86,29 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
     [assembleiaId, condominioId]
   )
 
-  // Atualiza sozinha a cada 10s enquanto aberta: o alerta de "tentando entrar"
-  // (quem abriu o link/QR e ainda não foi marcado presente) aparece pra a mesa
-  // sem precisar reabrir a Chamada.
+  // Atualiza sozinha enquanto aberta: o alerta de "tentando entrar" aparece pra
+  // a mesa sem reabrir a Chamada. setTimeout ENCADEADO (não setInterval): só
+  // agenda o próximo refresh depois que o atual termina — se o banco ficar
+  // lento, as consultas não empilham (evita feedback loop de carga).
   useEffect(() => {
     if (!open) return
-    const id = setInterval(() => carregar(true), 10000)
-    return () => clearInterval(id)
+    let cancelado = false
+    let timer: ReturnType<typeof setTimeout>
+    const agendar = () => {
+      timer = setTimeout(async () => {
+        try {
+          await carregar(true)
+        } catch {
+          // falha de rede/servidor no refresh não derruba o polling nem a UI
+        }
+        if (!cancelado) agendar()
+      }, 10000)
+    }
+    agendar()
+    return () => {
+      cancelado = true
+      clearTimeout(timer)
+    }
   }, [open, carregar])
 
   function handleOpenChange(next: boolean) {
