@@ -629,3 +629,14 @@ alter table assembleias add column if not exists votacao_por_pauta boolean not n
 alter table pautas add column if not exists votacao_aberta boolean not null default false;
 alter table pautas add column if not exists votacao_aberta_em timestamptz;
 alter table pautas add column if not exists votacao_fechada_em timestamptz;
+
+-- ============================================================
+-- Migração — "Tentou entrar" (alerta pra mesa).
+-- Quando exige_presenca = true e alguém abre o link/QR e se identifica
+-- corretamente (unidade + CPF) mas ainda NÃO foi marcado presente pela mesa,
+-- registramos tentou_entrar_em pra a Chamada destacar que há gente esperando
+-- pra ser confirmada. Não libera voto (continua dependendo da mesa marcar
+-- presente). Aditivo e idempotente. Execute no SQL Editor ANTES de publicar o
+-- código que grava/lê esta coluna.
+-- ============================================================
+alter table assembleia_sends add column if not exists tentou_entrar_em timestamptz;
