@@ -137,11 +137,17 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
                 </p>
               ) : (
                 proprietariosFiltrados.map((p) => {
-                  // Quem outorgou procuração não vota por si — quem vota é o
-                  // representante. Fica desabilitado JÁ NA LISTA (pedido do
-                  // Carlos: bloquear no acesso, não deixar entrar na rotina de
-                  // voto e só avisar na confirmação). O servidor também recusa.
-                  const bloqueado = p.outorgouPara !== null
+                  // Bloqueados JÁ NA LISTA (não deixa entrar na rotina de voto; o
+                  // servidor também recusa): INADIMPLENTE (não vota de forma
+                  // alguma — pra liberar, a mesa remove o status) e quem OUTORGOU
+                  // procuração (quem vota é o representante). Inadimplente tem
+                  // prioridade na mensagem.
+                  const bloqueado = p.inadimplente || p.outorgouPara !== null
+                  const subtitulo = p.inadimplente
+                    ? "Inadimplente — não pode votar"
+                    : p.outorgouPara !== null
+                      ? `Procuração → ${p.outorgouPara} · quem vota é o representante`
+                      : (p.email ?? "sem e-mail cadastrado")
                   return (
                     <button
                       key={p.id}
@@ -149,29 +155,39 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
                       onClick={() => handleEscolher(p)}
                       disabled={isPendingIniciar || bloqueado}
                       title={
-                        bloqueado
-                          ? `Outorgou procuração a ${p.outorgouPara} — quem vota é o representante`
-                          : undefined
+                        p.inadimplente
+                          ? "Inadimplente não pode votar. Pra liberar, remova o status de inadimplente no cadastro."
+                          : p.outorgouPara !== null
+                            ? `Outorgou procuração a ${p.outorgouPara} — quem vota é o representante`
+                            : undefined
                       }
                       className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
-                        bloqueado
-                          ? "cursor-not-allowed border-amber-400/40 bg-amber-500/5"
-                          : "border-border/60 hover:border-primary/40 hover:bg-accent/30 disabled:opacity-50"
+                        p.inadimplente
+                          ? "cursor-not-allowed border-rose-400/40 bg-rose-500/5"
+                          : p.outorgouPara !== null
+                            ? "cursor-not-allowed border-amber-400/40 bg-amber-500/5"
+                            : "border-border/60 hover:border-primary/40 hover:bg-accent/30 disabled:opacity-50"
                       }`}
                     >
                       <div className="min-w-0">
                         <p className="truncate font-medium">{p.nome}</p>
-                        {bloqueado ? (
-                          <p className="truncate text-xs text-amber-700 dark:text-amber-400">
-                            Procuração → {p.outorgouPara} · quem vota é o representante
-                          </p>
-                        ) : (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {p.email ?? "sem e-mail cadastrado"}
-                          </p>
-                        )}
+                        <p
+                          className={`truncate text-xs ${
+                            p.inadimplente
+                              ? "text-rose-700 dark:text-rose-400"
+                              : p.outorgouPara !== null
+                                ? "text-amber-700 dark:text-amber-400"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {subtitulo}
+                        </p>
                       </div>
-                      {bloqueado ? (
+                      {p.inadimplente ? (
+                        <span className="shrink-0 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:text-rose-400">
+                          Inadimplente
+                        </span>
+                      ) : p.outorgouPara !== null ? (
                         <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                           Procuração
                         </span>
