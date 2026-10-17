@@ -154,6 +154,7 @@ export function AtaPDF({
           <Text style={s.paragraph}>
             Aos {formatDateBR(assembleia.data_encerramento ?? assembleia.data_abertura ?? emitidoEm)},
             reuniram-se os condôminos do {condominio.nome}
+            {condominio.cnpj ? `, inscrito no CNPJ sob o nº ${condominio.cnpj}` : ""}
             {condominio.endereco ? `, situado em ${condominio.endereco}` : ""}, por meio do sistema de
             votação eletrônica {APP_NAME}, para deliberar sobre a assembleia intitulada &quot;
             {assembleia.titulo}&quot;

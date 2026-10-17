@@ -79,6 +79,7 @@ export async function updateCondominioInfoAction(
   id: string,
   nome: string,
   info: {
+    cnpj: string
     endereco: string
     sindico_nome: string
     sindico_contato: string
@@ -140,6 +141,7 @@ export async function updateCondominioInfoAction(
   try {
     await updateCondominio(id, { nome: nome.trim() })
     await updateCondominioInfo(id, {
+      cnpj: info.cnpj.trim() || null,
       endereco: info.endereco.trim() || null,
       sindico_nome: info.sindico_nome.trim() || null,
       sindico_contato: info.sindico_contato.trim() || null,

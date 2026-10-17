@@ -93,6 +93,7 @@ export type Database = {
         Row: {
           id: string
           nome: string
+          cnpj: string | null
           endereco: string | null
           sindico_nome: string | null
           sindico_contato: string | null
@@ -102,6 +103,7 @@ export type Database = {
         Insert: {
           id?: string
           nome: string
+          cnpj?: string | null
           endereco?: string | null
           sindico_nome?: string | null
           sindico_contato?: string | null
@@ -110,6 +112,7 @@ export type Database = {
         }
         Update: {
           nome?: string
+          cnpj?: string | null
           endereco?: string | null
           sindico_nome?: string | null
           sindico_contato?: string | null
