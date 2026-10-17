@@ -357,20 +357,25 @@ export async function getProprietariosTentandoEntrar(
     .map((r) => ({ id: r.proprietario_id, em: r.tentou_entrar_em! }))
 }
 
-// Status de presença AO VIVO pra a tela de gestão sincronizar entre dispositivos
-// (duas secretárias marcando presença ao mesmo tempo — pedido do Carlos). Numa
-// consulta só devolve quem está PRESENTE e quem está TENTANDO ENTRAR (link/QR,
-// ainda sem presença). Leve (só ids) e resiliente à coluna tentou_entrar_em
-// ausente (migração pendente) e a erro transitório — nunca quebra a tela.
+// Status AO VIVO pra a tela de gestão sincronizar entre dispositivos (duas
+// secretárias ao mesmo tempo — pedido do Carlos). Numa consulta só devolve quem
+// está PRESENTE, quem já VOTOU e quem está TENTANDO ENTRAR (link/QR, ainda sem
+// presença). Leve (só ids) e resiliente à coluna tentou_entrar_em ausente
+// (migração pendente); falha dura LANÇA (ver abaixo) pra não zerar a tela.
 export async function getStatusPresencaLive(
   assembleiaId: string
-): Promise<{ presentes: string[]; tentando: { id: string; em: string }[] }> {
+): Promise<{ presentes: string[]; votaram: string[]; tentando: { id: string; em: string }[] }> {
   const db = createServerClient()
-  type Row = { proprietario_id: string; presente_em: string | null; tentou_entrar_em?: string | null }
+  type Row = {
+    proprietario_id: string
+    presente_em: string | null
+    votado_em: string | null
+    tentou_entrar_em?: string | null
+  }
 
   const comTentou = await db
     .from("assembleia_sends")
-    .select("proprietario_id, presente_em, tentou_entrar_em")
+    .select("proprietario_id, presente_em, votado_em, tentou_entrar_em")
     .eq("assembleia_id", assembleiaId)
 
   let rows: Row[] | null
@@ -381,7 +386,7 @@ export async function getStatusPresencaLive(
     )
     const semTentou = await db
       .from("assembleia_sends")
-      .select("proprietario_id, presente_em")
+      .select("proprietario_id, presente_em, votado_em")
       .eq("assembleia_id", assembleiaId)
     if (semTentou.error) {
       // Falha DURA (os dois selects falharam = banco fora/timeout, não é só a
@@ -399,14 +404,16 @@ export async function getStatusPresencaLive(
   }
 
   const presentes: string[] = []
+  const votaram: string[] = []
   const tentando: { id: string; em: string }[] = []
   for (const r of rows ?? []) {
+    if (r.votado_em) votaram.push(r.proprietario_id)
     if (r.presente_em) presentes.push(r.proprietario_id)
     // "Tentando entrar" = abriu o link/QR (tentou_entrar_em) e ainda NÃO está
     // presente — mesma regra do getProprietariosTentandoEntrar.
     else if (r.tentou_entrar_em) tentando.push({ id: r.proprietario_id, em: r.tentou_entrar_em })
   }
-  return { presentes, tentando }
+  return { presentes, votaram, tentando }
 }
 
 // Marca/desmarca um proprietário como presente (a "chamada" da mesa). Marcar

@@ -22,7 +22,7 @@ import {
   addUnidadeAction,
   removeUnidadeAction,
 } from "@/app/actions/proprietarios"
-import { marcarPresencaAction, getPresencaLiveAction } from "@/app/actions/presenca"
+import { marcarPresencaAction, getEstadoVotacaoLiveAction } from "@/app/actions/presenca"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
@@ -127,21 +127,47 @@ export function ProprietariosList({
   // aguentar toques rápidos em pessoas diferentes sem piscar nenhuma delas.
   const marcandoIdsRef = useRef<Set<string>>(new Set())
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
+  // Há assembleia aberta? Gate do funil de votos e do polling. Antes era o
+  // próprio `votouNaAberta` (undefined sem assembleia aberta); agora que o voto
+  // virou estado sincronizado, o sinal é o id da assembleia aberta.
+  const temAssembleiaAberta = !!assembleiaAbertaId
+
+  // Estado de votação semeado das props e SINCRONIZADO pelo poll (ao vivo entre
+  // dispositivos): quem votou, nº de pautas respondidas por pessoa, denominador
+  // do voto total e procurações. Antes vinham só das props (load da página),
+  // então duas secretárias viam contagens de voto diferentes (uma "Votou geral
+  // 8", a outra "0"). O inicializador roda só na montagem; o poll atualiza.
+  const [votaramLocal, setVotaramLocal] = useState<Set<string>>(() => new Set(votouNaAberta))
+  const [pautasVotadasLocal, setPautasVotadasLocal] = useState<Map<string, number>>(
+    () => new Map(pautasVotadasNaAberta)
+  )
+  const [totalPautasVotaveisLocal, setTotalPautasVotaveisLocal] = useState(
+    totalPautasVotaveis ?? 0
+  )
+  const [outorgantesLocal, setOutorgantesLocal] = useState<Set<string>>(
+    () => new Set(outorgantesNaAberta)
+  )
 
   // Alerta "tentando entrar" na própria tela de cadastro (pedido do Carlos: é a
   // tela que a secretária fica o tempo todo). id → horário da tentativa. Buscado
   // por polling leve enquanto há assembleia aberta e o operador pode marcar.
   const [tentandoEntrar, setTentandoEntrar] = useState<Map<string, string>>(new Map())
 
-  // Polling AO VIVO: traz presentes + "tentando entrar" do servidor. A presença
-  // do servidor é a verdade — sincroniza entre dispositivos (bug do Carlos: uma
-  // secretária marcava e a outra não via). Preserva só as marcações EM VOO deste
-  // dispositivo (marcandoIdsRef), pra não piscar enquanto a gravação não volta.
-  const buscarPresencaLive = useCallback(async () => {
+  // Polling AO VIVO do estado de votação. O servidor é a verdade — sincroniza
+  // entre dispositivos (bug do Carlos: uma secretária marcava/via movimento e a
+  // outra não). Presença preserva as marcações EM VOO deste dispositivo
+  // (marcandoIdsRef) pra não piscar; o resto (votos/pautas/procuração) é só
+  // leitura, então reflete direto o servidor.
+  const buscarEstadoLive = useCallback(async () => {
     if (!assembleiaAbertaId) return
-    const r = await getPresencaLiveAction(assembleiaAbertaId, condominioId)
+    const r = await getEstadoVotacaoLiveAction(assembleiaAbertaId, condominioId)
+    // Falha → preserva o estado atual (não zera presença/votos na tela).
     if (!r.success) return
     setTentandoEntrar(new Map(r.tentando.map((t) => [t.id, t.em])))
+    setVotaramLocal(new Set(r.votaram))
+    setPautasVotadasLocal(new Map(r.pautasVotadas))
+    setTotalPautasVotaveisLocal(r.totalPautasVotaveis)
+    setOutorgantesLocal(new Set(r.outorgantes))
     setPresentesLocal((prev) => {
       const servidor = new Set(r.presentes)
       // Preserva TODAS as marcações em voo deste dispositivo (o servidor pode
@@ -156,14 +182,16 @@ export function ProprietariosList({
   }, [assembleiaAbertaId, condominioId])
 
   // setTimeout ENCADEADO (não setInterval): só reagenda após a consulta
-  // terminar — não empilha se o banco lentear. Primeira busca imediata.
+  // terminar — não empilha se o banco lentear. Primeira busca imediata. Roda
+  // sempre que há assembleia aberta (inclusive pra visualizador ver ao vivo),
+  // não só pra quem pode marcar presença.
   useEffect(() => {
-    if (!podeMarcarPresenca) return
+    if (!temAssembleiaAberta) return
     let ativo = true
     let timer: ReturnType<typeof setTimeout>
     const ciclo = async () => {
       try {
-        await buscarPresencaLive()
+        await buscarEstadoLive()
       } catch {
         // falha de rede não derruba a lista; tenta de novo no próximo ciclo
       }
@@ -174,7 +202,7 @@ export function ProprietariosList({
       ativo = false
       clearTimeout(timer)
     }
-  }, [podeMarcarPresenca, buscarPresencaLive])
+  }, [temAssembleiaAberta, buscarEstadoLive])
 
   async function handleTogglePresente(proprietarioId: string, presente: boolean) {
     if (!assembleiaAbertaId) return
@@ -219,20 +247,20 @@ export function ProprietariosList({
   // (voto parcial). Só faz sentido quando há denominador (pautas em votação).
   const parciaisNaAberta = useMemo(() => {
     const s = new Set<string>()
-    if (!votouNaAberta || !totalPautasVotaveis) return s
+    if (!temAssembleiaAberta || !totalPautasVotaveisLocal) return s
     for (const p of proprietarios) {
-      if (!votouNaAberta.has(p.id)) continue
-      const votadas = pautasVotadasNaAberta?.get(p.id) ?? 0
-      if (votadas < totalPautasVotaveis) s.add(p.id)
+      if (!votaramLocal.has(p.id)) continue
+      const votadas = pautasVotadasLocal.get(p.id) ?? 0
+      if (votadas < totalPautasVotaveisLocal) s.add(p.id)
     }
     return s
-  }, [proprietarios, votouNaAberta, pautasVotadasNaAberta, totalPautasVotaveis])
+  }, [proprietarios, temAssembleiaAberta, votaramLocal, pautasVotadasLocal, totalPautasVotaveisLocal])
 
   const proprietariosExibidos = useMemo(() => {
     const porVoto =
-      votouNaAberta && filtroVoto !== "todos"
+      temAssembleiaAberta && filtroVoto !== "todos"
         ? proprietarios.filter((p) => {
-            const ehOutorgante = outorgantesNaAberta?.has(p.id) ?? false
+            const ehOutorgante = outorgantesLocal.has(p.id)
             if (filtroVoto === "presentes") return presentesLocal.has(p.id)
             // "ausentes": quem ainda não confirmou presença (e não é procuração
             // — essa tem balde próprio). Pedido do Carlos: no início todo mundo
@@ -247,12 +275,12 @@ export function ProprietariosList({
             // quem votou em parte e quem não votou nada — três baldes que
             // somam os presentes, sem sobreposição.
             if (filtroVoto === "votaram")
-              return votouNaAberta.has(p.id) && !parciaisNaAberta.has(p.id)
+              return votaramLocal.has(p.id) && !parciaisNaAberta.has(p.id)
             if (filtroVoto === "parcial") return parciaisNaAberta.has(p.id)
             // "nao" — presentes que AINDA não votaram (não soma quem nem está
             // na assembleia): pedido do Carlos, "Não votaram = presentes sem
             // voto", não "todos menos os que votaram".
-            return presentesLocal.has(p.id) && !votouNaAberta.has(p.id)
+            return presentesLocal.has(p.id) && !votaramLocal.has(p.id)
           })
         : proprietarios
 
@@ -288,10 +316,11 @@ export function ProprietariosList({
     busca,
     ordenacao,
     filtroVoto,
-    votouNaAberta,
+    temAssembleiaAberta,
+    votaramLocal,
     presentesLocal,
     parciaisNaAberta,
-    outorgantesNaAberta,
+    outorgantesLocal,
     tentandoEntrar,
   ])
 
@@ -303,47 +332,41 @@ export function ProprietariosList({
   const totalImoveis = proprietarios.reduce((n, p) => n + imoveisDe(p), 0)
   // "Votaram" = votaram TUDO (todas as pautas em votação). Com "Parcial" e
   // "Não votaram", particiona os presentes (funil do Carlos), sem sobrepor.
-  const nVotaram = votouNaAberta
+  const nVotaram = temAssembleiaAberta
     ? proprietarios.reduce(
-        (n, p) => n + (votouNaAberta.has(p.id) && !parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0),
+        (n, p) => n + (votaramLocal.has(p.id) && !parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0),
         0
       )
     : 0
-  const nParcial = votouNaAberta
+  const nParcial = temAssembleiaAberta
     ? proprietarios.reduce((n, p) => n + (parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0), 0)
     : 0
-  const nPresentes = votouNaAberta
+  const nPresentes = temAssembleiaAberta
     ? proprietarios.reduce((n, p) => n + (presentesLocal.has(p.id) ? imoveisDe(p) : 0), 0)
     : 0
   // "Não votaram" = imóveis de quem está PRESENTE e ainda não votou (pedido do
   // Carlos). Antes era total − votaram, que somava também quem nem participou
   // da assembleia — número sem sentido para a gestão cobrar quem falta votar.
-  const nNao = votouNaAberta
+  const nNao = temAssembleiaAberta
     ? proprietarios.reduce(
-        (n, p) => n + (presentesLocal.has(p.id) && !votouNaAberta.has(p.id) ? imoveisDe(p) : 0),
+        (n, p) => n + (presentesLocal.has(p.id) && !votaramLocal.has(p.id) ? imoveisDe(p) : 0),
         0
       )
     : 0
   // Ausentes (imóveis de quem não confirmou presença e não é procuração) +
   // Procuração (outorgantes) + Inadimplentes. Partição: Total = Presentes +
   // Ausentes + Procuração. Inadimplentes cruza as demais (só informativo).
-  const nAusentes = votouNaAberta
+  const nAusentes = temAssembleiaAberta
     ? proprietarios.reduce(
         (n, p) =>
-          n +
-          (!presentesLocal.has(p.id) && !(outorgantesNaAberta?.has(p.id) ?? false)
-            ? imoveisDe(p)
-            : 0),
+          n + (!presentesLocal.has(p.id) && !outorgantesLocal.has(p.id) ? imoveisDe(p) : 0),
         0
       )
     : 0
-  const nProcuracao = votouNaAberta
-    ? proprietarios.reduce(
-        (n, p) => n + ((outorgantesNaAberta?.has(p.id) ?? false) ? imoveisDe(p) : 0),
-        0
-      )
+  const nProcuracao = temAssembleiaAberta
+    ? proprietarios.reduce((n, p) => n + (outorgantesLocal.has(p.id) ? imoveisDe(p) : 0), 0)
     : 0
-  const nInadimplentes = votouNaAberta
+  const nInadimplentes = temAssembleiaAberta
     ? proprietarios.reduce((n, p) => n + (p.inadimplente ? imoveisDe(p) : 0), 0)
     : 0
 
@@ -455,7 +478,7 @@ export function ProprietariosList({
           cima e chips numa linha própria de largura total: com 5 filtros, lado
           a lado o último ("Não votaram") quebrava sozinho pra baixo e ficava
           órfão; empilhado, os chips quebram alinhados à esquerda. */}
-      {votouNaAberta && (
+      {temAssembleiaAberta && (
         <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
             Votação de{" "}
@@ -527,12 +550,12 @@ export function ProprietariosList({
                 condominioId={condominioId}
                 todosProprietarios={proprietarios}
                 jaVotou={proprietariosQueJaVotaram?.has(p.id) ?? false}
-                mostrarVoto={!!votouNaAberta}
-                votou={votouNaAberta?.has(p.id) ?? false}
+                mostrarVoto={temAssembleiaAberta}
+                votou={votaramLocal.has(p.id)}
                 parcial={parciaisNaAberta.has(p.id)}
-                pautasVotadas={pautasVotadasNaAberta?.get(p.id) ?? 0}
-                totalPautas={totalPautasVotaveis ?? 0}
-                outorgante={outorgantesNaAberta?.has(p.id) ?? false}
+                pautasVotadas={pautasVotadasLocal.get(p.id) ?? 0}
+                totalPautas={totalPautasVotaveisLocal}
+                outorgante={outorgantesLocal.has(p.id)}
                 tentouEntrarEm={tentandoEntrar.get(p.id) ?? null}
                 mostrarPresenca={podeMarcarPresenca}
                 presente={presentesLocal.has(p.id)}
