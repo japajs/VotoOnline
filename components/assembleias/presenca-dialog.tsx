@@ -68,9 +68,16 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
       getChamadaAction(assembleiaId, condominioId).then((r) => {
         if (!silent) setCarregando(false)
         if (r.success && r.data) {
-          if (marcandoRef.current) return // não atropela uma marcação em curso
-          setItens(r.data.itens)
-          setExigePresenca(r.data.exigePresenca)
+          if (silent) {
+            // Polling: atualiza só a LISTA (o alerta de "tentando entrar"). Não
+            // mexe em exigePresenca pra não reverter um toggle otimista recém
+            // feito pela mesa; e não atropela uma marcação em curso.
+            if (marcandoRef.current) return
+            setItens(r.data.itens)
+          } else {
+            setItens(r.data.itens)
+            setExigePresenca(r.data.exigePresenca)
+          }
         } else if (!silent) {
           toast.error(r.error)
         }
