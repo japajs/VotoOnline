@@ -347,6 +347,52 @@ export async function getProprietariosTentandoEntrar(
     .map((r) => ({ id: r.proprietario_id, em: r.tentou_entrar_em! }))
 }
 
+// Status de presença AO VIVO pra a tela de gestão sincronizar entre dispositivos
+// (duas secretárias marcando presença ao mesmo tempo — pedido do Carlos). Numa
+// consulta só devolve quem está PRESENTE e quem está TENTANDO ENTRAR (link/QR,
+// ainda sem presença). Leve (só ids) e resiliente à coluna tentou_entrar_em
+// ausente (migração pendente) e a erro transitório — nunca quebra a tela.
+export async function getStatusPresencaLive(
+  assembleiaId: string
+): Promise<{ presentes: string[]; tentando: { id: string; em: string }[] }> {
+  const db = createServerClient()
+  type Row = { proprietario_id: string; presente_em: string | null; tentou_entrar_em?: string | null }
+
+  const comTentou = await db
+    .from("assembleia_sends")
+    .select("proprietario_id, presente_em, tentou_entrar_em")
+    .eq("assembleia_id", assembleiaId)
+
+  let rows: Row[] | null
+  if (comTentou.error) {
+    console.warn(
+      "[getStatusPresencaLive] select com tentou_entrar_em falhou, usando fallback:",
+      comTentou.error.message
+    )
+    const semTentou = await db
+      .from("assembleia_sends")
+      .select("proprietario_id, presente_em")
+      .eq("assembleia_id", assembleiaId)
+    if (semTentou.error) {
+      console.warn("[getStatusPresencaLive] consulta falhou, devolvendo vazio:", semTentou.error.message)
+      return { presentes: [], tentando: [] }
+    }
+    rows = semTentou.data as Row[] | null
+  } else {
+    rows = comTentou.data as Row[] | null
+  }
+
+  const presentes: string[] = []
+  const tentando: { id: string; em: string }[] = []
+  for (const r of rows ?? []) {
+    if (r.presente_em) presentes.push(r.proprietario_id)
+    // "Tentando entrar" = abriu o link/QR (tentou_entrar_em) e ainda NÃO está
+    // presente — mesma regra do getProprietariosTentandoEntrar.
+    else if (r.tentou_entrar_em) tentando.push({ id: r.proprietario_id, em: r.tentou_entrar_em })
+  }
+  return { presentes, tentando }
+}
+
 // Marca/desmarca um proprietário como presente (a "chamada" da mesa). Marcar
 // cria o send se preciso (com token, pra pessoa conseguir votar pelo link) e
 // grava presente_em; desmarcar limpa presente_em — nunca de quem já votou.

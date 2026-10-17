@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo, useState, useTransition, useEffect, useCallback } from "react"
+import { memo, useMemo, useRef, useState, useTransition, useEffect, useCallback } from "react"
 import {
   Users,
   Trash2,
@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -20,7 +22,7 @@ import {
   addUnidadeAction,
   removeUnidadeAction,
 } from "@/app/actions/proprietarios"
-import { marcarPresencaAction, getTentandoEntrarAction } from "@/app/actions/presenca"
+import { marcarPresencaAction, getPresencaLiveAction } from "@/app/actions/presenca"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
@@ -83,6 +85,10 @@ type Ordenacao = "nome" | "unidade"
 // grandes (lg+) — é o que garante nome/e-mail/celular/peso/ações alinhados
 // verticalmente mesmo com textos de tamanhos bem diferentes entre linhas.
 const GRID_COLUNAS = "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_140px_64px_72px]"
+// Modo compartilhar (LGPD): some com E-mail/CPF e Celular (as 2 colunas do
+// meio), sobram Nome · Votos · Ações — pra projetar/compartilhar a tela sem
+// expor dados pessoais dos condôminos.
+const GRID_COLUNAS_COMPARTILHAR = "lg:grid-cols-[minmax(0,1fr)_64px_72px]"
 
 export function ProprietariosList({
   proprietarios,
@@ -102,15 +108,23 @@ export function ProprietariosList({
   const [busca, setBusca] = useState("")
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
   const [filtroVoto, setFiltroVoto] = useState<FiltroVoto>("todos")
+  // Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar a tela
+  // sem expor dados pessoais (pedido do Carlos — os presentes online conferem
+  // se estão marcados como presentes sem ver os dados dos outros).
+  const [modoCompartilhar, setModoCompartilhar] = useState(false)
 
   // Presença marcada direto na lista (pedido do Carlos: agilizar a chamada sem
-  // abrir a Apuração). Mantemos um estado local semeado do servidor e atualizado
-  // de forma otimista — o inicializador só roda na montagem, então as
-  // revalidações disparadas pela action não zeram as marcações já feitas.
+  // abrir a Apuração). Estado local semeado do servidor, atualizado de forma
+  // otimista E sincronizado pelo polling (duas secretárias em dispositivos
+  // diferentes veem as marcações uma da outra — ver buscarPresencaLive).
   const [presentesLocal, setPresentesLocal] = useState<Set<string>>(
     () => new Set(presentesNaAberta)
   )
   const [marcandoId, setMarcandoId] = useState<string | null>(null)
+  // Espelho do marcandoId em ref: o polling (closure estável) precisa ler a
+  // marcação EM VOO deste dispositivo pra não revertê-la com dado antigo do
+  // servidor enquanto a gravação não confirmou.
+  const marcandoIdRef = useRef<string | null>(null)
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
 
   // Alerta "tentando entrar" na própria tela de cadastro (pedido do Carlos: é a
@@ -118,10 +132,24 @@ export function ProprietariosList({
   // por polling leve enquanto há assembleia aberta e o operador pode marcar.
   const [tentandoEntrar, setTentandoEntrar] = useState<Map<string, string>>(new Map())
 
-  const buscarTentandoEntrar = useCallback(async () => {
+  // Polling AO VIVO: traz presentes + "tentando entrar" do servidor. A presença
+  // do servidor é a verdade — sincroniza entre dispositivos (bug do Carlos: uma
+  // secretária marcava e a outra não via). Preserva só a marcação EM VOO deste
+  // dispositivo (marcandoIdRef), pra não piscar enquanto a gravação não volta.
+  const buscarPresencaLive = useCallback(async () => {
     if (!assembleiaAbertaId) return
-    const r = await getTentandoEntrarAction(assembleiaAbertaId, condominioId)
-    if (r.success) setTentandoEntrar(new Map(r.tentando.map((t) => [t.id, t.em])))
+    const r = await getPresencaLiveAction(assembleiaAbertaId, condominioId)
+    if (!r.success) return
+    setTentandoEntrar(new Map(r.tentando.map((t) => [t.id, t.em])))
+    setPresentesLocal((prev) => {
+      const servidor = new Set(r.presentes)
+      const emVoo = marcandoIdRef.current
+      if (emVoo) {
+        if (prev.has(emVoo)) servidor.add(emVoo)
+        else servidor.delete(emVoo)
+      }
+      return servidor
+    })
   }, [assembleiaAbertaId, condominioId])
 
   // setTimeout ENCADEADO (não setInterval): só reagenda após a consulta
@@ -132,21 +160,22 @@ export function ProprietariosList({
     let timer: ReturnType<typeof setTimeout>
     const ciclo = async () => {
       try {
-        await buscarTentandoEntrar()
+        await buscarPresencaLive()
       } catch {
         // falha de rede não derruba a lista; tenta de novo no próximo ciclo
       }
-      if (ativo) timer = setTimeout(ciclo, 10000)
+      if (ativo) timer = setTimeout(ciclo, 7000)
     }
     ciclo()
     return () => {
       ativo = false
       clearTimeout(timer)
     }
-  }, [podeMarcarPresenca, buscarTentandoEntrar])
+  }, [podeMarcarPresenca, buscarPresencaLive])
 
   async function handleTogglePresente(proprietarioId: string, presente: boolean) {
     if (!assembleiaAbertaId) return
+    marcandoIdRef.current = proprietarioId
     setMarcandoId(proprietarioId)
     setPresentesLocal((prev) => {
       const next = new Set(prev)
@@ -179,6 +208,7 @@ export function ProprietariosList({
       })
       toast.error(result.error ?? "Erro ao marcar presença.")
     }
+    marcandoIdRef.current = null
     setMarcandoId(null)
   }
 
@@ -323,6 +353,10 @@ export function ProprietariosList({
     )
   }
 
+  // Grade das colunas: completa, ou enxuta (sem E-mail/Celular) no modo
+  // compartilhar. Cabeçalho e linhas usam a mesma, pra ficarem alinhados.
+  const gridCols = modoCompartilhar ? GRID_COLUNAS_COMPARTILHAR : GRID_COLUNAS
+
   return (
     <div className="space-y-3">
       {/* Alerta "tentando entrar" NA PRÓPRIA tela de cadastro (pedido do Carlos):
@@ -379,7 +413,39 @@ export function ProprietariosList({
           <option value="nome">Ordenar por Nome</option>
           <option value="unidade">Ordenar por Unidade</option>
         </select>
+        {/* Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar a
+            tela sem expor dados pessoais. Clicar de novo volta ao normal. */}
+        <button
+          type="button"
+          onClick={() => setModoCompartilhar((v) => !v)}
+          aria-pressed={modoCompartilhar}
+          title={
+            modoCompartilhar
+              ? "Mostrar E-mail, CPF e Celular de novo"
+              : "Ocultar E-mail, CPF e Celular para compartilhar a tela (LGPD)"
+          }
+          className={`flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors ${
+            modoCompartilhar
+              ? "border-amber-400/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : "border-border/60 bg-background text-muted-foreground hover:bg-accent/40"
+          }`}
+        >
+          {modoCompartilhar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <span className="hidden sm:inline">
+            {modoCompartilhar ? "Mostrar dados" : "Modo compartilhar"}
+          </span>
+        </button>
       </div>
+
+      {/* Aviso discreto quando o modo compartilhar está ligado — fica visível
+          também pra quem está vendo a tela projetada, explicando a ocultação. */}
+      {modoCompartilhar && (
+        <p className="flex items-center gap-1.5 px-1 text-xs text-amber-700 dark:text-amber-400">
+          <EyeOff className="h-3.5 w-3.5 shrink-0" />
+          Modo compartilhar ligado — E-mail, CPF e Celular ocultos para proteger os dados dos
+          condôminos (LGPD).
+        </p>
+      )}
 
       {/* Filtro por voto na assembleia aberta (pedido do Carlos): ver quem já
           votou direto aqui, sem ir à apuração, pra cobrar quem falta. Texto em
@@ -442,11 +508,11 @@ export function ProprietariosList({
           {/* Cabeçalho de colunas — só faz sentido a partir de lg, onde a
               grade de colunas entra em vigor. */}
           <div
-            className={`hidden border-b border-border/60 bg-muted/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 lg:grid lg:gap-3 ${GRID_COLUNAS}`}
+            className={`hidden border-b border-border/60 bg-muted/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 lg:grid lg:gap-3 ${gridCols}`}
           >
             <span>Nome</span>
-            <span>E-mail</span>
-            <span>Celular</span>
+            {!modoCompartilhar && <span>E-mail</span>}
+            {!modoCompartilhar && <span>Celular</span>}
             <span>Votos</span>
             <span className="text-right">Ações</span>
           </div>
@@ -472,6 +538,8 @@ export function ProprietariosList({
                 isAdmin={isAdmin}
                 podeEditar={podeEditar}
                 criterioPeso={criterioPeso}
+                gridCols={gridCols}
+                modoCompartilhar={modoCompartilhar}
               />
             ))}
           </div>
@@ -500,6 +568,8 @@ const ProprietarioRow = memo(function ProprietarioRow({
   isAdmin,
   podeEditar,
   criterioPeso,
+  gridCols,
+  modoCompartilhar,
 }: {
   proprietario: Proprietario
   condominioId: string
@@ -520,6 +590,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
   isAdmin: boolean
   podeEditar: boolean
   criterioPeso: CriterioPeso
+  // Grade de colunas (completa ou enxuta) e se o modo compartilhar está ligado
+  // — quando ligado, E-mail/CPF e Celular não são renderizados (LGPD).
+  gridCols: string
+  modoCompartilhar: boolean
 }) {
   const [novaUnidade, setNovaUnidade] = useState("")
   const [showAdd, setShowAdd] = useState(false)
@@ -578,7 +652,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
       {/* Linha 1 — abaixo de lg: empilhado em duas sub-linhas (nome+ações,
           depois e-mail/celular/peso). A partir de lg: uma única linha em
           grade de colunas alinhadas com o cabeçalho. */}
-      <div className={`grid grid-cols-1 gap-1 lg:items-center lg:gap-3 ${GRID_COLUNAS}`}>
+      <div className={`grid grid-cols-1 gap-1 lg:items-center lg:gap-3 ${gridCols}`}>
         <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold lg:font-medium">
           {mostrarPresenca && (
             <button
@@ -679,22 +753,26 @@ const ProprietarioRow = memo(function ProprietarioRow({
             )))}
         </p>
 
-        {/* Sempre 3 filhos diretos (mesmo quando falta e-mail/celular) — com
-            `lg:contents` eles viram itens da grade do pai, um por coluna;
-            se um filho sumisse condicionalmente, os seguintes deslizariam
-            para a coluna errada. */}
+        {/* No modo NORMAL: 3 filhos diretos (e-mail/CPF, celular, peso) — com
+            `lg:contents` viram itens da grade do pai, um por coluna. No modo
+            COMPARTILHAR: só o peso (E-mail/CPF e Celular ocultos por LGPD), e a
+            grade enxuta (gridCols) tem exatamente as colunas Nome · Votos ·
+            Ações, então o peso cai na coluna certa. */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground lg:contents">
           {/* E-mail com o CPF logo abaixo: o operador confere rápido o CPF
               quando alguém diz que o link de entrada acusou "CPF ou unidade
-              inválida" (pedido do Carlos). Mantém-se 3 filhos diretos pro
-              lg:contents distribuir nas colunas certas. */}
-          <div className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate">{proprietario.email || "—"}</span>
-            {cpfFmt && (
-              <span className="truncate text-xs text-muted-foreground/70">CPF {cpfFmt}</span>
-            )}
-          </div>
-          <span className="min-w-0 shrink-0 truncate">{celular ?? "—"}</span>
+              inválida" (pedido do Carlos). */}
+          {!modoCompartilhar && (
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate">{proprietario.email || "—"}</span>
+              {cpfFmt && (
+                <span className="truncate text-xs text-muted-foreground/70">CPF {cpfFmt}</span>
+              )}
+            </div>
+          )}
+          {!modoCompartilhar && (
+            <span className="min-w-0 shrink-0 truncate">{celular ?? "—"}</span>
+          )}
           <span
             className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary lg:ml-0 lg:w-fit"
             title={
