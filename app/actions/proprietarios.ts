@@ -7,6 +7,7 @@ import {
   getProprietarioById,
   registrarHistoricoAlteracao,
   updateProprietario,
+  cpfJaCadastrado,
 } from "@/services/proprietarios"
 import {
   createUnidade,
@@ -19,7 +20,7 @@ import { anularVotosDoProprietario } from "@/services/assembleia-votos"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
-import { normalizarCelular, validarEmailFormato, normalizarCpf, cpfCompleto } from "@/lib/format"
+import { normalizarCelular, validarEmailFormato, normalizarCpf, cpfCompleto, validarCpf } from "@/lib/format"
 
 // Auditoria funcional: antes, qualquer erro de constraint única virava
 // sempre "já existe... com esse e-mail", mesmo quando o CPF é que estava
@@ -65,6 +66,14 @@ export async function createProprietarioAction(input: {
   }
   if (cpfInformado && !cpfCompleto(cpfInformado)) {
     return { success: false, error: "CPF deve ter 11 dígitos." }
+  }
+  // Valida os dígitos verificadores (rejeita 777.777.777-77 e afins) e bloqueia
+  // CPF repetido no mesmo condomínio (pedidos do Carlos).
+  if (cpfInformado && !validarCpf(cpfInformado)) {
+    return { success: false, error: "CPF inválido. Confira os números digitados." }
+  }
+  if (cpfInformado && (await cpfJaCadastrado(input.condominio_id, normalizarCpf(cpfInformado)))) {
+    return { success: false, error: "Já existe um proprietário com este CPF neste condomínio." }
   }
 
   let telefoneNormalizado: string | null = null
@@ -364,9 +373,20 @@ export async function updateCpfProprietarioAction(input: {
     const atual = await getProprietarioById(input.id)
     if (!atual) return { success: false, error: "Proprietário não encontrado." }
 
-    const novoCpf = input.novoCpf.trim() || null
+    // Normaliza (só dígitos) pra gravar consistente e comparar/duplicar certo.
+    const novoCpf = input.novoCpf.trim() ? normalizarCpf(input.novoCpf) : null
     if (novoCpf === (atual.cpf ?? null)) {
       return { success: false, error: "Nenhuma alteração para salvar." }
+    }
+    // Mesmas travas do cadastro: 11 dígitos, DV válido e sem repetir no condomínio.
+    if (novoCpf) {
+      if (!cpfCompleto(novoCpf)) return { success: false, error: "CPF deve ter 11 dígitos." }
+      if (!validarCpf(novoCpf)) {
+        return { success: false, error: "CPF inválido. Confira os números digitados." }
+      }
+      if (await cpfJaCadastrado(input.condominioId, novoCpf, input.id)) {
+        return { success: false, error: "Já existe um proprietário com este CPF neste condomínio." }
+      }
     }
 
     await updateProprietario(input.id, { cpf: novoCpf })
