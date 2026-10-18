@@ -350,10 +350,11 @@ async function validarVotoOuFalhar(
 
   // Votação pauta por pauta: quando a assembleia roda nesse modo, só vota quem
   // está respondendo uma pauta que a MESA abriu (votacao_aberta). A trava fica
-  // aqui no núcleo do registro — nem pelo link direto passa voto numa pauta
-  // fechada/aguardando. O lançamento manual da mesa (viaMesa) está isento: é a
-  // própria mesa conduzindo a votação.
-  if (votacaoPorPauta && !viaMesa) {
+  // aqui no núcleo do registro — nem pelo link direto, nem pelo lançamento
+  // manual da mesa (viaMesa) passa voto numa pauta fechada/aguardando. Pedido do
+  // Carlos: a mesa estava conseguindo lançar voto manual em pauta ainda não
+  // aberta. O voto manual já só oferece as pautas abertas (getPautasParaVotoManual).
+  if (votacaoPorPauta) {
     const abertaPorPauta = new Map(pautasRows.map((p) => [p.id, p.votacao_aberta ?? false]))
     if (idsUnicos.some((id) => !abertaPorPauta.get(id))) {
       throw new Error("Esta pauta ainda não está aberta para votação. Aguarde a mesa abrir.")
@@ -937,9 +938,12 @@ export async function getProprietarioIdsPresentes(assembleiaId: string): Promise
 // usado para distinguir, na lista de proprietários, voto TOTAL (respondeu
 // todas as pautas em votação) de voto PARCIAL (respondeu só algumas). Carlos:
 // "no filtro Votaram temos 2 vertentes: voto total e voto parcial".
-export async function getPautasVotadasPorProprietario(
+// Conjunto de pautas DISTINTAS que cada proprietário já respondeu nesta
+// assembleia (pauta_ids). No modo pauta-por-pauta um mesmo proprietário vota
+// pautas diferentes em momentos diferentes, então guardamos o conjunto.
+export async function getPautasVotadasSetPorProprietario(
   assembleiaId: string
-): Promise<Map<string, number>> {
+): Promise<Map<string, Set<string>>> {
   const db = createServerClient()
   const { data, error } = await db
     .from("assembleia_respostas")
@@ -952,9 +956,6 @@ export async function getPautasVotadasPorProprietario(
     pauta_id: string
     assembleia_sends: { proprietario_id: string | null } | null
   }
-  // Conjunto de pautas por proprietário (distingue pautas distintas — um
-  // mesmo proprietário pode ter votado em várias pautas em momentos diferentes
-  // no modo pauta-por-pauta).
   const porProp = new Map<string, Set<string>>()
   for (const r of (data ?? []) as unknown as Row[]) {
     const pid = r.assembleia_sends?.proprietario_id
@@ -963,7 +964,14 @@ export async function getPautasVotadasPorProprietario(
     set.add(r.pauta_id)
     porProp.set(pid, set)
   }
-  return new Map([...porProp].map(([k, v]) => [k, v.size]))
+  return porProp
+}
+
+export async function getPautasVotadasPorProprietario(
+  assembleiaId: string
+): Promise<Map<string, number>> {
+  const sets = await getPautasVotadasSetPorProprietario(assembleiaId)
+  return new Map([...sets].map(([k, v]) => [k, v.size]))
 }
 
 export interface SendJaVotado {
@@ -1151,4 +1159,100 @@ export async function getProprietariosSemVoto(
       inadimplente: p.inadimplente ?? false,
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+}
+
+// Lista do VOTO MANUAL (difere de getProprietariosSemVoto, que a procuração usa
+// e exclui quem já tem votado_em). Pedido do Carlos: no modo PAUTA POR PAUTA a
+// mesa precisa poder lançar a mesma pessoa a cada pauta que abrir — então aqui,
+// nesse modo, "já terminou" não é "tem votado_em", e sim "já votou TODAS as
+// pautas abertas agora". No modo normal, mantém a regra de sempre (votado_em).
+// Consultas inline (sem getAssembleiaById) pra não criar ciclo com services/assembleias.
+export async function getProprietariosParaVotoManual(
+  condominioId: string,
+  assembleiaId: string
+): Promise<ProprietarioSemVoto[]> {
+  const db = createServerClient()
+  const [
+    { data: proprietarios, error: propError },
+    { data: assembleiaRow, error: aError },
+    { data: pautasRows, error: pError },
+    procuracoes,
+  ] = await Promise.all([
+    db.from("proprietarios").select("id, nome, email, inadimplente").eq("condominio_id", condominioId),
+    db.from("assembleias").select("votacao_por_pauta").eq("id", assembleiaId).maybeSingle(),
+    db.from("pautas").select("id, votacao_aberta").eq("assembleia_id", assembleiaId),
+    getProcuracoesByAssembleia(assembleiaId),
+  ])
+  if (propError) throw new Error(propError.message)
+  if (aError) throw new Error(aError.message)
+  if (pError) throw new Error(pError.message)
+
+  const votacaoPorPauta =
+    (assembleiaRow as { votacao_por_pauta: boolean } | null)?.votacao_por_pauta ?? false
+  const outorgouPara = new Map(procuracoes.map((p) => [p.outorgante_id, p.outorgado_nome]))
+
+  // `terminou(id)` = NÃO aparece na lista do voto manual.
+  let terminou: (id: string) => boolean
+  if (!votacaoPorPauta) {
+    const { data: votados, error: vError } = await db
+      .from("assembleia_sends")
+      .select("proprietario_id")
+      .eq("assembleia_id", assembleiaId)
+      .not("votado_em", "is", null)
+    if (vError) throw new Error(vError.message)
+    const set = new Set((votados ?? []).map((v) => v.proprietario_id as string))
+    terminou = (id) => set.has(id)
+  } else {
+    const abertas = ((pautasRows ?? []) as { id: string; votacao_aberta: boolean | null }[])
+      .filter((p) => p.votacao_aberta)
+      .map((p) => p.id)
+    // Nenhuma pauta aberta → não há o que lançar manualmente agora.
+    if (abertas.length === 0) return []
+    const votedSets = await getPautasVotadasSetPorProprietario(assembleiaId)
+    terminou = (id) => {
+      const s = votedSets.get(id)
+      return s ? abertas.every((pid) => s.has(pid)) : false
+    }
+  }
+
+  return (
+    (proprietarios ?? []) as { id: string; nome: string; email: string | null; inadimplente: boolean }[]
+  )
+    .filter((p) => !terminou(p.id))
+    .map((p) => ({
+      id: p.id,
+      nome: p.nome,
+      email: p.email,
+      outorgouPara: outorgouPara.get(p.id) ?? null,
+      inadimplente: p.inadimplente ?? false,
+    }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+}
+
+// Pautas que o voto manual deve oferecer pra ESTE send agora: as que a pessoa
+// ainda não votou — e, no modo pauta-por-pauta, só as que a mesa já abriu.
+// Assim a mesa não lança voto em pauta fechada/futura (reforçado no núcleo em
+// validarVotoOuFalhar). Consultas inline (sem getAssembleiaById) por ciclo.
+export async function getPautasParaVotoManual(
+  assembleiaId: string,
+  sendId: string
+): Promise<string[]> {
+  const db = createServerClient()
+  const [{ data: assembleiaRow }, { data: pautasRows, error: pError }, { data: respostas, error: rError }] =
+    await Promise.all([
+      db.from("assembleias").select("votacao_por_pauta").eq("id", assembleiaId).maybeSingle(),
+      db.from("pautas").select("id, votacao_aberta, ordem").eq("assembleia_id", assembleiaId),
+      db.from("assembleia_respostas").select("pauta_id").eq("send_id", sendId),
+    ])
+  if (pError) throw new Error(pError.message)
+  if (rError) throw new Error(rError.message)
+
+  const votacaoPorPauta =
+    (assembleiaRow as { votacao_por_pauta: boolean } | null)?.votacao_por_pauta ?? false
+  const jaVotou = new Set(((respostas ?? []) as { pauta_id: string }[]).map((r) => r.pauta_id))
+  const todas = ((pautasRows ?? []) as { id: string; votacao_aberta: boolean | null; ordem: number }[]).sort(
+    (a, b) => a.ordem - b.ordem
+  )
+  const candidatas = votacaoPorPauta ? todas.filter((p) => p.votacao_aberta) : todas
+  return candidatas.filter((p) => !jaVotou.has(p.id)).map((p) => p.id)
 }
