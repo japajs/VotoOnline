@@ -198,7 +198,14 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
                       }`}
                     >
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{p.nome}</p>
+                        <p className="truncate font-medium">
+                          {/* Imóvel na frente do nome, destacado — facilita a
+                              identificação no voto manual (pedido do Carlos). */}
+                          {p.imoveis ? (
+                            <span className="text-primary">{p.imoveis} · </span>
+                          ) : null}
+                          {p.nome}
+                        </p>
                         <p
                           className={`truncate text-xs ${
                             p.inadimplente

@@ -6,6 +6,7 @@ import { getUnidadesByCondominioId } from "@/services/unidades"
 import { outorgouProcuracao, getOutorgantesIds, getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { getIdsInadimplentes } from "@/services/proprietarios"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
+import { formatUnidade } from "@/lib/unidade-format"
 import type {
   AssembleiaSend,
   AssembleiaResposta,
@@ -1110,12 +1111,34 @@ export interface ProprietarioSemVoto {
   id: string
   nome: string
   email: string | null
+  // Imóveis do proprietário já formatados (ex.: "A0105" ou "A0105, B0203") —
+  // mostrados no voto manual pra facilitar a identificação (pedido do Carlos).
+  imoveis: string
   // Nome do representante quando este proprietário outorgou procuração nesta
   // assembleia — quem vota é o representante, então ele NÃO pode votar por si
   // (bloqueado no acesso ao voto manual). null = não outorgou.
   outorgouPara: string | null
   // Inadimplente não pode votar (nem pela mesa) — desabilitado na lista.
   inadimplente: boolean
+}
+
+type ProprietarioComUnidadesRow = {
+  id: string
+  nome: string
+  email: string | null
+  inadimplente: boolean
+  unidades: { numero: string; bloco: string | null }[] | null
+}
+
+// Imóveis de um proprietário em texto, em ordem crescente (ex.: "A0105, B0203").
+function imoveisEmTexto(unidades: { numero: string; bloco: string | null }[] | null): string {
+  return [...(unidades ?? [])]
+    .sort((a, b) => {
+      const bloco = (a.bloco ?? "").localeCompare(b.bloco ?? "", undefined, { numeric: true })
+      return bloco !== 0 ? bloco : a.numero.localeCompare(b.numero, undefined, { numeric: true })
+    })
+    .map((u) => formatUnidade(u))
+    .join(", ")
 }
 
 // Auditoria de assembleias — Fase 7: proprietários do condomínio que ainda
@@ -1131,7 +1154,10 @@ export async function getProprietariosSemVoto(
 
   const [{ data: proprietarios, error: propError }, { data: votados, error: votadosError }, procuracoes] =
     await Promise.all([
-      db.from("proprietarios").select("id, nome, email, inadimplente").eq("condominio_id", condominioId),
+      db
+        .from("proprietarios")
+        .select("id, nome, email, inadimplente, unidades(numero, bloco)")
+        .eq("condominio_id", condominioId),
       db
         .from("assembleia_sends")
         .select("proprietario_id")
@@ -1147,14 +1173,13 @@ export async function getProprietariosSemVoto(
   // Quem outorgou procuração → nome do representante (quem realmente vota).
   const outorgouPara = new Map(procuracoes.map((p) => [p.outorgante_id, p.outorgado_nome]))
 
-  return (
-    (proprietarios ?? []) as { id: string; nome: string; email: string | null; inadimplente: boolean }[]
-  )
+  return ((proprietarios ?? []) as unknown as ProprietarioComUnidadesRow[])
     .filter((p) => !idsVotados.has(p.id))
     .map((p) => ({
       id: p.id,
       nome: p.nome,
       email: p.email,
+      imoveis: imoveisEmTexto(p.unidades),
       outorgouPara: outorgouPara.get(p.id) ?? null,
       inadimplente: p.inadimplente ?? false,
     }))
@@ -1178,7 +1203,10 @@ export async function getProprietariosParaVotoManual(
     { data: pautasRows, error: pError },
     procuracoes,
   ] = await Promise.all([
-    db.from("proprietarios").select("id, nome, email, inadimplente").eq("condominio_id", condominioId),
+    db
+      .from("proprietarios")
+      .select("id, nome, email, inadimplente, unidades(numero, bloco)")
+      .eq("condominio_id", condominioId),
     db.from("assembleias").select("votacao_por_pauta").eq("id", assembleiaId).maybeSingle(),
     db.from("pautas").select("id, votacao_aberta").eq("assembleia_id", assembleiaId),
     getProcuracoesByAssembleia(assembleiaId),
@@ -1215,14 +1243,13 @@ export async function getProprietariosParaVotoManual(
     }
   }
 
-  return (
-    (proprietarios ?? []) as { id: string; nome: string; email: string | null; inadimplente: boolean }[]
-  )
+  return ((proprietarios ?? []) as unknown as ProprietarioComUnidadesRow[])
     .filter((p) => !terminou(p.id))
     .map((p) => ({
       id: p.id,
       nome: p.nome,
       email: p.email,
+      imoveis: imoveisEmTexto(p.unidades),
       outorgouPara: outorgouPara.get(p.id) ?? null,
       inadimplente: p.inadimplente ?? false,
     }))
