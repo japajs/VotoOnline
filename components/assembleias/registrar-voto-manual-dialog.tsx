@@ -49,6 +49,9 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
   const [busca, setBusca] = useState("")
   const [proprietarioSelecionado, setProprietarioSelecionado] = useState<ProprietarioSemVoto | null>(null)
   const [sendId, setSendId] = useState<string | null>(null)
+  // Pautas que o formulário vai oferecer pra esta pessoa (no modo pauta-por-pauta,
+  // só as abertas que ela ainda não votou). Definido no "iniciar".
+  const [pautaIdsParaVotar, setPautaIdsParaVotar] = useState<string[]>([])
   const [isPendingIniciar, startIniciarTransition] = useTransition()
 
   function reset() {
@@ -58,6 +61,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     setBusca("")
     setProprietarioSelecionado(null)
     setSendId(null)
+    setPautaIdsParaVotar([])
   }
 
   function handleOpenChange(next: boolean) {
@@ -83,6 +87,15 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     startIniciarTransition(async () => {
       const result = await iniciarVotoManualAction(assembleiaId, condominioId, p.id)
       if (result.success && result.sendId) {
+        const ids = result.pautaIds ?? []
+        // Pauta-por-pauta: se não há pauta aberta pendente pra esta pessoa, não
+        // entra no formulário (não dá pra lançar voto em pauta fechada/futura).
+        if (ids.length === 0) {
+          toast.message("Nenhuma pauta aberta para registrar o voto desta pessoa agora.")
+          setProprietarioSelecionado(null)
+          return
+        }
+        setPautaIdsParaVotar(ids)
         setSendId(result.sendId)
         setEtapa("votar")
       } else {
@@ -228,7 +241,9 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
           <div className="max-h-[65vh] overflow-y-auto px-1">
             <AssembleiaVotoForm
               sendId={sendId}
-              pautas={pautas}
+              // Só as pautas liberadas pra esta pessoa (no pauta-por-pauta, as
+              // abertas que ela ainda não votou) — na ordem original das pautas.
+              pautas={pautas.filter((p) => pautaIdsParaVotar.includes(p.id))}
               assembleiaTitulo={assembleiaTitulo}
               registrarAction={(id, votos) => registrarVotoManualAction(id, assembleiaId, condominioId, votos)}
               onDone={() => {

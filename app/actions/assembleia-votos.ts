@@ -13,7 +13,8 @@ import {
   createAssembleiaRespostas,
   getSendsJaVotaram,
   getSendsNaoVotaram,
-  getProprietariosSemVoto,
+  getProprietariosParaVotoManual,
+  getPautasParaVotoManual,
   getProprietarioIdsPresentes,
   getAssembleiaSendByToken,
   getRespostasBySendId,
@@ -446,8 +447,12 @@ export async function getProprietariosSemVotoAction(
   if (!acesso.ok) return { success: false, proprietarios: [], exigePresenca: false, error: acesso.error }
 
   try {
+    // getProprietariosParaVotoManual (não getProprietariosSemVoto): no modo
+    // pauta-por-pauta a lista mostra quem ainda tem pauta ABERTA não votada
+    // (a pessoa pode ser lançada a cada pauta que abrir); no modo normal, os
+    // sem-voto de sempre.
     const [proprietarios, exigePresenca] = await Promise.all([
-      getProprietariosSemVoto(condominioId, assembleiaId),
+      getProprietariosParaVotoManual(condominioId, assembleiaId),
       getExigePresenca(assembleiaId),
     ])
     // Pedido do Carlos: no modo com presença controlada pela mesa, o voto manual
@@ -482,7 +487,7 @@ export async function iniciarVotoManualAction(
   assembleiaId: string,
   condominioId: string,
   proprietarioId: string
-): Promise<{ success: boolean; sendId?: string; error?: string }> {
+): Promise<{ success: boolean; sendId?: string; pautaIds?: string[]; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
@@ -517,10 +522,14 @@ export async function iniciarVotoManualAction(
       proprietario_id: proprietarioId,
       token: generateSurveyToken(),
     })
+    // Pautas que o formulário deve oferecer: as que a pessoa ainda não votou e,
+    // no modo pauta-por-pauta, só as que a mesa já abriu (impede lançar voto em
+    // pauta fechada/futura; reforçado no núcleo em validarVotoOuFalhar).
+    const pautaIds = await getPautasParaVotoManual(assembleiaId, send.id)
     // Presença: o voto em si marca presente (ver o snapshot em
     // createAssembleiaRespostas) — não marcamos aqui no "iniciar" pra não
     // deixar alguém como presente se o síndico abrir e cancelar sem registrar.
-    return { success: true, sendId: send.id }
+    return { success: true, sendId: send.id, pautaIds }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao iniciar registro." }
   }

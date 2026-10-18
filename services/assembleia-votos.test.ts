@@ -120,6 +120,19 @@ describe("createAssembleiaRespostas — trava pauta por pauta", () => {
     ).rejects.toThrow(/não está aberta/i)
   })
 
+  it("recusa voto MANUAL da mesa (viaMesa) numa pauta ainda não aberta", async () => {
+    // Antes a mesa (viaMesa) era isenta da trava de pauta aberta e lançava voto
+    // em pauta fechada/futura (pedido do Carlos: bloquear). O voto manual já só
+    // oferece as pautas abertas, e aqui reforçamos no núcleo.
+    h.state.responses = {
+      assembleia_sends: sendRow({ votacaoPorPauta: true }),
+      pautas: { data: [{ id: "p1", votacao_aberta: false }], error: null },
+    }
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }], {}, { viaMesa: true })
+    ).rejects.toThrow(/não está aberta/i)
+  })
+
   it("recusa se QUALQUER pauta enviada estiver fechada (uma aberta, outra não)", async () => {
     h.state.responses = {
       assembleia_sends: sendRow({ votacaoPorPauta: true }),
