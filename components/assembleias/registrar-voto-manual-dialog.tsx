@@ -105,9 +105,12 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     })
   }
 
-  const proprietariosFiltrados = proprietarios.filter((p) =>
-    p.nome.toLowerCase().includes(busca.trim().toLowerCase())
-  )
+  // Busca por nome OU imóvel (ex.: "A0105") — o imóvel agora aparece na lista,
+  // então a mesa consegue achar a pessoa digitando a unidade também (Carlos).
+  const proprietariosFiltrados = proprietarios.filter((p) => {
+    const q = busca.trim().toLowerCase()
+    return !q || p.nome.toLowerCase().includes(q) || p.imoveis.toLowerCase().includes(q)
+  })
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
