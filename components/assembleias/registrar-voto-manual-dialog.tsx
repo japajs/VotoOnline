@@ -20,6 +20,7 @@ import {
   registrarVotoManualAction,
 } from "@/app/actions/assembleia-votos"
 import { AssembleiaVotoForm } from "@/components/assembleias/assembleia-voto-form"
+import { normalizarBusca } from "@/lib/format"
 import type { ProprietarioSemVoto } from "@/services/assembleia-votos"
 import type { Pauta } from "@/types"
 
@@ -105,11 +106,11 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     })
   }
 
-  // Busca por nome OU imóvel (ex.: "A0105") — o imóvel agora aparece na lista,
-  // então a mesa consegue achar a pessoa digitando a unidade também (Carlos).
+  // Busca por nome OU imóvel (ex.: "A0105"), insensível a acento/hífen/espaço
+  // (normalizarBusca) — "araujo" acha "ARAÚJO", "A-0105"/"a 0105" acha "A0105".
   const proprietariosFiltrados = proprietarios.filter((p) => {
-    const q = busca.trim().toLowerCase()
-    return !q || p.nome.toLowerCase().includes(q) || p.imoveis.toLowerCase().includes(q)
+    const q = normalizarBusca(busca.trim())
+    return !q || normalizarBusca(p.nome).includes(q) || normalizarBusca(p.imoveis).includes(q)
   })
 
   return (
