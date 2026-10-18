@@ -1,5 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server"
-import { createProprietario } from "@/services/proprietarios"
+import { createProprietario, cpfJaCadastrado } from "@/services/proprietarios"
 import { createUnidade } from "@/services/unidades"
 import { normalizarChaveUnidade } from "@/lib/unidade-format"
 import type { ProprietarioImport } from "@/types"
@@ -60,12 +60,23 @@ async function processarProprietario(
     let proprietarioId = await findProprietarioExistente(condominioId, prop)
 
     if (!proprietarioId) {
+      // Dedup de CPF contra quem JÁ está no banco (o dedup DENTRO da planilha é
+      // feito no processor). O CPF já vem normalizado e validado do processor.
+      // Se já existe em outro proprietário do condomínio, cria SEM o CPF e avisa
+      // — não dá pra dois terem o mesmo CPF (chave de acesso ao voto).
+      let cpfParaCriar = prop.cpf
+      if (cpfParaCriar && (await cpfJaCadastrado(condominioId, cpfParaCriar))) {
+        erros.push(
+          `Proprietário "${prop.nome}": CPF já cadastrado neste condomínio — importado sem CPF.`
+        )
+        cpfParaCriar = null
+      }
       const novo = await createProprietario({
         condominio_id: condominioId,
         nome: prop.nome,
         email: prop.email,
         telefone: prop.telefone,
-        cpf: prop.cpf,
+        cpf: cpfParaCriar,
         inadimplente: prop.inadimplente,
       })
       proprietarioId = novo.id
