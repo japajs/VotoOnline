@@ -113,9 +113,16 @@ export default function AjudaPage() {
             vinculadas.
           </li>
           <li>
+            Informe o <strong className="text-foreground">CNPJ</strong> do condomínio: é exigido pelo
+            cartório para registrar a ata e sai impresso nos relatórios.
+          </li>
+          <li>
             Cadastre os proprietários e vincule as unidades de cada um. Preencher o{" "}
             <strong className="text-foreground">CPF</strong> é importante: é ele que permite a pessoa
-            entrar e votar pelo link do WhatsApp.
+            entrar e votar pelo link do WhatsApp. Se o condomínio tem{" "}
+            <strong className="text-foreground">blocos</strong>, grave a unidade já com o bloco junto
+            (ex.: <Chip>A0101</Chip>, <Chip>B0203</Chip>) — é exatamente assim que a pessoa vai
+            digitar para entrar.
           </li>
           <li>
             Proprietário marcado como <Chip>Inadimplente</Chip> fica bloqueado de votar.
@@ -161,6 +168,8 @@ export default function AjudaPage() {
             <strong className="text-foreground">Link de entrada (WhatsApp):</strong> copie o{" "}
             <Chip>Link de entrada</Chip> e cole no grupo. A pessoa se identifica pela{" "}
             <em>unidade + CPF</em> e entra para votar. Ótimo para a assembleia presencial ou híbrida.
+            Em condomínio com blocos, ela digita a unidade <strong className="text-foreground">com o
+            bloco junto</strong> (ex.: <Chip>A0101</Chip>).
           </li>
         </ul>
         <p className="text-xs">
@@ -211,7 +220,16 @@ export default function AjudaPage() {
             proprietários (a bolinha ao lado do nome, com a assembleia aberta) ou pela{" "}
             <Chip>Chamada</Chip> dentro da assembleia. O <span className="text-emerald-600 dark:text-emerald-400">check verde</span>{" "}
             indica quem está presente — e continua à vista mesmo quando você filtra por
-            &quot;Votou geral&quot; ou &quot;Não votaram&quot;.
+            &quot;Votou geral&quot; ou &quot;Não votaram&quot;. Duas pessoas podem marcar presença ao
+            mesmo tempo, em celulares diferentes: a tela de uma atualiza o que a outra marcou em
+            poucos segundos.
+          </li>
+          <li>
+            <strong className="text-foreground">Entrada automática:</strong> com &quot;exigir
+            presença&quot; ligado, o condômino informa unidade + CPF uma vez e vê uma mensagem para
+            aguardar. Assim que a mesa marca ele como presente, o celular dele{" "}
+            <strong className="text-foreground">entra sozinho</strong> na votação — não precisa
+            digitar de novo.
           </li>
           <li>Não é possível desmarcar a presença de quem já votou.</li>
         </ul>
@@ -226,7 +244,10 @@ export default function AjudaPage() {
           <li>
             <strong className="text-foreground">Registrar voto:</strong> para quem não tem e-mail ou
             votou na mão, use <Chip>Registrar voto</Chip> dentro da assembleia para lançar o voto
-            manualmente.
+            manualmente. Com &quot;exigir presença&quot; ligado, a lista mostra{" "}
+            <strong className="text-foreground">só quem já está presente</strong>; e o{" "}
+            <strong className="text-foreground">imóvel</strong> aparece na frente do nome para você
+            achar a pessoa rápido (dá para buscar pelo nome ou pela unidade, ex.: &quot;A0101&quot;).
           </li>
         </ul>
       </Secao>
@@ -242,6 +263,13 @@ export default function AjudaPage() {
           <li>
             O botão <Chip>Lembrar quem não votou</Chip> reenvia o e-mail só para quem ainda está
             pendente.
+          </li>
+          <li>
+            <strong className="text-foreground">Modo compartilhar (LGPD):</strong> o botão{" "}
+            <Chip>Modo compartilhar</Chip> oculta e-mail, CPF e celular da lista e deixa só nome,
+            situação e imóvel — útil para projetar ou compartilhar a tela (ex.: os presentes online
+            conferirem se já constam como presentes) sem expor os dados dos condôminos. Clicar de
+            novo volta ao normal.
           </li>
         </ul>
       </Secao>
@@ -263,7 +291,9 @@ export default function AjudaPage() {
           <li>
             Baixe os relatórios: <strong className="text-foreground">PDF</strong>,{" "}
             <strong className="text-foreground">Excel</strong> e a{" "}
-            <strong className="text-foreground">Ata</strong>.
+            <strong className="text-foreground">Ata</strong>. O PDF já sai com os dados completos do
+            condomínio (CNPJ, endereço, síndico, contato e critério de peso) e{" "}
+            <strong className="text-foreground">sem expor e-mails</strong> dos votantes (LGPD).
           </li>
           <li>
             Se precisar corrigir algo, dá para <Chip>Reabrir</Chip> a assembleia encerrada.
