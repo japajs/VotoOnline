@@ -193,10 +193,9 @@ const s = StyleSheet.create({
     borderBottomColor: C.border,
   },
   detRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: C.border },
-  detCellUnidade: { width: "16%", paddingVertical: 4, paddingHorizontal: 6 },
-  detCellNome: { width: "30%", paddingVertical: 4, paddingHorizontal: 6 },
-  detCellEmail: { width: "34%", paddingVertical: 4, paddingHorizontal: 6 },
-  detCellResposta: { width: "20%", paddingVertical: 4, paddingHorizontal: 6 },
+  detCellUnidade: { width: "18%", paddingVertical: 4, paddingHorizontal: 6 },
+  detCellNome: { width: "44%", paddingVertical: 4, paddingHorizontal: 6 },
+  detCellResposta: { width: "38%", paddingVertical: 4, paddingHorizontal: 6 },
   detThText: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.muted },
   detTdText: { fontSize: 7, color: C.text },
 })
@@ -457,9 +456,6 @@ function DetalhamentoVotos({ votos, sigiloso }: { votos: VotoDetalhado[]; sigilo
           <View style={s.detCellNome}>
             <Text style={s.detThText}>NOME</Text>
           </View>
-          <View style={s.detCellEmail}>
-            <Text style={s.detThText}>E-MAIL</Text>
-          </View>
           <View style={s.detCellResposta}>
             <Text style={s.detThText}>RESPOSTA</Text>
           </View>
@@ -471,9 +467,6 @@ function DetalhamentoVotos({ votos, sigiloso }: { votos: VotoDetalhado[]; sigilo
             </View>
             <View style={s.detCellNome}>
               <Text style={s.detTdText}>{v.nome}</Text>
-            </View>
-            <View style={s.detCellEmail}>
-              <Text style={s.detTdText}>{v.email ?? "—"}</Text>
             </View>
             <View style={s.detCellResposta}>
               <Text style={s.detTdText}>{v.resposta}</Text>
