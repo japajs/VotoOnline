@@ -590,6 +590,20 @@ export function ApuracaoPDF({
               <Text style={s.infoVal}>{condominio.endereco}</Text>
             </View>
           ) : null}
+          {condominio.sindico_contato ? (
+            <View style={s.infoCell}>
+              <Text style={s.infoLbl}>CONTATO DO SÍNDICO</Text>
+              <Text style={s.infoVal}>{condominio.sindico_contato}</Text>
+            </View>
+          ) : null}
+          <View style={s.infoCell}>
+            <Text style={s.infoLbl}>CRITÉRIO DE PESO</Text>
+            <Text style={s.infoVal}>
+              {condominio.criterio_peso === "fracao_ideal"
+                ? "Por fração ideal"
+                : "Por imóvel (1 imóvel = 1 voto)"}
+            </Text>
+          </View>
         </View>
 
         {/* ── Participation ─────────────────── */}
