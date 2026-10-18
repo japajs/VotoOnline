@@ -4,7 +4,14 @@ import type {
   ImportacaoPreview,
   ProprietarioImport,
 } from "@/types"
-import { dividirCandidatosContato, normalizarCelular, validarEmailFormato } from "@/lib/format"
+import {
+  dividirCandidatosContato,
+  normalizarCelular,
+  validarEmailFormato,
+  normalizarCpf,
+  validarCpf,
+  formatCpf,
+} from "@/lib/format"
 import { converterEscalaFracaoIdeal, detectarDivisorEscalaFracaoIdeal } from "@/lib/peso"
 
 // ─── E-mail / Celular ─────────────────────────────────────────────────────────
@@ -195,7 +202,25 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
       erros.push({ linha: linha._linhaOriginal, campo: "Fração ideal", mensagem: erroFracao })
     }
     const inadimplente = resolverInadimplente(linha.inadimplente)
-    const cpf = linha.cpf?.trim() || null
+    // CPF: normaliza (só dígitos) e valida os dígitos verificadores — mesmas
+    // travas do cadastro manual (ver lib/format.validarCpf). CPF inválido NÃO é
+    // importado (vira null) e vira aviso na revisão, pra não entrar lixo no
+    // banco e pra o dedup (abaixo e no cadastro manual) comparar certo.
+    let cpf: string | null = null
+    const cpfBruto = linha.cpf?.trim()
+    if (cpfBruto) {
+      const normalizado = normalizarCpf(cpfBruto)
+      if (validarCpf(normalizado)) {
+        cpf = normalizado
+      } else {
+        erros.push({
+          linha: linha._linhaOriginal,
+          campo: "CPF",
+          mensagem: `CPF "${cpfBruto}" inválido — será importado sem CPF`,
+          dados: cpfBruto,
+        })
+      }
+    }
 
     const chave = chaveProprietario(email, nome)
 
@@ -245,6 +270,28 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
         ...(emailCandidatos ? { emailCandidatos } : {}),
         ...(telefoneCandidatos ? { telefoneCandidatos } : {}),
       })
+    }
+  }
+
+  // Dedup de CPF ENTRE proprietários diferentes da planilha (o mesmo CPF em duas
+  // pessoas distintas): mantém o 1º (por ordem de linha) e zera o CPF dos demais,
+  // avisando na revisão — não dá pra dois proprietários terem o mesmo CPF (chave
+  // de acesso ao voto). O dedup contra quem JÁ está no banco é feito no commit.
+  const cpfParaProp = new Map<string, { nome: string; linha: number }>()
+  for (const prop of mapa.values()) {
+    if (!prop.cpf) continue
+    const primeiraLinha = prop.linhasOrigem[0]
+    const existente = cpfParaProp.get(prop.cpf)
+    if (existente) {
+      erros.push({
+        linha: primeiraLinha,
+        campo: "CPF",
+        mensagem: `CPF ${formatCpf(prop.cpf)} repetido (já usado por ${existente.nome}, linha ${existente.linha}) — ${prop.nome} será importado sem CPF`,
+        dados: prop.cpf,
+      })
+      prop.cpf = null
+    } else {
+      cpfParaProp.set(prop.cpf, { nome: prop.nome, linha: primeiraLinha })
     }
   }
 

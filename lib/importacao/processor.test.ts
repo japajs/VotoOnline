@@ -241,21 +241,45 @@ describe("processarLinhas — Fração ideal", () => {
 })
 
 describe("processarLinhas — CPF", () => {
-  it("CPF da planilha é atribuído ao proprietário", () => {
+  it("CPF válido da planilha é atribuído normalizado (só dígitos)", () => {
     const resultado = processarLinhas([
-      linha({ _linhaOriginal: 90, nome: "Dono com CPF", imovel: "A101", cpf: "123.456.789-00" }),
+      linha({ _linhaOriginal: 90, nome: "Dono com CPF", imovel: "A101", cpf: "111.444.777-35" }),
     ])
-    expect(resultado.proprietarios[0].cpf).toBe("123.456.789-00")
+    expect(resultado.proprietarios[0].cpf).toBe("11144477735")
   })
 
-  it("CPF divergente entre linhas fundidas no mesmo proprietário: mantém o primeiro e gera aviso", () => {
+  it("CPF inválido na Receita (dígitos iguais / DV errado) é ignorado com aviso", () => {
     const resultado = processarLinhas([
-      linha({ _linhaOriginal: 91, nome: "Dono Duplo", imovel: "A101", email: "duplo@example.com", cpf: "111.111.111-11" }),
-      linha({ _linhaOriginal: 92, nome: "Dono Duplo", imovel: "A102", email: "duplo@example.com", cpf: "222.222.222-22" }),
+      linha({ _linhaOriginal: 90, nome: "Dono CPF Ruim", imovel: "A101", cpf: "777.777.777-77" }),
     ])
-    expect(resultado.proprietarios[0].cpf).toBe("111.111.111-11")
+    expect(resultado.proprietarios[0].cpf).toBeNull()
+    expect(resultado.erros).toContainEqual(
+      expect.objectContaining({ campo: "CPF", mensagem: expect.stringContaining("inválido") })
+    )
+  })
+
+  it("CPF divergente entre linhas do mesmo proprietário: mantém o primeiro e gera aviso", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 91, nome: "Dono Duplo", imovel: "A101", email: "duplo@example.com", cpf: "111.444.777-35" }),
+      linha({ _linhaOriginal: 92, nome: "Dono Duplo", imovel: "A102", email: "duplo@example.com", cpf: "123.456.789-09" }),
+    ])
+    expect(resultado.proprietarios[0].cpf).toBe("11144477735")
     expect(resultado.erros).toContainEqual(
       expect.objectContaining({ campo: "CPF", mensagem: expect.stringContaining("diverge") })
+    )
+  })
+
+  it("mesmo CPF em proprietários DIFERENTES: mantém o primeiro e zera o do segundo", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 10, nome: "Pessoa Um", imovel: "A101", email: "um@example.com", cpf: "111.444.777-35" }),
+      linha({ _linhaOriginal: 11, nome: "Pessoa Dois", imovel: "A102", email: "dois@example.com", cpf: "111.444.777-35" }),
+    ])
+    const um = resultado.proprietarios.find((p) => p.nome === "Pessoa Um")
+    const dois = resultado.proprietarios.find((p) => p.nome === "Pessoa Dois")
+    expect(um?.cpf).toBe("11144477735")
+    expect(dois?.cpf).toBeNull()
+    expect(resultado.erros).toContainEqual(
+      expect.objectContaining({ campo: "CPF", mensagem: expect.stringContaining("repetido") })
     )
   })
 })
