@@ -108,16 +108,21 @@ export default async function EntrarPage({ params }: Props) {
 
   return wrap(
     <div className="rounded-xl border border-border/60 bg-card px-6 py-8">
-      {exigePresenca && (
-        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-400">
-          Esta assembleia exige <strong>presença confirmada pela mesa</strong>. Você só consegue
-          votar depois de assinar a lista e ser marcado como presente na mesa de entrada.
+      {/* Texto justificado e com fonte maior (pedido do Carlos) — mais fácil de
+          ler no celular. No modo com presença pela mesa, o aviso já orienta a
+          aguardar a liberação; sem presença, é só a confirmação de identidade. */}
+      {exigePresenca ? (
+        <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-base leading-relaxed text-amber-800 dark:text-amber-300 [text-align:justify]">
+          Esta assembleia exige <strong>presença confirmada pela mesa</strong>. Identifique-se
+          informando sua unidade e número de CPF. Após o envio dessas informações, favor aguardar a
+          validação e liberação por parte do responsável pela mesa.
         </div>
+      ) : (
+        <p className="mb-6 text-base leading-relaxed text-muted-foreground [text-align:justify]">
+          Confirme sua identidade para entrar na assembleia e votar. Informe a sua unidade e o seu
+          CPF cadastrado.
+        </p>
       )}
-      <p className="mb-5 text-sm text-muted-foreground">
-        Confirme sua identidade para entrar na assembleia e votar. Informe a sua unidade e o seu
-        CPF cadastrado.
-      </p>
       <EntrarForm assembleiaId={assembleia.id} />
       <p className="mt-4 text-center text-[11px] text-muted-foreground/70">
         Ao entrar, seus dados são tratados conforme a{" "}
