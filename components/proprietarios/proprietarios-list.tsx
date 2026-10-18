@@ -383,6 +383,22 @@ export function ProprietariosList({
   // compartilhar. Cabeçalho e linhas usam a mesma, pra ficarem alinhados.
   const gridCols = modoCompartilhar ? GRID_COLUNAS_COMPARTILHAR : GRID_COLUNAS
 
+  // Status curto por pessoa pro modo compartilhar (texto + cor), reaproveitando
+  // os conjuntos ao vivo. Mesma lógica dos badges da linha normal, condensada.
+  function statusCompartilhar(p: Proprietario): { label: string; cor: string } {
+    if (outorgantesLocal.has(p.id))
+      return { label: "procuração", cor: "text-amber-600 dark:text-amber-400" }
+    if (votaramLocal.has(p.id))
+      return parciaisNaAberta.has(p.id)
+        ? { label: "votou parcial", cor: "text-amber-600 dark:text-amber-400" }
+        : { label: "votou geral", cor: "text-emerald-600 dark:text-emerald-400" }
+    if (presentesLocal.has(p.id))
+      return { label: "não votou", cor: "text-foreground/70" }
+    if (tentandoEntrar.has(p.id))
+      return { label: "tentou entrar", cor: "text-amber-600 dark:text-amber-400" }
+    return { label: "ausente", cor: "text-muted-foreground/70" }
+  }
+
   return (
     <div className="space-y-3">
       {/* Alerta "tentando entrar" NA PRÓPRIA tela de cadastro (pedido do Carlos):
@@ -529,6 +545,29 @@ export function ProprietariosList({
             Nenhum proprietário encontrado para &quot;{busca}&quot;.
           </p>
         </div>
+      ) : modoCompartilhar ? (
+        // Modo compartilhar: lista COMPACTA pra projetar/compartilhar no celular
+        // (pedido do Carlos — sem cabeçalho, sem colunas largas, linhas bem
+        // juntas). Uma linha por pessoa: NOME (status) imóveis.
+        <div className="divide-y divide-border/30 rounded-xl border border-border/60 bg-card">
+          {proprietariosExibidos.map((p) => {
+            const { label, cor } = statusCompartilhar(p)
+            const imoveis = [...(p.unidades ?? [])]
+              .sort((a, b) => {
+                const bloco = (a.bloco ?? "").localeCompare(b.bloco ?? "", undefined, { numeric: true })
+                return bloco !== 0 ? bloco : a.numero.localeCompare(b.numero, undefined, { numeric: true })
+              })
+              .map((u) => formatUnidade(u))
+              .join(" – ")
+            return (
+              <div key={p.id} className="flex flex-wrap items-baseline gap-x-2 px-3 py-1 text-sm">
+                <span className="font-medium">{p.nome}</span>
+                <span className={`text-xs font-medium ${cor}`}>({label})</span>
+                {imoveis && <span className="text-xs text-muted-foreground">{imoveis}</span>}
+              </div>
+            )
+          })}
+        </div>
       ) : (
         <div className="rounded-xl border border-border/60 bg-card">
           {/* Cabeçalho de colunas — só faz sentido a partir de lg, onde a
@@ -537,8 +576,8 @@ export function ProprietariosList({
             className={`hidden border-b border-border/60 bg-muted/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 lg:grid lg:gap-3 ${gridCols}`}
           >
             <span>Nome</span>
-            {!modoCompartilhar && <span>E-mail</span>}
-            {!modoCompartilhar && <span>Celular</span>}
+            <span>E-mail</span>
+            <span>Celular</span>
             <span>Votos</span>
             <span className="text-right">Ações</span>
           </div>
