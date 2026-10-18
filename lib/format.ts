@@ -77,6 +77,28 @@ export function cpfCompleto(valor: string | null | undefined): boolean {
   return normalizarCpf(valor ?? "").length === 11
 }
 
+// Valida os dígitos verificadores do CPF (algoritmo da Receita) — não só o
+// tamanho. Rejeita sequências de dígitos iguais (111.111.111-11, 777...-77) e
+// CPF com DV errado (pedido do Carlos: "777.777.777-77 não é CPF válido e a
+// rotina aceitava"). Não consulta a Receita — só a matemática dos dígitos.
+export function validarCpf(valor: string | null | undefined): boolean {
+  const cpf = normalizarCpf(valor ?? "")
+  if (cpf.length !== 11) return false
+  // Todos os 11 dígitos iguais passam na conta dos DV, mas não são CPF válido.
+  if (/^(\d)\1{10}$/.test(cpf)) return false
+  const digitoVerificador = (base: string, pesoInicial: number): number => {
+    let soma = 0
+    for (let i = 0; i < base.length; i++) {
+      soma += Number(base[i]) * (pesoInicial - i)
+    }
+    const resto = (soma * 10) % 11
+    return resto === 10 ? 0 : resto
+  }
+  if (digitoVerificador(cpf.slice(0, 9), 10) !== Number(cpf[9])) return false
+  if (digitoVerificador(cpf.slice(0, 10), 11) !== Number(cpf[10])) return false
+  return true
+}
+
 // CPF formatado 000.000.000-00 para exibição (só formata quando tem os 11
 // dígitos; caso contrário devolve o que veio, ou null se vazio). Usado na
 // lista de proprietários pro operador conferir rápido o CPF quando alguém diz

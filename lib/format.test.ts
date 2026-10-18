@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   normalizarCpf,
   cpfCompleto,
+  validarCpf,
   formatCpf,
   validarEmailFormato,
   normalizarCelular,
@@ -30,6 +31,29 @@ describe("cpfCompleto", () => {
     expect(cpfCompleto("")).toBe(false)
     expect(cpfCompleto(null)).toBe(false)
     expect(cpfCompleto(undefined)).toBe(false)
+  })
+})
+
+describe("validarCpf", () => {
+  it("aceita CPF com dígitos verificadores corretos", () => {
+    expect(validarCpf("111.444.777-35")).toBe(true)
+    expect(validarCpf("11144477735")).toBe(true)
+    expect(validarCpf("123.456.789-09")).toBe(true)
+  })
+
+  it("rejeita sequências de dígitos iguais (ex.: 777.777.777-77)", () => {
+    expect(validarCpf("77777777777")).toBe(false)
+    expect(validarCpf("00000000000")).toBe(false)
+    expect(validarCpf("111.111.111-11")).toBe(false)
+  })
+
+  it("rejeita DV errado e tamanho inválido", () => {
+    expect(validarCpf("11144477700")).toBe(false)
+    expect(validarCpf("12345678900")).toBe(false)
+    expect(validarCpf("1234567890")).toBe(false) // 10 dígitos
+    expect(validarCpf("")).toBe(false)
+    expect(validarCpf(null)).toBe(false)
+    expect(validarCpf(undefined)).toBe(false)
   })
 })
 

@@ -99,6 +99,28 @@ export async function getProprietarioById(id: string): Promise<Proprietario | nu
   return rowToProprietario(data as unknown as JoinedProprietario)
 }
 
+// CPF já cadastrado em OUTRO proprietário do mesmo condomínio? (pedido do
+// Carlos: o cadastro estava deixando repetir CPF). Compara pelo CPF normalizado
+// (só dígitos). `exceptId` ignora o próprio registro na edição. Resiliente: se a
+// coluna não tiver valor, não acusa.
+export async function cpfJaCadastrado(
+  condominioId: string,
+  cpfNormalizado: string,
+  exceptId?: string
+): Promise<boolean> {
+  if (!cpfNormalizado) return false
+  const db = createServerClient()
+  let query = db
+    .from("proprietarios")
+    .select("id")
+    .eq("condominio_id", condominioId)
+    .eq("cpf", cpfNormalizado)
+  if (exceptId) query = query.neq("id", exceptId)
+  const { data, error } = await query.limit(1)
+  if (error) throw new Error(error.message)
+  return (data ?? []).length > 0
+}
+
 export async function createProprietario(
   input: Pick<Proprietario, "condominio_id" | "nome"> & {
     email?: string | null
