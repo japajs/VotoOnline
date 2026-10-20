@@ -8,6 +8,7 @@ import {
   updateAssembleiaCompleta,
   reabrirAssembleia,
   setVotacaoPorPauta,
+  setDataEncerramento,
 } from "@/services/assembleias"
 import {
   createPautasBatch,
@@ -507,6 +508,35 @@ export async function updateAssembleiaStatusAction(
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao atualizar status.",
+    }
+  }
+}
+
+// Corrige SÓ a hora de encerramento (boletim/ata), inclusive com a assembleia
+// já ENCERRADA — pra o operador registrar a hora exata que a mesa declarou
+// encerrada sem precisar reabrir (pedido do Carlos). O Encerrar normal continua
+// respeitando o valor preenchido (ver updateAssembleiaStatus).
+export async function definirDataEncerramentoAction(
+  assembleiaId: string,
+  condominioId: string,
+  dataEncerramento: string | null
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  if (dataEncerramento !== null && Number.isNaN(Date.parse(dataEncerramento))) {
+    return { success: false, error: "Data de encerramento inválida." }
+  }
+  try {
+    await setDataEncerramento(assembleiaId, dataEncerramento)
+    revalidatePath(ROUTES.condominioAssembleia(condominioId, assembleiaId))
+    revalidatePath(`${ROUTES.condominios}/${condominioId}`)
+    return { success: true }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao atualizar a data de encerramento.",
     }
   }
 }

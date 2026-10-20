@@ -20,6 +20,7 @@ import {
   setVotacaoPorPautaAction,
   abrirVotacaoPautaAction,
   fecharVotacaoPautaAction,
+  definirDataEncerramentoAction,
 } from "@/app/actions/assembleias"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { APP_NAME, ROUTES } from "@/lib/constants"
@@ -87,6 +88,15 @@ function formatDate(dateString: string | null) {
   }).format(new Date(dateString))
 }
 
+// ISO → "YYYY-MM-DDTHH:mm" em horário local (formato do input datetime-local) —
+// mesma convenção do editar-assembleia-dialog (new Date(valor).toISOString()).
+function isoParaDatetimeLocal(iso: string | null): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export function ApuracaoAssembleia({
   assembleia,
   condominioId,
@@ -118,6 +128,28 @@ export function ApuracaoAssembleia({
   const [votacaoPorPauta, setVotacaoPorPautaState] = useState(assembleia.votacao_por_pauta ?? false)
   const [isPendingVpp, startVppTransition] = useTransition()
   const emAndamento = assembleia.status === "aberta" || assembleia.status === "pausada"
+
+  // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
+  // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
+  // mesa declarou encerrada). Só pra operador (canExport) e assembleia encerrada.
+  const [editandoEncerr, setEditandoEncerr] = useState(false)
+  const [encerrInput, setEncerrInput] = useState(() =>
+    isoParaDatetimeLocal(assembleia.data_encerramento)
+  )
+  const [isPendingEncerr, startEncerrTransition] = useTransition()
+
+  function handleSalvarEncerramento() {
+    startEncerrTransition(async () => {
+      const iso = encerrInput ? new Date(encerrInput).toISOString() : null
+      const r = await definirDataEncerramentoAction(assembleia.id, condominioId, iso)
+      if (r.success) {
+        toast.success("Hora de encerramento atualizada.")
+        setEditandoEncerr(false)
+      } else {
+        toast.error(r.error ?? "Erro ao atualizar a hora de encerramento.")
+      }
+    })
+  }
 
   function handleToggleVotacaoPorPauta() {
     const novo = !votacaoPorPauta
@@ -369,7 +401,51 @@ export function ApuracaoAssembleia({
           </div>
           <div>
             <span className="font-medium">Encerramento:</span>{" "}
-            {formatDate(assembleia.data_encerramento)}
+            {assembleia.status === "encerrada" && canExport ? (
+              editandoEncerr ? (
+                <span className="inline-flex flex-wrap items-center gap-1.5 align-middle">
+                  <input
+                    type="datetime-local"
+                    value={encerrInput}
+                    onChange={(e) => setEncerrInput(e.target.value)}
+                    className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSalvarEncerramento}
+                    disabled={isPendingEncerr}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                  >
+                    {isPendingEncerr && <Loader2 className="h-3 w-3 animate-spin" />}
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditandoEncerr(false)
+                      setEncerrInput(isoParaDatetimeLocal(assembleia.data_encerramento))
+                    }}
+                    className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancelar
+                  </button>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 align-middle">
+                  {formatDate(assembleia.data_encerramento)}
+                  <button
+                    type="button"
+                    onClick={() => setEditandoEncerr(true)}
+                    className="text-primary underline underline-offset-2 hover:opacity-80"
+                    title="Corrigir a hora que a mesa declarou encerrada (sai no boletim/ata) — sem reabrir"
+                  >
+                    editar
+                  </button>
+                </span>
+              )
+            ) : (
+              formatDate(assembleia.data_encerramento)
+            )}
           </div>
           <div>
             <span className="font-medium">Última alteração:</span>{" "}

@@ -504,6 +504,23 @@ export async function updateAssembleiaStatus(
   }
 }
 
+// Atualiza SÓ a data/hora de encerramento — permitido MESMO com a assembleia
+// encerrada (diferente de updateAssembleia, que trava "encerrada é definitiva").
+// Serve pra o operador corrigir no boletim/ata a HORA EXATA que a mesa declarou
+// encerrada, sem precisar reabrir a assembleia (pedido do Carlos). Não mexe em
+// status, votos nem pautas — só nesse campo informativo.
+export async function setDataEncerramento(
+  id: string,
+  dataEncerramento: string | null
+): Promise<void> {
+  const db = createServerClient()
+  const { error } = await db
+    .from("assembleias")
+    .update({ data_encerramento: dataEncerramento, updated_at: new Date().toISOString() })
+    .eq("id", id)
+  if (error) throw new Error(error.message)
+}
+
 // Reabertura excepcional de uma assembleia encerrada — ex.: um voto
 // indevido (proprietário inadimplente) precisa ser removido e a apuração
 // refeita. Ao contrário de updateAssembleiaStatus, esta função existe
