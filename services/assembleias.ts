@@ -480,7 +480,14 @@ export async function updateAssembleiaStatus(
       updates.data_encerramento = null
     }
   }
-  if (status === "encerrada") updates.data_encerramento = now
+  // Encerrar NÃO sobrescreve um encerramento já preenchido: o operador pode ter
+  // informado a HORA EXATA em que a mesa declarou a assembleia encerrada — e é
+  // essa que precisa sair no boletim/ata, não a hora do clique no botão (pedido
+  // do Carlos). Só carimba "agora" quando o campo está vazio, pra sempre haver
+  // um valor registrado.
+  if (status === "encerrada" && !atualRow.data_encerramento) {
+    updates.data_encerramento = now
+  }
 
   const { error } = await db.from("assembleias").update(updates).eq("id", id)
   if (error) throw new Error(error.message)
