@@ -557,7 +557,7 @@ export function ApuracaoPDF({
 
         {/* ── Assembly info ─────────────────── */}
         <Text style={s.sectionLabel}>INFORMAÇÕES DA ASSEMBLEIA</Text>
-        <View style={s.infoGrid}>
+        <View style={s.infoGrid} wrap={false}>
           <View style={s.infoCell}>
             <Text style={s.infoLbl}>CONDOMÍNIO</Text>
             <Text style={s.infoVal}>{condominio.nome}</Text>
@@ -616,7 +616,7 @@ export function ApuracaoPDF({
 
         {/* ── Participation ─────────────────── */}
         <Text style={s.sectionLabel}>PARTICIPAÇÃO GERAL</Text>
-        <View style={s.partRow}>
+        <View style={s.partRow} wrap={false}>
           <View style={[s.partCell, s.partBorderR]}>
             <Text style={s.partNum}>{imoveis_cadastrados}</Text>
             <Text style={s.partLbl}>Imóveis cadastrados</Text>
@@ -644,7 +644,7 @@ export function ApuracaoPDF({
                 ? `QUÓRUM MÍNIMO (${apuracao.convocacao_aplicada}ª CONVOCAÇÃO)`
                 : "QUÓRUM MÍNIMO"}
             </Text>
-            <View style={s.partRow}>
+            <View style={s.partRow} wrap={false}>
               <View style={[s.partCell, s.partBorderR]}>
                 <Text style={s.partNum}>{pctStr(apuracao.quorum_aplicavel ?? 0, 1)}</Text>
                 <Text style={s.partLbl}>Exigido</Text>
