@@ -370,7 +370,11 @@ function PautaMultiplaEscolha({
         </View>
       </View>
       {opcoes.map((o, i) => (
-        <View key={o.opcao_id} style={i === opcoes.length - 1 && ponderado.abstencao === 0 ? s.tRowLast : s.tRow}>
+        <View
+          key={o.opcao_id}
+          wrap={false}
+          style={i === opcoes.length - 1 && ponderado.abstencao === 0 ? s.tRowLast : s.tRow}
+        >
           <View style={wide}>
             <Text style={{ ...tdText, color: CORES_OPCOES[i % CORES_OPCOES.length], fontFamily: "Helvetica-Bold" }}>
               {o.label}
@@ -388,7 +392,7 @@ function PautaMultiplaEscolha({
         </View>
       ))}
       {ponderado.abstencao > 0 && (
-        <View style={s.tRowLast}>
+        <View style={s.tRowLast} wrap={false}>
           <View style={wide}>
             <Text style={tdAbst}>ABSTENÇÃO</Text>
           </View>
@@ -461,7 +465,11 @@ function DetalhamentoVotos({ votos, sigiloso }: { votos: VotoDetalhado[]; sigilo
           </View>
         </View>
         {votos.map((v, i) => (
-          <View key={i} style={s.detRow}>
+          // wrap={false}: a linha nunca é cortada no meio por quebra de página
+          // (bug do Carlos: imóvel com 2 unidades, ex. "11, 52", ficava numa
+          // página e o nome/resposta na outra, fora da coluna). Não cabendo, a
+          // linha inteira desce pra a próxima página.
+          <View key={i} style={s.detRow} wrap={false}>
             <View style={s.detCellUnidade}>
               <Text style={s.detTdText}>{v.unidades}</Text>
             </View>
