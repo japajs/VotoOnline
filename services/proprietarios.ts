@@ -11,6 +11,7 @@ type JoinedProprietario = {
   telefone: string | null
   observacoes: string | null
   inadimplente: boolean
+  conjuge: string | null
   historico_alteracoes: HistoricoAlteracao[] | null
   created_at: string
   unidades: Unidade[] | null
@@ -62,6 +63,7 @@ function rowToProprietario(row: JoinedProprietario): Proprietario {
     telefone: row.telefone,
     observacoes: row.observacoes,
     inadimplente: row.inadimplente,
+    conjuge: row.conjuge ?? null,
     historico_alteracoes: row.historico_alteracoes ?? [],
     created_at: row.created_at,
     unidades: row.unidades ?? [],
@@ -127,6 +129,7 @@ export async function createProprietario(
     cpf?: string | null
     telefone?: string | null
     inadimplente?: boolean
+    conjuge?: string | null
   }
 ): Promise<Proprietario> {
   const db = createServerClient()
@@ -139,6 +142,7 @@ export async function createProprietario(
       ...(input.cpf ? { cpf: input.cpf } : {}),
       ...(input.telefone ? { telefone: input.telefone } : {}),
       ...(input.inadimplente ? { inadimplente: input.inadimplente } : {}),
+      ...(input.conjuge ? { conjuge: input.conjuge } : {}),
     })
     .select(SELECT_WITH_UNIDADES)
     .single()
@@ -150,7 +154,10 @@ export async function createProprietario(
 export async function updateProprietario(
   id: string,
   input: Partial<
-    Pick<Proprietario, "nome" | "email" | "cpf" | "telefone" | "observacoes" | "inadimplente">
+    Pick<
+      Proprietario,
+      "nome" | "email" | "cpf" | "telefone" | "observacoes" | "inadimplente" | "conjuge"
+    >
   >
 ): Promise<Proprietario> {
   const db = createServerClient()
@@ -163,6 +170,7 @@ export async function updateProprietario(
       ...(input.telefone !== undefined && { telefone: input.telefone }),
       ...(input.observacoes !== undefined && { observacoes: input.observacoes }),
       ...(input.inadimplente !== undefined && { inadimplente: input.inadimplente }),
+      ...(input.conjuge !== undefined && { conjuge: input.conjuge }),
     })
     .eq("id", id)
     .select(SELECT_WITH_UNIDADES)

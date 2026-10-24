@@ -45,6 +45,7 @@ export async function createProprietarioAction(input: {
   // o cadastro manual precisa aceitar CPF, inclusive pra registrar procuradores.
   cpf?: string
   telefone?: string
+  conjuge?: string
   unidades: string[] // numeros de apartamento
 }): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
@@ -91,6 +92,7 @@ export async function createProprietarioAction(input: {
       email: emailInformado || null,
       cpf: cpfInformado ? normalizarCpf(cpfInformado) : null,
       telefone: telefoneNormalizado,
+      conjuge: input.conjuge?.trim() || null,
     })
 
     // Cria as unidades em paralelo
@@ -239,6 +241,7 @@ export async function updateProprietarioAction(input: {
   telefone: string
   observacoes: string
   inadimplente: boolean
+  conjuge: string
 }): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
@@ -253,6 +256,7 @@ export async function updateProprietarioAction(input: {
     const novoNome = input.nome.trim()
     const novoEmail = input.email.trim() || null
     const novasObservacoes = input.observacoes.trim() || null
+    const novoConjuge = input.conjuge.trim() || null
 
     // Só valida formato quando o valor de fato muda — um cadastro antigo com
     // e-mail/celular fora do formato atual continua editável nos outros
@@ -301,6 +305,8 @@ export async function updateProprietarioAction(input: {
         valorAnterior: String(atual.inadimplente),
         valorNovo: String(input.inadimplente),
       })
+    if (novoConjuge !== (atual.conjuge ?? null))
+      mudancas.push({ campo: "conjuge", valorAnterior: atual.conjuge, valorNovo: novoConjuge })
 
     if (mudancas.length === 0) {
       return { success: false, error: "Nenhuma alteração para salvar." }
@@ -312,6 +318,7 @@ export async function updateProprietarioAction(input: {
       telefone: novoTelefone,
       observacoes: novasObservacoes,
       inadimplente: input.inadimplente,
+      conjuge: novoConjuge,
     })
 
     await registrarHistoricoAlteracao(

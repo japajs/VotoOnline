@@ -56,6 +56,7 @@ const CAMPO_LABELS: Record<CampoImportacao, string> = {
   whatsapp: "WhatsApp / Telefone",
   email: "E-mail",
   inadimplente: "Restrição / Inadimplente",
+  conjuge: "Cônjuge / 2º participante",
   fracaoIdeal: "Fração ideal",
   cpf: "CPF/CNPJ",
   ignorar: "Ignorar coluna",
@@ -464,6 +465,14 @@ function ProprietariosTable({
                         title="Vem marcado como inadimplente na planilha — não poderá votar (Código Civil, art. 1.335)"
                       >
                         Inadimplente
+                      </span>
+                    )}
+                    {p.conjuge && (
+                      <span
+                        className="inline-flex items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:text-indigo-400"
+                        title="Cônjuge / 2º participante lido da planilha"
+                      >
+                        + {p.conjuge}
                       </span>
                     )}
                   </div>

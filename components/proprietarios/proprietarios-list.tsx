@@ -598,9 +598,18 @@ export function ProprietariosList({
               })
               .map((u) => formatUnidade(u))
               .join(" – ")
+            // Quem participou pelo imóvel (co-dono presente) aparece junto ao
+            // dono no modo compartilhar (pedido do Carlos: "DONO / PARTICIPANTE"),
+            // pra quem está online conferir quem está representando o imóvel.
+            const participou = participantesLocal.get(p.id)
             return (
               <div key={p.id} className="flex flex-wrap items-baseline gap-x-2 px-3 py-1 text-sm">
                 <span className="font-medium">{p.nome}</span>
+                {participou && (
+                  <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                    / {participou}
+                  </span>
+                )}
                 <span className={`text-xs font-medium ${cor}`}>({label})</span>
                 {imoveis && <span className="text-xs text-muted-foreground">{imoveis}</span>}
               </div>
@@ -646,6 +655,7 @@ export function ProprietariosList({
                 modoCompartilhar={modoCompartilhar}
                 podeAnotarParticipante={podeMarcarPresenca}
                 participante={participantesLocal.get(p.id) ?? ""}
+                conjuge={p.conjuge}
                 onSetParticipante={handleSetParticipante}
               />
             ))}
@@ -679,6 +689,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   modoCompartilhar,
   podeAnotarParticipante,
   participante,
+  conjuge,
   onSetParticipante,
 }: {
   proprietario: Proprietario
@@ -708,6 +719,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
   // cadastro). Só com assembleia aberta e operador (podeAnotarParticipante).
   podeAnotarParticipante: boolean
   participante: string
+  // Cônjuge cadastrado (co-dono que costuma comparecer) — vira o atalho de 1
+  // toque pra anotar "quem participou" sem digitar. null = não cadastrado.
+  conjuge: string | null
   onSetParticipante: (proprietarioId: string, nome: string) => void
 }) {
   const [novaUnidade, setNovaUnidade] = useState("")
@@ -978,8 +992,11 @@ const ProprietarioRow = memo(function ProprietarioRow({
 
         {/* Quem participou pelo imóvel quando não é o dono do cadastro (co-dono
             presente, ex.: esposa — diferente de procuração). A mesa anota aqui e
-            sai no boletim. Só com assembleia aberta + operador. */}
+            sai no boletim. Só com assembleia aberta + operador E só para quem
+            está PRESENTE (pedido do Carlos: ausente não tem participante — quem
+            não está na assembleia não tem como alguém participar por ele). */}
         {podeAnotarParticipante &&
+          presente &&
           (editandoPart ? (
             <span className="ml-2 flex items-center gap-1">
               <Input
@@ -1027,18 +1044,35 @@ const ProprietarioRow = memo(function ProprietarioRow({
               participou: {participante}
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setPartInput("")
-                setEditandoPart(true)
-              }}
-              title="Anotar quem participou pelo imóvel (co-dono presente que não é o titular)"
-              className="ml-2 flex min-h-[28px] items-center gap-0.5 rounded border border-dashed border-border/60 px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            >
-              <Plus className="h-3 w-3" />
-              quem participou
-            </button>
+            // Sem participante ainda: se há cônjuge cadastrado, um atalho de 1
+            // toque que anota o cônjuge direto (pedido do Carlos: ganhar tempo —
+            // marido/esposa já vêm da planilha). Ao lado, "outro" abre o campo
+            // livre pra digitar um nome diferente.
+            <span className="ml-2 flex items-center gap-1">
+              {conjuge && (
+                <button
+                  type="button"
+                  onClick={() => onSetParticipante(proprietario.id, conjuge)}
+                  title={`Anotar ${conjuge} (cônjuge cadastrado) como quem participou`}
+                  className="flex min-h-[28px] items-center gap-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 px-1.5 py-0.5 text-xs text-indigo-700 transition-colors hover:bg-indigo-500/15 dark:text-indigo-300"
+                >
+                  <Plus className="h-3 w-3" />
+                  {conjuge}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setPartInput("")
+                  setEditandoPart(true)
+                }}
+                title="Anotar quem participou pelo imóvel (co-dono presente que não é o titular)"
+                className="flex min-h-[28px] items-center gap-0.5 rounded border border-dashed border-border/60 px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <Plus className="h-3 w-3" />
+                {conjuge ? "outro" : "quem participou"}
+              </button>
+            </span>
           ))}
       </div>
 

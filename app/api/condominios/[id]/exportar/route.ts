@@ -35,8 +35,9 @@ export async function GET(
 
   for (const prop of proprietarios) {
     const unidades = prop.unidades ?? []
+    const conjuge = prop.conjuge ?? ""
     if (unidades.length === 0) {
-      rows.push([prop.nome, prop.email ?? "", prop.cpf ?? "", prop.telefone ?? "", "", ""])
+      rows.push([prop.nome, prop.email ?? "", prop.cpf ?? "", prop.telefone ?? "", conjuge, "", ""])
     } else {
       for (const u of unidades) {
         rows.push([
@@ -44,6 +45,7 @@ export async function GET(
           prop.email ?? "",
           prop.cpf ?? "",
           prop.telefone ?? "",
+          conjuge,
           u.numero,
           u.bloco ?? "",
         ])
@@ -51,7 +53,7 @@ export async function GET(
     }
   }
 
-  const header = ["Nome", "E-mail", "CPF", "Telefone / WhatsApp", "Unidade", "Bloco"]
+  const header = ["Nome", "E-mail", "CPF", "Telefone / WhatsApp", "Cônjuge", "Unidade", "Bloco"]
   // Auditoria de segurança: escapa células que começam com = + - @ (nome/
   // e-mail/CPF vêm do cadastro e poderiam virar fórmula no Excel). Mesma
   // defesa já usada na apuração (ver lib/relatorios/utils.ts:sanitizarLinhas).
@@ -59,7 +61,7 @@ export async function GET(
 
   // Larguras de coluna
   ws["!cols"] = [
-    { wch: 36 }, { wch: 30 }, { wch: 16 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
+    { wch: 36 }, { wch: 30 }, { wch: 16 }, { wch: 20 }, { wch: 28 }, { wch: 10 }, { wch: 10 },
   ]
 
   // Estilo do cabeçalho (negrito)
