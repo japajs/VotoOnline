@@ -14,7 +14,11 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { enviarAssembleiaAction, type EnviarAssembleiaResult } from "@/app/actions/assembleia-votos"
+import {
+  enviarAssembleiaAction,
+  getProprietarioIdsVotaramAction,
+  type EnviarAssembleiaResult,
+} from "@/app/actions/assembleia-votos"
 import { normalizarBusca, pluralImovel } from "@/lib/format"
 import { formatUnidade } from "@/lib/unidade-format"
 import type { Assembleia, Proprietario } from "@/types"
@@ -45,12 +49,17 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
   const [isPending, startTransition] = useTransition()
   const [anexo, setAnexo] = useState<File | null>(null)
   const [busca, setBusca] = useState("")
+  // Quem JÁ votou nesta assembleia + o filtro "só quem não votou" (pedido do
+  // Carlos: mandar o lembrete só pra quem falta, sem remarcar quem já votou).
+  const [votaramIds, setVotaramIds] = useState<Set<string>>(new Set())
+  const [soNaoVotaram, setSoNaoVotaram] = useState(false)
   const anexoInputRef = useRef<HTMLInputElement>(null)
 
   const proprietariosFiltrados = useMemo(() => {
+    const base = soNaoVotaram ? proprietarios.filter((p) => !votaramIds.has(p.id)) : proprietarios
     const termo = normalizarBusca(busca.trim())
-    if (!termo) return proprietarios
-    return proprietarios.filter((p) => {
+    if (!termo) return base
+    return base.filter((p) => {
       const alvo = [
         p.nome,
         p.email ?? "",
@@ -58,7 +67,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
       ].join(" ")
       return normalizarBusca(alvo).includes(termo)
     })
-  }, [proprietarios, busca])
+  }, [proprietarios, busca, soNaoVotaram, votaramIds])
 
   const allSelected =
     proprietariosFiltrados.length > 0 && proprietariosFiltrados.every((p) => selectedIds.has(p.id))
@@ -94,11 +103,25 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
     setResult(null)
     setAnexo(null)
     setBusca("")
+    setVotaramIds(new Set())
+    setSoNaoVotaram(false)
   }
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
-    if (!next) setTimeout(reset, 300)
+    if (next) {
+      // Busca quem já votou pra oferecer o filtro "só quem não votou". Se já
+      // houve votos, o filtro já abre ligado (fluxo de lembrete). Falha → off.
+      getProprietarioIdsVotaramAction(assembleia.id, assembleia.condominio_id).then((r) => {
+        if (r.success) {
+          const s = new Set(r.ids)
+          setVotaramIds(s)
+          setSoNaoVotaram(s.size > 0)
+        }
+      })
+    } else {
+      setTimeout(reset, 300)
+    }
   }
 
   function handleAnexoChange(file: File | null) {
@@ -175,6 +198,25 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
                 aria-label="Buscar proprietário"
               />
             </div>
+
+            {/* Filtro "só quem não votou" (pedido do Carlos): só aparece quando
+                já houve votos. Esconde quem já votou pra mandar o lembrete só
+                pra quem falta — dá pra fracionar o envio em dias (ex.: limite
+                diário de e-mail) selecionando um subconjunto. */}
+            {votaramIds.size > 0 && (
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={soNaoVotaram}
+                  onChange={(e) => setSoNaoVotaram(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span className="text-xs text-muted-foreground">
+                  Só quem ainda <strong className="text-foreground">não votou</strong> — esconde os{" "}
+                  {votaramIds.size} que já votaram
+                </span>
+              </label>
+            )}
 
             <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
               <label className="flex cursor-pointer items-center gap-2.5 border-b border-border/40 bg-muted/30 px-3 py-2 hover:bg-accent/30">

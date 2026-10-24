@@ -16,6 +16,7 @@ import {
   getProprietariosParaVotoManual,
   getPautasParaVotoManual,
   getProprietarioIdsPresentes,
+  getProprietarioIdsVotaram,
   getAssembleiaSendByToken,
   getRespostasBySendId,
   type RespostaInput,
@@ -427,6 +428,25 @@ export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | n
         votacaoAberta: p.votacao_aberta ?? false,
         jaVotou: respondidas.has(p.id),
       })),
+  }
+}
+
+// IDs dos proprietários que JÁ votaram nesta assembleia — usado no disparo de
+// e-mail pra o operador filtrar "só quem ainda não votou" e mandar o lembrete
+// só pra quem falta (pedido do Carlos: a tela marcava todos). Read-only.
+export async function getProprietarioIdsVotaramAction(
+  assembleiaId: string,
+  condominioId: string
+): Promise<{ success: boolean; ids: string[] }> {
+  const auth = await requirePerfil(["administrador", "operador", "visualizador"])
+  if (!auth.ok) return { success: false, ids: [] }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, ids: [] }
+  try {
+    const set = await getProprietarioIdsVotaram(assembleiaId)
+    return { success: true, ids: [...set] }
+  } catch {
+    return { success: false, ids: [] }
   }
 }
 
