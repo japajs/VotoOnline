@@ -475,6 +475,11 @@ function DetalhamentoVotos({ votos, sigiloso }: { votos: VotoDetalhado[]; sigilo
             </View>
             <View style={s.detCellNome}>
               <Text style={s.detTdText}>{v.nome}</Text>
+              {/* Co-dono que participou no lugar do titular (ex.: esposa) —
+                  pedido do Carlos, pra o boletim registrar quem esteve. */}
+              {v.participante ? (
+                <Text style={{ fontSize: 6, color: C.muted }}>participou: {v.participante}</Text>
+              ) : null}
             </View>
             <View style={s.detCellResposta}>
               <Text style={s.detTdText}>{v.resposta}</Text>

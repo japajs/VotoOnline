@@ -46,6 +46,7 @@ export async function getTelaoData(assembleiaId: string): Promise<TelaoData | nu
       nome: v.nome,
       resposta: v.resposta,
       votado_em: v.votado_em,
+      participante: v.participante,
     })),
   }
 }

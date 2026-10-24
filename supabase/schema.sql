@@ -645,3 +645,12 @@ alter table pautas add column if not exists votacao_fechada_em timestamptz;
 -- código que grava/lê esta coluna.
 -- ============================================================
 alter table assembleia_sends add column if not exists tentou_entrar_em timestamptz;
+
+-- ============================================================
+-- participante_nome: nome de quem REALMENTE participou pelo imóvel quando não é
+-- o dono do cadastro (ex.: cadastro no marido, quem veio foi a esposa — também
+-- dona; diferente de procuração). A mesa anota na tela de gestão e sai no
+-- boletim/ata. Aditivo e idempotente. Rodar no SQL Editor ANTES de publicar o
+-- código que grava/lê esta coluna.
+-- ============================================================
+alter table assembleia_sends add column if not exists participante_nome text;
