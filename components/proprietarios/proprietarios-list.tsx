@@ -598,9 +598,18 @@ export function ProprietariosList({
               })
               .map((u) => formatUnidade(u))
               .join(" – ")
+            // Quem participou pelo imóvel (co-dono presente) aparece junto ao
+            // dono no modo compartilhar (pedido do Carlos: "DONO / PARTICIPANTE"),
+            // pra quem está online conferir quem está representando o imóvel.
+            const participou = participantesLocal.get(p.id)
             return (
               <div key={p.id} className="flex flex-wrap items-baseline gap-x-2 px-3 py-1 text-sm">
                 <span className="font-medium">{p.nome}</span>
+                {participou && (
+                  <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                    / {participou}
+                  </span>
+                )}
                 <span className={`text-xs font-medium ${cor}`}>({label})</span>
                 {imoveis && <span className="text-xs text-muted-foreground">{imoveis}</span>}
               </div>
@@ -978,8 +987,11 @@ const ProprietarioRow = memo(function ProprietarioRow({
 
         {/* Quem participou pelo imóvel quando não é o dono do cadastro (co-dono
             presente, ex.: esposa — diferente de procuração). A mesa anota aqui e
-            sai no boletim. Só com assembleia aberta + operador. */}
+            sai no boletim. Só com assembleia aberta + operador E só para quem
+            está PRESENTE (pedido do Carlos: ausente não tem participante — quem
+            não está na assembleia não tem como alguém participar por ele). */}
         {podeAnotarParticipante &&
+          presente &&
           (editandoPart ? (
             <span className="ml-2 flex items-center gap-1">
               <Input
