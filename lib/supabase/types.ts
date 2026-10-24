@@ -130,6 +130,7 @@ export type Database = {
           telefone: string | null
           observacoes: string | null
           inadimplente: boolean
+          conjuge: string | null
           historico_alteracoes: Json
           created_at: string
         }
@@ -142,6 +143,7 @@ export type Database = {
           telefone?: string | null
           observacoes?: string | null
           inadimplente?: boolean
+          conjuge?: string | null
           historico_alteracoes?: Json
           created_at?: string
         }
@@ -152,6 +154,7 @@ export type Database = {
           telefone?: string | null
           observacoes?: string | null
           inadimplente?: boolean
+          conjuge?: string | null
           historico_alteracoes?: Json
         }
         Relationships: []

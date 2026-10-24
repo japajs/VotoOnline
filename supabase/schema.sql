@@ -654,3 +654,13 @@ alter table assembleia_sends add column if not exists tentou_entrar_em timestamp
 -- código que grava/lê esta coluna.
 -- ============================================================
 alter table assembleia_sends add column if not exists participante_nome text;
+
+-- ============================================================
+-- conjuge: nome do cônjuge / 2º participante do imóvel, guardado no CADASTRO
+-- (permanente, diferente de participante_nome que é por assembleia). Importável
+-- da planilha pra já vir pronto; na assembleia vira um botão de 1 toque que
+-- preenche "quem participou" com esse nome (ganhar tempo — pedido do Carlos).
+-- Texto livre. Aditivo e idempotente. Rodar no SQL Editor ANTES de publicar o
+-- código que grava/lê esta coluna.
+-- ============================================================
+alter table proprietarios add column if not exists conjuge text;

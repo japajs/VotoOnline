@@ -160,6 +160,12 @@ export interface Proprietario {
   // Bloqueia voto (Código Civil, art. 1.335, §único / convenção
   // condominial) — ver validarVotoOuFalhar em services/assembleia-votos.ts.
   inadimplente: boolean
+  // Cônjuge / 2º participante do imóvel (co-dono que costuma comparecer no
+  // lugar do titular — ex.: cadastro no marido, quem vem é a esposa). Guardado
+  // no cadastro (permanente), importável da planilha; na assembleia vira o
+  // atalho de 1 toque pra anotar "quem participou". Diferente de procuração
+  // (os dois são donos) e de Coproprietario (que aponta pra outro cadastro).
+  conjuge: string | null
   historico_alteracoes: HistoricoAlteracao[]
   created_at: string
   // joined
@@ -424,6 +430,7 @@ export type CampoImportacao =
   | "whatsapp"
   | "email"
   | "inadimplente"
+  | "conjuge"
   | "fracaoIdeal"
   | "cpf"
   | "ignorar"
@@ -448,6 +455,8 @@ export interface ImportacaoLinha {
   // Célula bruta da planilha (ex.: "inadimplente", "0.364") — o parsing pra
   // boolean/número acontece em processarLinhas, não aqui.
   inadimplente: string | null
+  // Nome do cônjuge / 2º participante (texto livre, como veio na planilha).
+  conjuge: string | null
   fracaoIdeal: string | null
   cpf: string | null
   _linhaOriginal: number
@@ -476,6 +485,9 @@ export interface ProprietarioImport {
   // (Código Civil art. 1.335, §único) — ver validarVotoOuFalhar em
   // services/assembleia-votos.ts.
   inadimplente: boolean
+  // Cônjuge / 2º participante lido da planilha (texto livre), gravado no
+  // cadastro — ver Proprietario.conjuge.
+  conjuge: string | null
   unidades: UnidadeImport[]
   linhasOrigem: number[]
   // Preenchidos só quando a célula de e-mail/celular da planilha trazia mais

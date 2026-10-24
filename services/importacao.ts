@@ -78,6 +78,7 @@ async function processarProprietario(
         telefone: prop.telefone,
         cpf: cpfParaCriar,
         inadimplente: prop.inadimplente,
+        conjuge: prop.conjuge,
       })
       proprietarioId = novo.id
       criado = true

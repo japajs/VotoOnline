@@ -85,6 +85,14 @@ function resolverInadimplente(valorBruto: string | null): boolean {
   return !INADIMPLENTE_NEGATIVOS.has(v)
 }
 
+// Cônjuge / 2º participante: texto livre (nome), só limpa espaços e devolve
+// null quando vazio — nome não é normalizado (preserva acentos/maiúsculas como
+// o síndico vai querer ver no boletim).
+function resolverConjuge(valorBruto: string | null): string | null {
+  const v = valorBruto?.trim().replace(/\s+/g, " ")
+  return v || null
+}
+
 // ─── Chave de agrupamento ─────────────────────────────────────────────────────
 // Remove acentos (case/espaço já eram tratados) — sem isso, "José Silva" e
 // "Jose Silva" (mesma pessoa, mesma célula de e-mail, só a grafia do nome
@@ -202,6 +210,7 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
       erros.push({ linha: linha._linhaOriginal, campo: "Fração ideal", mensagem: erroFracao })
     }
     const inadimplente = resolverInadimplente(linha.inadimplente)
+    const conjuge = resolverConjuge(linha.conjuge)
     // CPF: normaliza (só dígitos) e valida os dígitos verificadores — mesmas
     // travas do cadastro manual (ver lib/format.validarCpf). CPF inválido NÃO é
     // importado (vira null) e vira aviso na revisão, pra não entrar lixo no
@@ -247,6 +256,9 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
       // mesmo modelo de proprietarios.inadimplente (flag por pessoa, não por
       // unidade) já usado no resto do sistema.
       if (inadimplente) prop.inadimplente = true
+      // Primeiro cônjuge não vazio visto entre as linhas do proprietário vence
+      // (não sobrescreve um já preenchido com um vazio de outra linha).
+      if (conjuge && !prop.conjuge) prop.conjuge = conjuge
       if (cpf && prop.cpf && cpf !== prop.cpf) {
         erros.push({
           linha: linha._linhaOriginal,
@@ -265,6 +277,7 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
         telefone,
         cpf,
         inadimplente,
+        conjuge,
         unidades: [{ numero: imovel, fracaoIdeal }],
         linhasOrigem: [linha._linhaOriginal],
         ...(emailCandidatos ? { emailCandidatos } : {}),

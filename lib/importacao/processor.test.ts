@@ -11,6 +11,7 @@ function linha(overrides: Partial<ImportacaoLinha> & { _linhaOriginal: number })
     whatsapp: null,
     email: null,
     inadimplente: null,
+    conjuge: null,
     fracaoIdeal: null,
     cpf: null,
     ...overrides,
@@ -200,6 +201,31 @@ describe("processarLinhas — Restrição/inadimplente (planilha real: condomín
       linha({ _linhaOriginal: 63, nome: "Pessoa Devedora (coluna Sim/Não)", imovel: "A104", inadimplente: "Sim" }),
     ])
     expect(resultado.proprietarios[0].inadimplente).toBe(true)
+  })
+})
+
+describe("processarLinhas — Cônjuge / 2º participante", () => {
+  it("coluna de cônjuge preenchida é gravada no proprietário (texto livre, preserva maiúsculas/acento)", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 65, nome: "Bonny Mello", imovel: "A016", conjuge: "Karla Alves" }),
+    ])
+    expect(resultado.proprietarios[0].conjuge).toBe("Karla Alves")
+  })
+
+  it("cônjuge vazio vira null", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 66, nome: "Sem Conjuge", imovel: "A017", conjuge: "   " }),
+    ])
+    expect(resultado.proprietarios[0].conjuge).toBeNull()
+  })
+
+  it("proprietário com 2 unidades: o 1º cônjuge não vazio entre as linhas vence", () => {
+    const resultado = processarLinhas([
+      linha({ _linhaOriginal: 67, nome: "Dois Aptos", imovel: "A018", email: "dois2@example.com", conjuge: null }),
+      linha({ _linhaOriginal: 68, nome: "Dois Aptos", imovel: "A019", email: "dois2@example.com", conjuge: "Maria da Silva" }),
+    ])
+    expect(resultado.totalProprietarios).toBe(1)
+    expect(resultado.proprietarios[0].conjuge).toBe("Maria da Silva")
   })
 })
 

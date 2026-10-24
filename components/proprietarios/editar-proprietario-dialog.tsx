@@ -132,6 +132,7 @@ export function EditarProprietarioDialog({
   const [telefone, setTelefone] = useState(proprietario.telefone ?? "")
   const [observacoes, setObservacoes] = useState(proprietario.observacoes ?? "")
   const [inadimplente, setInadimplente] = useState(proprietario.inadimplente)
+  const [conjuge, setConjuge] = useState(proprietario.conjuge ?? "")
 
   // Campo-chave (item 6): CPF/CNPJ não é editado junto com o resto do
   // cadastro — fica bloqueado por padrão, com uma ação administrativa
@@ -178,6 +179,7 @@ export function EditarProprietarioDialog({
     setTelefone(proprietario.telefone ?? "")
     setObservacoes(proprietario.observacoes ?? "")
     setInadimplente(proprietario.inadimplente)
+    setConjuge(proprietario.conjuge ?? "")
     setNovoCpfAdmin(proprietario.cpf ?? "")
   }
 
@@ -232,6 +234,7 @@ export function EditarProprietarioDialog({
     (email.trim() || null) !== (proprietario.email ?? null) ||
     (telefone.trim() || null) !== (proprietario.telefone ?? null) ||
     (observacoes.trim() || null) !== (proprietario.observacoes ?? null) ||
+    (conjuge.trim() || null) !== (proprietario.conjuge ?? null) ||
     inadimplente !== proprietario.inadimplente
   const canSalvar = algumCampoMudou && nome.trim().length > 0
 
@@ -245,6 +248,7 @@ export function EditarProprietarioDialog({
         telefone,
         observacoes,
         inadimplente,
+        conjuge,
       })
       if (result.success) {
         toast.success("Cadastro atualizado.")
@@ -377,6 +381,26 @@ export function EditarProprietarioDialog({
                   value={telefone}
                   onChange={(e) => setTelefone(e.target.value.replace(/[^\d()+\-\s]/g, ""))}
                 />
+              </div>
+
+              {/* Cônjuge / 2º participante: co-dono que costuma comparecer no
+                  lugar do titular. Guardado no cadastro e usado como atalho de
+                  1 toque pra "quem participou" na assembleia (pedido do Carlos).
+                  Diferente de Coproprietário (que aponta outro cadastro). */}
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-conjuge">
+                  Cônjuge / 2º participante{" "}
+                  <span className="font-normal text-muted-foreground">(opcional)</span>
+                </Label>
+                <Input
+                  id="edit-conjuge"
+                  placeholder="Nome do cônjuge (co-dono que costuma comparecer)"
+                  value={conjuge}
+                  onChange={(e) => setConjuge(e.target.value.replace(/[0-9]/g, ""))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Na assembleia, vira um atalho para anotar quem participou pelo imóvel.
+                </p>
               </div>
 
               {/* Campo-chave: CPF/CNPJ nunca é editado aqui — só exibido,

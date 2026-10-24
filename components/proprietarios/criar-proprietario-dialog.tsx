@@ -26,6 +26,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
   const [email, setEmail] = useState("")
   const [cpf, setCpf] = useState("")
   const [telefone, setTelefone] = useState("")
+  const [conjuge, setConjuge] = useState("")
   const [unidades, setUnidades] = useState<string[]>([""])
   const [isPending, startTransition] = useTransition()
 
@@ -34,6 +35,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
     setEmail("")
     setCpf("")
     setTelefone("")
+    setConjuge("")
     setUnidades([""])
   }
 
@@ -62,6 +64,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
         email,
         cpf,
         telefone,
+        conjuge,
         unidades: unidades.filter((u) => u.trim()),
       })
       if (result.success) {
@@ -143,6 +146,22 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
               // telefone, bloqueia letras conforme digita (Carlos).
               onChange={(e) => setTelefone(e.target.value.replace(/[^\d()+\-\s]/g, ""))}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="conjuge-prop">
+              Cônjuge / 2º participante{" "}
+              <span className="text-muted-foreground font-normal">(opcional)</span>
+            </Label>
+            <Input
+              id="conjuge-prop"
+              placeholder="Nome do cônjuge (co-dono que costuma comparecer)"
+              value={conjuge}
+              onChange={(e) => setConjuge(e.target.value.replace(/[0-9]/g, ""))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Na assembleia, vira um atalho para anotar quem participou pelo imóvel.
+            </p>
           </div>
 
           <div className="space-y-2">
