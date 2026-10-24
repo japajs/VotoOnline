@@ -54,7 +54,11 @@ export const ALIASES: Record<CampoMapeavel, string[]> = {
     "enderecoeletronico",
     "emaillabel",
   ],
-  inadimplente: ["restricao", "inadimplente", "inadimplencia", "adimplencia", "devedor"],
+  // Só nomes de coluna cuja presença/"Sim" significa INADIMPLENTE. Nunca
+  // "adimplência" e afins: uma coluna "Adimplência=Sim" (está em dia) seria
+  // lida como inadimplente (polaridade invertida) e BLOQUEARIA de votar quem
+  // está adimplente — ver resolverInadimplente em processor.ts.
+  inadimplente: ["restricao", "inadimplente", "inadimplencia", "devedor"],
   conjuge: [
     "conjuge",
     "conjugue",
