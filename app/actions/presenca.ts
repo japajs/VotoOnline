@@ -9,6 +9,7 @@ import {
   getProprietariosTentandoEntrar,
   getStatusPresencaLive,
   marcarPresenca,
+  setParticipanteNome,
   setExigePresenca,
   type PresenteItem,
   type ChamadaData,
@@ -216,6 +217,26 @@ export async function getEstadoVotacaoLiveAction(
     }
   } catch {
     return ESTADO_VOTACAO_VAZIO
+  }
+}
+
+// Anota o nome de quem participou pelo imóvel (co-dono presente que não é o
+// dono do cadastro). Sai no boletim/ata. Nome vazio limpa (pedido do Carlos).
+export async function setParticipanteNomeAction(
+  assembleiaId: string,
+  condominioId: string,
+  proprietarioId: string,
+  nome: string
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    await setParticipanteNome(assembleiaId, proprietarioId, nome)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar o participante." }
   }
 }
 

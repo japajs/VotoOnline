@@ -22,7 +22,11 @@ import {
   addUnidadeAction,
   removeUnidadeAction,
 } from "@/app/actions/proprietarios"
-import { marcarPresencaAction, getEstadoVotacaoLiveAction } from "@/app/actions/presenca"
+import {
+  marcarPresencaAction,
+  getEstadoVotacaoLiveAction,
+  setParticipanteNomeAction,
+} from "@/app/actions/presenca"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
@@ -49,6 +53,9 @@ interface ProprietariosListProps {
   // Quem outorgou procuração na assembleia aberta — não pode ser marcado
   // presente (a presença é representada pelo procurador): toggle desabilitado.
   outorgantesNaAberta?: Set<string>
+  // Nome de quem participou pelo imóvel quando não é o dono do cadastro (co-dono
+  // presente, ex.: esposa). Semente do servidor; a mesa edita direto na linha.
+  participantesNaAberta?: Map<string, string>
   // Id da assembleia aberta — habilita marcar presença direto na lista (sem
   // abrir a Apuração). undefined = sem assembleia aberta → sem caixa.
   assembleiaAbertaId?: string
@@ -99,6 +106,7 @@ export function ProprietariosList({
   pautasVotadasNaAberta,
   totalPautasVotaveis,
   outorgantesNaAberta,
+  participantesNaAberta,
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
   isAdmin = false,
@@ -127,6 +135,37 @@ export function ProprietariosList({
   // aguentar toques rápidos em pessoas diferentes sem piscar nenhuma delas.
   const marcandoIdsRef = useRef<Set<string>>(new Set())
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
+
+  // Nome de quem participou pelo imóvel (co-dono presente que não é o dono do
+  // cadastro). Semeado do servidor, atualizado otimista ao salvar na linha. Não
+  // entra no poll ao vivo (é anotação, não dado crítico de tempo real).
+  const [participantesLocal, setParticipantesLocal] = useState<Map<string, string>>(
+    () => new Map(participantesNaAberta)
+  )
+
+  async function handleSetParticipante(proprietarioId: string, nome: string) {
+    if (!assembleiaAbertaId) return
+    const valor = nome.trim()
+    const anterior = participantesLocal.get(proprietarioId) ?? ""
+    // Otimista.
+    setParticipantesLocal((prev) => {
+      const next = new Map(prev)
+      if (valor) next.set(proprietarioId, valor)
+      else next.delete(proprietarioId)
+      return next
+    })
+    const r = await setParticipanteNomeAction(assembleiaAbertaId, condominioId, proprietarioId, valor)
+    if (!r.success) {
+      // Reverte se o servidor recusou.
+      setParticipantesLocal((prev) => {
+        const next = new Map(prev)
+        if (anterior) next.set(proprietarioId, anterior)
+        else next.delete(proprietarioId)
+        return next
+      })
+      toast.error(r.error ?? "Erro ao salvar o participante.")
+    }
+  }
   // Há assembleia aberta? Gate do funil de votos e do polling. Antes era o
   // próprio `votouNaAberta` (undefined sem assembleia aberta); agora que o voto
   // virou estado sincronizado, o sinal é o id da assembleia aberta.
@@ -605,6 +644,9 @@ export function ProprietariosList({
                 criterioPeso={criterioPeso}
                 gridCols={gridCols}
                 modoCompartilhar={modoCompartilhar}
+                podeAnotarParticipante={podeMarcarPresenca}
+                participante={participantesLocal.get(p.id) ?? ""}
+                onSetParticipante={handleSetParticipante}
               />
             ))}
           </div>
@@ -635,6 +677,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
   criterioPeso,
   gridCols,
   modoCompartilhar,
+  podeAnotarParticipante,
+  participante,
+  onSetParticipante,
 }: {
   proprietario: Proprietario
   condominioId: string
@@ -659,12 +704,25 @@ const ProprietarioRow = memo(function ProprietarioRow({
   // — quando ligado, E-mail/CPF e Celular não são renderizados (LGPD).
   gridCols: string
   modoCompartilhar: boolean
+  // Anotar quem participou pelo imóvel (co-dono presente que não é o dono do
+  // cadastro). Só com assembleia aberta e operador (podeAnotarParticipante).
+  podeAnotarParticipante: boolean
+  participante: string
+  onSetParticipante: (proprietarioId: string, nome: string) => void
 }) {
   const [novaUnidade, setNovaUnidade] = useState("")
   const [showAdd, setShowAdd] = useState(false)
   const [showExcluir, setShowExcluir] = useState(false)
   const [unidadeExcluir, setUnidadeExcluir] = useState<string | null>(null)
   const [isPendingAdd, startAddTransition] = useTransition()
+  // Edição inline de "quem participou" (a gravação é otimista no pai).
+  const [editandoPart, setEditandoPart] = useState(false)
+  const [partInput, setPartInput] = useState(participante)
+
+  function salvarParticipante() {
+    onSetParticipante(proprietario.id, partInput)
+    setEditandoPart(false)
+  }
 
   const peso = getPesoParticipante(proprietario, criterioPeso)
   // Padroniza a exibição dos imóveis de quem tem mais de um em ordem CRESCENTE
@@ -917,6 +975,71 @@ const ProprietarioRow = memo(function ProprietarioRow({
             Add
           </button>
         ))}
+
+        {/* Quem participou pelo imóvel quando não é o dono do cadastro (co-dono
+            presente, ex.: esposa — diferente de procuração). A mesa anota aqui e
+            sai no boletim. Só com assembleia aberta + operador. */}
+        {podeAnotarParticipante &&
+          (editandoPart ? (
+            <span className="ml-2 flex items-center gap-1">
+              <Input
+                placeholder="Nome de quem participou"
+                value={partInput}
+                onChange={(e) => setPartInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") salvarParticipante()
+                  if (e.key === "Escape") {
+                    setEditandoPart(false)
+                    setPartInput(participante)
+                  }
+                }}
+                className="h-8 w-52 px-2 text-xs"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={salvarParticipante}
+                className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded px-2 text-xs text-primary hover:underline"
+              >
+                OK
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditandoPart(false)
+                  setPartInput(participante)
+                }}
+                className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded px-2 text-xs text-muted-foreground hover:underline"
+              >
+                ✕
+              </button>
+            </span>
+          ) : participante ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPartInput(participante)
+                setEditandoPart(true)
+              }}
+              title="Quem participou pelo imóvel (clique para editar)"
+              className="ml-2 flex min-h-[28px] items-center rounded border border-indigo-400/40 bg-indigo-500/10 px-1.5 py-0.5 text-xs text-indigo-700 transition-colors hover:bg-indigo-500/15 dark:text-indigo-300"
+            >
+              participou: {participante}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setPartInput("")
+                setEditandoPart(true)
+              }}
+              title="Anotar quem participou pelo imóvel (co-dono presente que não é o titular)"
+              className="ml-2 flex min-h-[28px] items-center gap-0.5 rounded border border-dashed border-border/60 px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              <Plus className="h-3 w-3" />
+              quem participou
+            </button>
+          ))}
       </div>
 
       <ConfirmarSenhaDialog

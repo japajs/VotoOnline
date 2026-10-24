@@ -325,6 +325,7 @@ export type Database = {
           user_agent_snapshot: string | null
           presente_em: string | null
           tentou_entrar_em: string | null
+          participante_nome: string | null
           created_at: string
         }
         Insert: {
@@ -346,6 +347,7 @@ export type Database = {
           user_agent_snapshot?: string | null
           presente_em?: string | null
           tentou_entrar_em?: string | null
+          participante_nome?: string | null
           created_at?: string
         }
         Update: {
@@ -364,6 +366,7 @@ export type Database = {
           user_agent_snapshot?: string | null
           presente_em?: string | null
           tentou_entrar_em?: string | null
+          participante_nome?: string | null
         }
         Relationships: []
       }

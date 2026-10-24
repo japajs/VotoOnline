@@ -129,6 +129,9 @@ export interface VotoDetalhado {
   email: string | null
   resposta: string
   votado_em: string | null
+  // Nome de quem participou pelo imóvel quando não é o dono do cadastro (co-dono
+  // presente, ex.: esposa). null = participou o próprio dono. Sai no boletim.
+  participante: string | null
 }
 
 // Detalhamento de voto por pauta (Unidade/Nome/E-mail/Resposta/Data-hora)
@@ -155,6 +158,7 @@ export async function getVotosDetalhados(assembleiaId: string): Promise<VotoDeta
       email_snapshot: string | null
       unidades_snapshot: RawUnidadeSnapshot[] | null
       votado_em: string | null
+      participante_nome: string | null
     } | null
     pauta_opcoes: { label: string } | null
   }
@@ -162,7 +166,7 @@ export async function getVotosDetalhados(assembleiaId: string): Promise<VotoDeta
   const { data, error } = await db
     .from("assembleia_respostas")
     .select(
-      "pauta_id, resposta, opcao_id, assembleia_sends!inner(assembleia_id, nome_snapshot, email_snapshot, unidades_snapshot, votado_em), pauta_opcoes(label)"
+      "pauta_id, resposta, opcao_id, assembleia_sends!inner(assembleia_id, nome_snapshot, email_snapshot, unidades_snapshot, votado_em, participante_nome), pauta_opcoes(label)"
     )
     .eq("assembleia_sends.assembleia_id", assembleiaId)
 
@@ -182,6 +186,7 @@ export async function getVotosDetalhados(assembleiaId: string): Promise<VotoDeta
       email: r.assembleia_sends?.email_snapshot ?? null,
       resposta: r.opcao_id ? (r.pauta_opcoes?.label ?? "—") : (r.resposta ?? "—"),
       votado_em: r.assembleia_sends?.votado_em ?? null,
+      participante: r.assembleia_sends?.participante_nome ?? null,
     }
   })
 

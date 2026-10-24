@@ -481,6 +481,67 @@ export async function marcarPresenca(
   }
 }
 
+// Anota (ou limpa) o NOME de quem realmente participou pelo imóvel quando não é
+// o dono do cadastro (ex.: cadastro no marido, quem veio foi a esposa — também
+// dona; diferente de procuração). Fica no send desta assembleia e sai no
+// boletim/ata. Cria o send se ainda não existir; nome vazio → null (limpa).
+export async function setParticipanteNome(
+  assembleiaId: string,
+  proprietarioId: string,
+  nome: string | null
+): Promise<void> {
+  const db = createServerClient()
+  const valor = nome?.trim() || null
+
+  const { data: existente, error } = await db
+    .from("assembleia_sends")
+    .select("id")
+    .eq("assembleia_id", assembleiaId)
+    .eq("proprietario_id", proprietarioId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+
+  if (existente) {
+    const { error: upErr } = await db
+      .from("assembleia_sends")
+      .update({ participante_nome: valor })
+      .eq("id", existente.id)
+    if (upErr) throw new Error(upErr.message)
+  } else {
+    const { error: insErr } = await db.from("assembleia_sends").insert({
+      assembleia_id: assembleiaId,
+      proprietario_id: proprietarioId,
+      token: generateSurveyToken(),
+      status: "pending",
+      participante_nome: valor,
+    })
+    if (insErr) throw new Error(insErr.message)
+  }
+}
+
+// proprietario_id → nome do participante (co-dono presente), pra semear a lista
+// de gestão. Resiliente: se a coluna não existir (migração pendente) ou houver
+// erro, devolve vazio sem quebrar a tela.
+export async function getParticipantesNaAberta(
+  assembleiaId: string
+): Promise<Map<string, string>> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select("proprietario_id, participante_nome")
+    .eq("assembleia_id", assembleiaId)
+    .not("participante_nome", "is", null)
+  if (error) {
+    console.warn("[getParticipantesNaAberta] consulta falhou, devolvendo vazio:", error.message)
+    return new Map()
+  }
+  const map = new Map<string, string>()
+  for (const r of (data ?? []) as { proprietario_id: string; participante_nome: string | null }[]) {
+    if (r.participante_nome) map.set(r.proprietario_id, r.participante_nome)
+  }
+  return map
+}
+
 // Liga/desliga "exigir presença confirmada pela mesa" numa assembleia.
 export async function setExigePresenca(assembleiaId: string, value: boolean): Promise<void> {
   const db = createServerClient()
