@@ -21,7 +21,6 @@ export const ALIASES: Record<CampoMapeavel, string[]> = {
     "unidadeautonoma",
     "apartamentono",
     "apartamentonr",
-    "apartamentono",
     "unidadeno",
   ],
   nome: [
@@ -43,6 +42,11 @@ export const ALIASES: Record<CampoMapeavel, string[]> = {
     "phone",
     "celulartelefone",
     "telefonecellular",
+    // Cabeçalho da própria exportação do sistema ("Telefone / WhatsApp") —
+    // sem isto, a planilha exportada não reconhece a coluna de celular ao ser
+    // reimportada (round-trip exportar → editar → reimportar). Ver a rota
+    // app/api/condominios/[id]/exportar/route.ts.
+    "telefonewhatsapp",
     "zap",
   ],
   email: [

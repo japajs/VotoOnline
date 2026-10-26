@@ -72,6 +72,25 @@ describe("detectarColunas — inadimplente (polaridade)", () => {
   })
 })
 
+describe("detectarColunas — round-trip da exportação do sistema", () => {
+  it("os cabeçalhos exatos da exportação (.xlsx) voltam a ser reconhecidos ao reimportar", () => {
+    // Cabeçalho gerado por app/api/condominios/[id]/exportar/route.ts. A coluna
+    // de celular vem como "Telefone / WhatsApp" (junta) — precisa detectar.
+    // "Bloco" cai em null de propósito: "Unidade" já ocupou o campo imóvel e a
+    // unidade exportada já embute o bloco quando há.
+    const d = deteccao(["Nome", "E-mail", "CPF", "Telefone / WhatsApp", "Cônjuge", "Unidade", "Bloco"])
+    expect(d).toMatchObject({
+      Nome: "nome",
+      "E-mail": "email",
+      CPF: "cpf",
+      "Telefone / WhatsApp": "whatsapp",
+      "Cônjuge": "conjuge",
+      Unidade: "imovel",
+      Bloco: null,
+    })
+  })
+})
+
 describe("normalizeHeader", () => {
   it("baixa caixa, remove acento e tudo que não é alfanumérico", () => {
     expect(normalizeHeader("  Cônjuge / 2º ")).toBe("conjuge2")
