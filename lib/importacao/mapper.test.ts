@@ -32,6 +32,27 @@ describe("detectarColunas — cônjuge / 2º participante", () => {
     expect(deteccao(["Esposa"])["Esposa"]).toBe("conjuge")
     expect(deteccao(["2º Participante"])["2º Participante"]).toBe("conjuge")
   })
+
+  it('reconhece "NomeConjuge" (formato exportado pelo ERP — Lista Premier)', () => {
+    // Cabeçalho real da planilha do Carlos (PREMIER): a coluna do cônjuge vem
+    // como "NomeConjuge" (junto). Garante que a lista inteira mapeia sozinha.
+    expect(deteccao(["NomeConjuge"])["NomeConjuge"]).toBe("conjuge")
+  })
+
+  it("mapeia a planilha completa da Lista Premier sem intervenção manual", () => {
+    const d = deteccao([
+      "Unidade", "CpfCnpj", "NomeProprietario", "Telefone", "Email", "NomeConjuge", "Inadimplente",
+    ])
+    expect(d).toMatchObject({
+      Unidade: "imovel",
+      CpfCnpj: "cpf",
+      NomeProprietario: "nome",
+      Telefone: "whatsapp",
+      Email: "email",
+      NomeConjuge: "conjuge",
+      Inadimplente: "inadimplente",
+    })
+  })
 })
 
 describe("detectarColunas — inadimplente (polaridade)", () => {

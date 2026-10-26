@@ -62,6 +62,9 @@ export const ALIASES: Record<CampoMapeavel, string[]> = {
   conjuge: [
     "conjuge",
     "conjugue",
+    "nomeconjuge",
+    "nomedoconjuge",
+    "nomedaconjuge",
     "esposa",
     "esposo",
     "esposaesposo",
