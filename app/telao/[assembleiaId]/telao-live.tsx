@@ -4,8 +4,10 @@ import { useEffect, useState } from "react"
 import { ResultadoAssembleia } from "@/components/assembleias/resultado-assembleia"
 import { QrEntrada, useEntradaUrl } from "@/components/assembleias/qr-entrada"
 import { getTelaoDataAction } from "@/app/actions/telao"
+import { isEmAndamento } from "@/lib/assembleia-status"
 import { APP_NAME } from "@/lib/constants"
 import type { TelaoData } from "@/services/telao"
+import type { AssembleiaStatus } from "@/types"
 
 const INTERVALO_MS = 8000
 
@@ -54,6 +56,19 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
   const parcial = data.status !== "encerrada"
   const entradaUrl = useEntradaUrl(assembleiaId)
 
+  // Tarja de estado derivada do status — exaustiva (o Record cobre os 4 status
+  // e o compilador cobra se um novo surgir). Só "aberta" é AO VIVO e pulsa (a
+  // única votável); "pausada" avisa que parou; "rascunho" = ainda não iniciada
+  // (antes caía em "ENCERRADA", enganoso); "encerrada" = fim. A entrada — e com
+  // ela o QR — vale em aberta+pausada (isEmAndamento), não em rascunho/encerrada.
+  const TARJAS: Record<AssembleiaStatus, { label: string; cls: string; pulse: boolean }> = {
+    aberta: { label: "AO VIVO", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", pulse: true },
+    pausada: { label: "PAUSADA", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400", pulse: false },
+    rascunho: { label: "NÃO INICIADA", cls: "bg-muted text-muted-foreground", pulse: false },
+    encerrada: { label: "ENCERRADA", cls: "bg-rose-500/15 text-rose-600 dark:text-rose-400", pulse: false },
+  }
+  const tarja = TARJAS[data.status]
+
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border/40 bg-card/60 backdrop-blur-sm">
@@ -64,32 +79,18 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
             </p>
             <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{data.titulo}</h1>
           </div>
-          {/* Tarja de estado: 3 estados reais, não 2. Antes "AO VIVO" (verde)
-              aparecia também na PAUSA (parcial = !encerrada), enganando — na
-              pausa NÃO se vota (isVotacaoAberta = só "aberta"), mas a entrada
-              ainda funciona (por isso o QR continua). Agora: aberta = AO VIVO
-              (verde, pulsando), pausada = PAUSADA (âmbar), encerrada =
-              ENCERRADA (vermelho). */}
+          {/* Tarja de estado (rótulo+cor por status, ver TARJAS acima). Só
+              "aberta" pulsa. */}
           <span
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${
-              data.status === "aberta"
-                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                : data.status === "pausada"
-                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-            }`}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${tarja.cls}`}
           >
-            {data.status === "aberta" && (
+            {tarja.pulse && (
               <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
               </span>
             )}
-            {data.status === "aberta"
-              ? "AO VIVO"
-              : data.status === "pausada"
-                ? "PAUSADA"
-                : "ENCERRADA"}
+            {tarja.label}
           </span>
         </div>
       </div>
@@ -119,7 +120,7 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
           informação ao rolar. Só renderiza com a URL pronta (nunca um quadrado
           vazio). Observação (dita ao Carlos): vale DENTRO do telão; um site não
           consegue flutuar por cima de OUTROS programas (ex.: PowerPoint). */}
-      {parcial && entradaUrl && (
+      {isEmAndamento(data.status) && entradaUrl && (
         <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-border/60 bg-white p-2 shadow-xl sm:bottom-6 sm:right-6">
           <QrEntrada url={entradaUrl} size={120} />
         </div>
