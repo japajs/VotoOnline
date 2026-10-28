@@ -64,20 +64,32 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
             </p>
             <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{data.titulo}</h1>
           </div>
+          {/* Tarja de estado: 3 estados reais, não 2. Antes "AO VIVO" (verde)
+              aparecia também na PAUSA (parcial = !encerrada), enganando — na
+              pausa NÃO se vota (isVotacaoAberta = só "aberta"), mas a entrada
+              ainda funciona (por isso o QR continua). Agora: aberta = AO VIVO
+              (verde, pulsando), pausada = PAUSADA (âmbar), encerrada =
+              ENCERRADA (vermelho). */}
           <span
             className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${
-              parcial
+              data.status === "aberta"
                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                : data.status === "pausada"
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
             }`}
           >
-            {parcial && (
+            {data.status === "aberta" && (
               <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
               </span>
             )}
-            {parcial ? "AO VIVO" : "ENCERRADA"}
+            {data.status === "aberta"
+              ? "AO VIVO"
+              : data.status === "pausada"
+                ? "PAUSADA"
+                : "ENCERRADA"}
           </span>
         </div>
       </div>
