@@ -82,7 +82,7 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-6 pt-8 pb-44 sm:pb-8">
+      <div className="mx-auto max-w-5xl px-6 py-8">
         <ResultadoAssembleia
           condominio_nome={data.condominioNome}
           data_abertura={data.dataAbertura}
@@ -102,20 +102,14 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
           mesmo rolando o telão ou trocando de pauta (pedido do Carlos — "igual
           anúncio que fica fixo enquanto a página rola"). `position: fixed` faz
           ele flutuar por cima do conteúdo que rola embaixo. Some ao encerrar.
-          Observação (dita ao Carlos): isto vale DENTRO do telão; um site não
+          Ajuste do Carlos: SÓ a figura do QR (sem texto) e menor — assim cabe
+          inteiro na faixa à direita, onde não há conteúdo, e nunca cobre
+          informação ao rolar. Só renderiza com a URL pronta (nunca um quadrado
+          vazio). Observação (dita ao Carlos): vale DENTRO do telão; um site não
           consegue flutuar por cima de OUTROS programas (ex.: PowerPoint). */}
-      {parcial && (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-xl backdrop-blur-sm sm:bottom-6 sm:right-6">
-          <div className="shrink-0 rounded-lg border border-border/60 bg-white p-2">
-            <QrEntrada url={entradaUrl} size={148} />
-          </div>
-          <div className="max-w-[150px]">
-            <p className="text-base font-bold leading-tight sm:text-lg">Escaneie para votar</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Entre com a sua <span className="font-semibold text-foreground">unidade</span> e o{" "}
-              <span className="font-semibold text-foreground">CPF</span>.
-            </p>
-          </div>
+      {parcial && entradaUrl && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-border/60 bg-white p-2 shadow-xl sm:bottom-6 sm:right-6">
+          <QrEntrada url={entradaUrl} size={120} />
         </div>
       )}
     </div>
