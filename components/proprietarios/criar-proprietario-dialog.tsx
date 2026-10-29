@@ -28,6 +28,11 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
   const [telefone, setTelefone] = useState("")
   const [conjuge, setConjuge] = useState("")
   const [unidades, setUnidades] = useState<string[]>([""])
+  // Aviso de homônimo: nome do proprietário já existente no condomínio quando o
+  // servidor sinaliza possível duplicata (ver createProprietarioAction). Null =
+  // sem aviso. Quando setado, a tela pede confirmação ("Cadastrar assim mesmo")
+  // em vez de criar direto.
+  const [avisoDuplicado, setAvisoDuplicado] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function reset() {
@@ -37,6 +42,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
     setTelefone("")
     setConjuge("")
     setUnidades([""])
+    setAvisoDuplicado(null)
   }
 
   function handleOpenChange(next: boolean) {
@@ -56,7 +62,11 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
     setUnidades((prev) => prev.filter((_, i) => i !== index))
   }
 
-  function handleSubmit() {
+  // permitirHomonimo só vira true quando o operador confirma na tela que é mesmo
+  // outra pessoa com o nome igual (botão "Cadastrar assim mesmo"). No clique
+  // normal ("Criar") vai false, então o servidor barra a duplicata e devolve o
+  // aviso.
+  function handleSubmit(permitirHomonimo = false) {
     startTransition(async () => {
       const result = await createProprietarioAction({
         condominio_id: condominioId,
@@ -66,10 +76,15 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
         telefone,
         conjuge,
         unidades: unidades.filter((u) => u.trim()),
+        permitirHomonimo,
       })
       if (result.success) {
         toast.success("Proprietário criado com sucesso.")
         handleOpenChange(false)
+      } else if (result.duplicado && result.nomeExistente) {
+        // Possível duplicata por nome: não cria de cara — mostra o aviso e
+        // deixa o operador decidir (cancelar ou confirmar que é outra pessoa).
+        setAvisoDuplicado(result.nomeExistente)
       } else {
         toast.error(result.error)
       }
@@ -100,7 +115,12 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
               placeholder="Nome completo"
               value={nome}
               // Nome não tem números — remove dígitos conforme digita (Carlos).
-              onChange={(e) => setNome(e.target.value.replace(/[0-9]/g, ""))}
+              // Mexer no nome descarta o aviso de homônimo (nome mudou → precisa
+              // checar de novo; se ficou diferente, o botão volta a ser "Criar").
+              onChange={(e) => {
+                setNome(e.target.value.replace(/[0-9]/g, ""))
+                if (avisoDuplicado) setAvisoDuplicado(null)
+              }}
               autoFocus
             />
           </div>
@@ -204,14 +224,40 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
           </div>
         </div>
 
+        {/* Aviso de homônimo: já existe alguém com este nome no condomínio.
+            Não bloqueia de vez (pode ser outra pessoa com o mesmo nome) — deixa
+            cancelar (se for duplicata) ou confirmar (se for outra pessoa). */}
+        {avisoDuplicado && (
+          <div className="rounded-lg border border-amber-400/60 bg-amber-500/10 px-3 py-2.5">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              Já existe “{avisoDuplicado}” neste condomínio.
+            </p>
+            <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+              Se for a mesma pessoa, cancele para não duplicar. Se for outra pessoa com o mesmo nome,
+              confirme abaixo.
+            </p>
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending || !canSubmit} className="gap-2">
-            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Criar
-          </Button>
+          {avisoDuplicado ? (
+            <Button
+              onClick={() => handleSubmit(true)}
+              disabled={isPending || !canSubmit}
+              className="gap-2 bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Cadastrar assim mesmo
+            </Button>
+          ) : (
+            <Button onClick={() => handleSubmit(false)} disabled={isPending || !canSubmit} className="gap-2">
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Criar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

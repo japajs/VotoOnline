@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server"
+import { normalizarBusca } from "@/lib/format"
 import type { Json } from "@/lib/supabase/types"
 import type { HistoricoAlteracao, Proprietario, Unidade } from "@/types"
 
@@ -121,6 +122,34 @@ export async function cpfJaCadastrado(
   const { data, error } = await query.limit(1)
   if (error) throw new Error(error.message)
   return (data ?? []).length > 0
+}
+
+// Nome já cadastrado em OUTRO proprietário do mesmo condomínio? (pedido do
+// Carlos: o cadastro deixou criar 2 proprietários IGUAIS — ex.: a "DANI"
+// duplicada.) O CPF/e-mail são opcionais e nem sempre pegam a duplicata — quem
+// é só nome passa batido. Compara pelo nome NORMALIZADO (sem acento/espaço,
+// minúsculo — normalizarBusca), então "Dani Silva" colide com "DANI  SILVA".
+// Retorna o nome existente (pra avisar "já existe 'DANI SILVA'"), ou null se
+// não há colisão. É AVISO, não bloqueio: homônimos legítimos existem (duas
+// pessoas diferentes com o mesmo nome) — a tela deixa confirmar. Carrega só
+// id+nome do condomínio (lista de duas pessoas administra poucos cadastros).
+export async function nomeJaCadastrado(
+  condominioId: string,
+  nome: string,
+  exceptId?: string
+): Promise<string | null> {
+  const alvo = normalizarBusca(nome)
+  if (!alvo) return null
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("proprietarios")
+    .select("id, nome")
+    .eq("condominio_id", condominioId)
+  if (error) throw new Error(error.message)
+  const existente = ((data ?? []) as { id: string; nome: string }[]).find(
+    (p) => p.id !== exceptId && normalizarBusca(p.nome) === alvo
+  )
+  return existente?.nome ?? null
 }
 
 export async function createProprietario(

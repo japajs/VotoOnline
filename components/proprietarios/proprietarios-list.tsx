@@ -32,7 +32,8 @@ import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, formatCpf, normalizarBusca } from "@/lib/format"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
-import type { Proprietario, CriterioPeso } from "@/types"
+import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
+import type { Proprietario, CriterioPeso, Pauta } from "@/types"
 
 interface ProprietariosListProps {
   proprietarios: Proprietario[]
@@ -60,6 +61,9 @@ interface ProprietariosListProps {
   // abrir a Apuração). undefined = sem assembleia aberta → sem caixa.
   assembleiaAbertaId?: string
   assembleiaAbertaTitulo?: string
+  // Pautas da assembleia aberta — pro "Registrar voto manual" direto na lista
+  // (pedido do Carlos: não trocar de tela). O dialog filtra as abertas sozinho.
+  pautasDaAberta?: Pauta[]
   isAdmin?: boolean
   // Visualizador = só leitura: esconde editar/excluir/adicionar/remover unidade.
   podeEditar?: boolean
@@ -109,6 +113,7 @@ export function ProprietariosList({
   participantesNaAberta,
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
+  pautasDaAberta,
   isAdmin = false,
   podeEditar = true,
   criterioPeso = "unidade",
@@ -535,12 +540,28 @@ export function ProprietariosList({
           órfão; empilhado, os chips quebram alinhados à esquerda. */}
       {temAssembleiaAberta && (
         <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
-          <p className="text-xs text-muted-foreground">
-            Votação de{" "}
-            <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — peso por{" "}
-            <span className="font-medium text-foreground">imóvel</span>. Dos presentes na assembleia:
-            quem votou todas as pautas (geral), quem votou parcialmente, e quem ainda não votou.
-          </p>
+          {/* Cabeçalho do painel de votação: explicação à esquerda e, à direita,
+              o "Registrar voto manual" DIRETO na lista (pedido do Carlos: lançar
+              o voto sem trocar de tela — a mesa fica nesta tela o tempo todo). Só
+              pra quem pode operar (podeEditar) e com as pautas em mãos. */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              Votação de{" "}
+              <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — peso por{" "}
+              <span className="font-medium text-foreground">imóvel</span>. Dos presentes na assembleia:
+              quem votou todas as pautas (geral), quem votou parcialmente, e quem ainda não votou.
+            </p>
+            {podeEditar && assembleiaAbertaId && assembleiaAbertaTitulo && pautasDaAberta && (
+              <div className="shrink-0">
+                <RegistrarVotoManualDialog
+                  assembleiaId={assembleiaAbertaId}
+                  assembleiaTitulo={assembleiaAbertaTitulo}
+                  condominioId={condominioId}
+                  pautas={pautasDaAberta}
+                />
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap gap-1">
             {(() => {
               // Funil do Carlos: Total → Presentes (+ Ausentes) → dos presentes,
