@@ -270,6 +270,10 @@ type SendComProprietarioCompleto = {
 export interface ContextoVoto {
   ip?: string | null
   userAgent?: string | null
+  // Data/hora do voto, pro lançamento manual RETROATIVO (ex.: votou no chat da
+  // reunião ontem, a mesa lança hoje). ISO, validada na action. Só se aplica no
+  // 1º voto — nunca reescreve um `votado_em` já existente. Ausente = agora.
+  votadoEm?: string | null
 }
 
 // Auditoria de segurança: garante que o voto só é aceito enquanto a
@@ -443,6 +447,18 @@ export async function createAssembleiaRespostas(
   }
 
   const unidades = [...unidadesProprias, ...unidadesDelegadas]
+
+  // Sem imóvel vinculado (nem próprio, nem recebido por procuração) = peso 0 =
+  // não representa nada na assembleia. Barra aqui no NÚCLEO — vale pro link e
+  // pro lançamento manual. Pedido do Carlos: a mesa estava conseguindo lançar
+  // voto manual de quem não tinha imóvel (peso 0), virando um "participante
+  // fantasma" que poluía a contagem.
+  if (unidades.length === 0) {
+    throw new Error(
+      "Este proprietário não tem imóvel vinculado — não há peso de voto. Vincule um imóvel ao cadastro ou registre por procuração."
+    )
+  }
+
   const peso = getPesoParticipante({ unidades }, criterioPeso)
 
   const { error } = await db.from("assembleia_respostas").insert(
@@ -476,11 +492,14 @@ export async function createAssembleiaRespostas(
       quantidade_unidades_snapshot: unidades.length,
       unidades_snapshot: unidades,
       peso_snapshot: peso,
-      votado_em: send.votado_em ?? new Date().toISOString(),
+      // `votado_em` só na 1ª vez; aceita a data informada (lançamento manual
+      // retroativo — ver ContextoVoto.votadoEm), senão agora.
+      votado_em: send.votado_em ?? contexto.votadoEm ?? new Date().toISOString(),
       // Quem vota passa a constar como presente (se já não estava): mantém a
       // chamada/lista de presença consistente — cobre o voto manual do síndico
       // (viaMesa) e o voto por e-mail, não só o check-in pelo link de entrada.
-      presente_em: send.presente_em ?? new Date().toISOString(),
+      // Mesma data retroativa do voto quando informada.
+      presente_em: send.presente_em ?? contexto.votadoEm ?? new Date().toISOString(),
       ip_snapshot: contexto.ip ?? null,
       user_agent_snapshot: contexto.userAgent ?? null,
     })
@@ -1218,6 +1237,9 @@ export async function getProprietariosParaVotoManual(
   const votacaoPorPauta =
     (assembleiaRow as { votacao_por_pauta: boolean } | null)?.votacao_por_pauta ?? false
   const outorgouPara = new Map(procuracoes.map((p) => [p.outorgante_id, p.outorgado_nome]))
+  // Quem RECEBEU procuração vota com o peso delegado mesmo sem imóvel próprio —
+  // não pode ser filtrado por "sem imóvel" abaixo.
+  const recebeuProcuracao = new Set(procuracoes.map((p) => p.outorgado_id))
 
   // `terminou(id)` = NÃO aparece na lista do voto manual.
   let terminou: (id: string) => boolean
@@ -1245,6 +1267,10 @@ export async function getProprietariosParaVotoManual(
 
   return ((proprietarios ?? []) as unknown as ProprietarioComUnidadesRow[])
     .filter((p) => !terminou(p.id))
+    // Sem imóvel próprio E sem procuração recebida = sem peso → fora do voto
+    // manual (reforçado no núcleo em createAssembleiaRespostas). Pedido do
+    // Carlos: não lançar voto de quem não representa nenhum imóvel.
+    .filter((p) => (p.unidades?.length ?? 0) > 0 || recebeuProcuracao.has(p.id))
     .map((p) => ({
       id: p.id,
       nome: p.nome,

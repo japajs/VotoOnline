@@ -33,6 +33,14 @@ interface Props {
 
 type Etapa = "escolher" | "votar"
 
+// "Agora" no formato do input datetime-local ("YYYY-MM-DDTHH:mm"), no fuso do
+// navegador (operador no Brasil). Usado como padrão e como teto (max) do campo.
+function agoraDatetimeLocal(): string {
+  const d = new Date()
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
 // Auditoria de assembleias — Fase 7: quem não tem e-mail cadastrado nunca
 // recebia link de voto (achado da auditoria) — ficava permanentemente
 // excluído da votação eletrônica. Este dialog dá ao síndico um jeito de
@@ -53,6 +61,10 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
   // Pautas que o formulário vai oferecer pra esta pessoa (no modo pauta-por-pauta,
   // só as abertas que ela ainda não votou). Definido no "iniciar".
   const [pautaIdsParaVotar, setPautaIdsParaVotar] = useState<string[]>([])
+  // Data/hora do voto — ajustável pro lançamento retroativo (votou no chat da
+  // reunião ontem, a mesa lança hoje). Padrão: agora. Definida ao entrar no
+  // passo de votar.
+  const [dataVoto, setDataVoto] = useState("")
   const [isPendingIniciar, startIniciarTransition] = useTransition()
 
   function reset() {
@@ -63,6 +75,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     setProprietarioSelecionado(null)
     setSendId(null)
     setPautaIdsParaVotar([])
+    setDataVoto("")
   }
 
   function handleOpenChange(next: boolean) {
@@ -98,6 +111,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
         }
         setPautaIdsParaVotar(ids)
         setSendId(result.sendId)
+        setDataVoto(agoraDatetimeLocal())
         setEtapa("votar")
       } else {
         toast.error(result.error)
@@ -250,13 +264,40 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
           </div>
         ) : sendId ? (
           <div className="max-h-[65vh] overflow-y-auto px-1">
+            {/* Data/hora do voto — ajustável pro lançamento retroativo (pedido
+                do Carlos: votaram no chat da reunião ontem, a mesa lança hoje;
+                sem isto, gravava a data de hoje). Padrão: agora. */}
+            <div className="mb-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <label htmlFor="data-voto-manual" className="text-xs font-medium text-foreground">
+                Data e hora do voto
+              </label>
+              <Input
+                id="data-voto-manual"
+                type="datetime-local"
+                value={dataVoto}
+                max={agoraDatetimeLocal()}
+                onChange={(e) => setDataVoto(e.target.value)}
+                className="mt-1 h-9"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Ajuste se o voto foi dado antes (ex.: no chat da reunião). Padrão: agora.
+              </p>
+            </div>
             <AssembleiaVotoForm
               sendId={sendId}
               // Só as pautas liberadas pra esta pessoa (no pauta-por-pauta, as
               // abertas que ela ainda não votou) — na ordem original das pautas.
               pautas={pautas.filter((p) => pautaIdsParaVotar.includes(p.id))}
               assembleiaTitulo={assembleiaTitulo}
-              registrarAction={(id, votos) => registrarVotoManualAction(id, assembleiaId, condominioId, votos)}
+              registrarAction={(id, votos) =>
+                registrarVotoManualAction(
+                  id,
+                  assembleiaId,
+                  condominioId,
+                  votos,
+                  dataVoto ? new Date(dataVoto).toISOString() : null
+                )
+              }
               onDone={() => {
                 toast.success(`Voto de ${proprietarioSelecionado?.nome} registrado.`)
                 setTimeout(() => handleOpenChange(false), 1200)

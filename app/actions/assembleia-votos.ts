@@ -565,7 +565,10 @@ export async function registrarVotoManualAction(
   sendId: string,
   assembleiaId: string,
   condominioId: string,
-  respostas: RespostaInput[]
+  respostas: RespostaInput[],
+  // Data/hora do voto (ISO) p/ lançamento retroativo — ex.: votou no chat da
+  // reunião ontem, a mesa lança hoje. Ausente = agora.
+  votadoEm?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
@@ -580,6 +583,18 @@ export async function registrarVotoManualAction(
     return { success: false, error: "Dados de voto inválidos." }
   }
 
+  // Valida a data informada: precisa ser uma data real e não pode ser no futuro
+  // (1 min de folga pra relógio). Vazia = agora (comportamento de sempre).
+  let votadoEmISO: string | null = null
+  if (votadoEm) {
+    const t = Date.parse(votadoEm)
+    if (Number.isNaN(t)) return { success: false, error: "Data do voto inválida." }
+    if (t > Date.now() + 60_000) {
+      return { success: false, error: "A data do voto não pode ser no futuro." }
+    }
+    votadoEmISO = new Date(t).toISOString()
+  }
+
   try {
     await createAssembleiaRespostas(
       sendId,
@@ -587,6 +602,7 @@ export async function registrarVotoManualAction(
       {
         ip: null,
         userAgent: `Registrado manualmente por ${auth.session.nome} <${auth.session.email}>`,
+        votadoEm: votadoEmISO,
       },
       { viaMesa: true }
     )
