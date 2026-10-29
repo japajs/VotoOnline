@@ -8,6 +8,7 @@ import {
   registrarHistoricoAlteracao,
   updateProprietario,
   cpfJaCadastrado,
+  nomeJaCadastrado,
 } from "@/services/proprietarios"
 import {
   createUnidade,
@@ -47,7 +48,12 @@ export async function createProprietarioAction(input: {
   telefone?: string
   conjuge?: string
   unidades: string[] // numeros de apartamento
-}): Promise<{ success: boolean; error?: string }> {
+  // Confirmação explícita de homônimo: quando já existe alguém com o mesmo nome
+  // no condomínio, o cadastro para e pede confirmação (ver nomeJaCadastrado).
+  // Só segue com true — a tela liga isso depois do operador confirmar que é
+  // mesmo outra pessoa.
+  permitirHomonimo?: boolean
+}): Promise<{ success: boolean; error?: string; duplicado?: boolean; nomeExistente?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(input.condominio_id)
@@ -82,6 +88,25 @@ export async function createProprietarioAction(input: {
     telefoneNormalizado = normalizarCelular(input.telefone)
     if (!telefoneNormalizado) {
       return { success: false, error: "Celular em formato inválido. Use apenas um número de celular." }
+    }
+  }
+
+  // Trava de duplicidade por NOME (pedido do Carlos: o cadastro deixou criar 2
+  // proprietários iguais). Diferente do CPF (bloqueio seco — CPF é único por
+  // pessoa), o nome é um AVISO: pode haver dois homônimos de verdade. Fica por
+  // ÚLTIMO (depois de todos os erros de formato), pra o operador só confirmar o
+  // homônimo quando o resto do cadastro já está válido — não confirmar e logo
+  // depois esbarrar num celular inválido. O cadastro para e devolve `duplicado`
+  // pra tela confirmar; com permitirHomonimo=true, segue (pula a consulta).
+  if (!input.permitirHomonimo) {
+    const nomeExistente = await nomeJaCadastrado(input.condominio_id, input.nome.trim())
+    if (nomeExistente) {
+      return {
+        success: false,
+        duplicado: true,
+        nomeExistente,
+        error: `Já existe um proprietário chamado "${nomeExistente}" neste condomínio.`,
+      }
     }
   }
 

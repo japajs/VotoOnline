@@ -183,6 +183,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           totalPautasVotaveis={totalPautasVotaveis}
           assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
+          pautasDaAberta={assembleiaAberta?.pautas}
           isAdmin={session?.perfil === "administrador"}
           podeEditar={session?.perfil !== "visualizador"}
           criterioPeso={condominio.criterio_peso}
