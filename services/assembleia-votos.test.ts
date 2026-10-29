@@ -78,6 +78,7 @@ function sendRow(opts?: {
   presenteEm?: string | null
   inadimplente?: boolean
   votacaoPorPauta?: boolean
+  unidades?: { numero: string; bloco: string | null; fracao_ideal: number | null }[]
 }) {
   return {
     data: {
@@ -91,7 +92,7 @@ function sendRow(opts?: {
         email: "f@f.com",
         telefone: null,
         inadimplente: opts?.inadimplente ?? false,
-        unidades: [{ numero: "101", bloco: null, fracao_ideal: null }],
+        unidades: opts?.unidades ?? [{ numero: "101", bloco: null, fracao_ideal: null }],
       },
       assembleias: {
         status: opts?.status ?? "aberta",
@@ -222,6 +223,19 @@ describe("createAssembleiaRespostas — integridade do voto", () => {
     await expect(
       createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }], {}, { viaMesa: true })
     ).rejects.toThrow(/procuração/i)
+  })
+
+  it("recusa voto de quem não tem imóvel vinculado (peso 0, nem próprio nem por procuração)", async () => {
+    // Pedido do Carlos: a mesa estava conseguindo lançar voto manual de quem não
+    // tinha imóvel (peso 0) — "participante fantasma". Barrado no núcleo (vale
+    // link e manual). getOutorgantesIds já está mockado como [] (sem delegação).
+    h.state.responses = {
+      assembleia_sends: sendRow({ unidades: [] }),
+      pautas: { data: [{ id: "p1", votacao_aberta: true }], error: null },
+    }
+    await expect(
+      createAssembleiaRespostas("s1", [{ pauta_id: "p1", resposta: "Sim" }], {}, { viaMesa: true })
+    ).rejects.toThrow(/imóvel/i)
   })
 })
 
