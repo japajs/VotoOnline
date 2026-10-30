@@ -492,9 +492,14 @@ export async function createAssembleiaRespostas(
       quantidade_unidades_snapshot: unidades.length,
       unidades_snapshot: unidades,
       peso_snapshot: peso,
-      // `votado_em` só na 1ª vez; aceita a data informada (lançamento manual
-      // retroativo — ver ContextoVoto.votadoEm), senão agora.
-      votado_em: send.votado_em ?? contexto.votadoEm ?? new Date().toISOString(),
+      // `votado_em`: a data informada pela mesa (contexto.votadoEm) tem
+      // PRIORIDADE — é uma correção autoritativa (o síndico está declarando
+      // quando o voto aconteceu, ex.: votou no chat da reunião ontem). Sobrepõe
+      // até um votado_em já existente, senão a correção da data não teria
+      // efeito pra quem já tinha voto. No voto PÚBLICO não há contexto.votadoEm
+      // (o dialog só o envia quando o operador muda a data), então cai no
+      // comportamento de sempre: mantém o 1º votado_em, senão agora.
+      votado_em: contexto.votadoEm ?? send.votado_em ?? new Date().toISOString(),
       // Quem vota passa a constar como presente (se já não estava): mantém a
       // chamada/lista de presença consistente — cobre o voto manual do síndico
       // (viaMesa) e o voto por e-mail, não só o check-in pelo link de entrada.

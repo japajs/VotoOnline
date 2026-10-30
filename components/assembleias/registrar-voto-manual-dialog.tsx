@@ -65,6 +65,11 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
   // reunião ontem, a mesa lança hoje). Padrão: agora. Definida ao entrar no
   // passo de votar.
   const [dataVoto, setDataVoto] = useState("")
+  // Valor padrão capturado ao abrir o passo de votar. Só enviamos a data ao
+  // servidor quando o operador REALMENTE mudou (dataVoto !== dataVotoPadrao) —
+  // assim deixar no padrão "agora" não sobrepõe um votado_em anterior (a data
+  // informada tem prioridade no núcleo; ver createAssembleiaRespostas).
+  const [dataVotoPadrao, setDataVotoPadrao] = useState("")
   const [isPendingIniciar, startIniciarTransition] = useTransition()
 
   function reset() {
@@ -76,6 +81,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     setSendId(null)
     setPautaIdsParaVotar([])
     setDataVoto("")
+    setDataVotoPadrao("")
   }
 
   function handleOpenChange(next: boolean) {
@@ -111,7 +117,9 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
         }
         setPautaIdsParaVotar(ids)
         setSendId(result.sendId)
-        setDataVoto(agoraDatetimeLocal())
+        const agora = agoraDatetimeLocal()
+        setDataVoto(agora)
+        setDataVotoPadrao(agora)
         setEtapa("votar")
       } else {
         toast.error(result.error)
@@ -295,7 +303,11 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
                   assembleiaId,
                   condominioId,
                   votos,
-                  dataVoto ? new Date(dataVoto).toISOString() : null
+                  // Só envia a data quando o operador mudou do padrão "agora" —
+                  // assim um lançamento comum não sobrepõe um votado_em anterior.
+                  dataVoto && dataVoto !== dataVotoPadrao
+                    ? new Date(dataVoto).toISOString()
+                    : null
                 )
               }
               onDone={() => {
