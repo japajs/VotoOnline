@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { MapPin, User, Phone, Pencil, Loader2, Save, X, Scale, Building2 } from "lucide-react"
+import { MapPin, User, Phone, Pencil, Loader2, Save, X, Scale, Building2, FileSignature } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +33,9 @@ export function CondominioInfoCard({ condominio }: Props) {
   const [sindicoNome, setSindicoNome] = useState(condominio.sindico_nome ?? "")
   const [sindicoContato, setSindicoContato] = useState(condominio.sindico_contato ?? "")
   const [criterioPeso, setCriterioPeso] = useState<CriterioPeso>(condominio.criterio_peso)
+  const [limiteProcuracoes, setLimiteProcuracoes] = useState(
+    condominio.limite_procuracoes != null ? String(condominio.limite_procuracoes) : ""
+  )
   const [isPending, startTransition] = useTransition()
 
   const hasInfo =
@@ -45,6 +48,7 @@ export function CondominioInfoCard({ condominio }: Props) {
     setSindicoNome(condominio.sindico_nome ?? "")
     setSindicoContato(condominio.sindico_contato ?? "")
     setCriterioPeso(condominio.criterio_peso)
+    setLimiteProcuracoes(condominio.limite_procuracoes != null ? String(condominio.limite_procuracoes) : "")
     setEditing(false)
   }
 
@@ -56,6 +60,7 @@ export function CondominioInfoCard({ condominio }: Props) {
         sindico_nome: sindicoNome,
         sindico_contato: sindicoContato,
         criterio_peso: criterioPeso,
+        limite_procuracoes: limiteProcuracoes,
       })
       if (result.success) {
         toast.success("Informações atualizadas.")
@@ -138,6 +143,23 @@ export function CondominioInfoCard({ condominio }: Props) {
               Fração ideal exige preencher o campo em toda unidade antes de trocar.
             </p>
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ci-limite-proc" className="text-xs">
+              Limite de procurações por representante
+            </Label>
+            <Input
+              id="ci-limite-proc"
+              value={limiteProcuracoes}
+              // Só dígitos; vazio = sem limite.
+              onChange={(e) => setLimiteProcuracoes(e.target.value.replace(/\D/g, ""))}
+              placeholder="Sem limite"
+              inputMode="numeric"
+            />
+            <p className="text-xs text-muted-foreground">
+              Máximo de procurações que uma mesma pessoa pode receber por assembleia (varia por
+              convenção — ex.: 1, 3, 6). Em branco = sem limite. Avisa na hora de registrar.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 pt-1">
@@ -208,6 +230,16 @@ export function CondominioInfoCard({ condominio }: Props) {
           <Scale className="h-3.5 w-3.5 shrink-0 text-primary/60" />
           <span>{CRITERIO_LABEL[condominio.criterio_peso]}</span>
         </div>
+        {condominio.limite_procuracoes != null && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileSignature className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+            <span>
+              Limite de procurações:{" "}
+              <span className="font-medium text-foreground">{condominio.limite_procuracoes}</span> por
+              representante
+            </span>
+          </div>
+        )}
       </div>
       <Button
         variant="ghost"

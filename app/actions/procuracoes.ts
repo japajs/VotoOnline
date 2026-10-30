@@ -5,9 +5,11 @@ import {
   createProcuracao,
   deleteProcuracao,
   getProcuracoesByAssembleia,
+  getOutorgantesIds,
 } from "@/services/procuracoes"
 import { getProprietariosSemVoto } from "@/services/assembleia-votos"
 import { getAssembleiaById } from "@/services/assembleias"
+import { getCondominioById } from "@/services/condominios"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
@@ -62,8 +64,20 @@ export async function createProcuracaoAction(
   assembleiaId: string,
   condominioId: string,
   outorganteId: string,
-  outorgadoId: string
-): Promise<{ success: boolean; error?: string }> {
+  outorgadoId: string,
+  // Confirmação explícita pra superar o limite de procurações da convenção
+  // (pedido do Carlos: é aviso, não bloqueio seco). A tela liga isso depois do
+  // operador confirmar.
+  permitirExcederLimite = false
+): Promise<{
+  success: boolean
+  error?: string
+  // Sinaliza pra tela que o representante bateria o limite da convenção — ela
+  // mostra o aviso e deixa confirmar. `atual` = quantas já tem; `limite` = o máx.
+  limiteExcedido?: boolean
+  atual?: number
+  limite?: number
+}> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
@@ -74,6 +88,20 @@ export async function createProcuracaoAction(
     if (!assembleia) return { success: false, error: "Assembleia não encontrada." }
     if (!isVotacaoAberta(assembleia.status)) {
       return { success: false, error: "Só é possível registrar procuração enquanto a assembleia estiver aberta." }
+    }
+
+    // Limite de procurações por representante (convenção do condomínio). AVISO,
+    // não bloqueio: se o outorgado já bateria o limite, devolve `limiteExcedido`
+    // pra tela confirmar; com permitirExcederLimite=true, segue (pula a consulta).
+    if (!permitirExcederLimite) {
+      const condominio = await getCondominioById(condominioId)
+      const limite = condominio?.limite_procuracoes ?? null
+      if (limite != null) {
+        const atuais = await getOutorgantesIds(assembleiaId, outorgadoId)
+        if (atuais.length + 1 > limite) {
+          return { success: false, limiteExcedido: true, atual: atuais.length, limite }
+        }
+      }
     }
 
     await createProcuracao(assembleiaId, outorganteId, outorgadoId)

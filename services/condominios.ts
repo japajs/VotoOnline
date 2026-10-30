@@ -9,6 +9,7 @@ type DbRow = {
   sindico_nome: string | null
   sindico_contato: string | null
   criterio_peso: Condominio["criterio_peso"]
+  limite_procuracoes: number | null
   created_at: string
 }
 
@@ -21,6 +22,7 @@ function rowToCondominio(row: DbRow): Condominio {
     sindico_nome: row.sindico_nome,
     sindico_contato: row.sindico_contato,
     criterio_peso: row.criterio_peso,
+    limite_procuracoes: row.limite_procuracoes ?? null,
     created_at: row.created_at,
   }
 }
@@ -91,6 +93,7 @@ export async function updateCondominioInfo(
     sindico_nome?: string | null
     sindico_contato?: string | null
     criterio_peso?: Condominio["criterio_peso"]
+    limite_procuracoes?: number | null
   }
 ): Promise<Condominio> {
   const db = createServerClient()
