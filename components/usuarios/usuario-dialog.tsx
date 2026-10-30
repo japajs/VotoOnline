@@ -97,11 +97,19 @@ export function UsuarioDialog({ condominios, usuario, condominiosAutorizadosInic
     })
   }
 
-  const canSubmit =
-    nome.trim() &&
-    email.trim() &&
-    (editando || senha.length >= 8) &&
-    (tipoAcesso === "master" || condominioIds.size > 0)
+  // Motivo do bloqueio do Salvar, em texto — pra não travar o botão em silêncio
+  // (ex.: acesso PESSOAL sem condomínio marcado, ou senha curta). canSubmit é
+  // derivado daqui.
+  const motivoBloqueio: string | null = !nome.trim()
+    ? "Informe o nome."
+    : !email.trim()
+      ? "Informe o e-mail."
+      : !editando && senha.length < 8
+        ? "A senha precisa ter pelo menos 8 caracteres."
+        : tipoAcesso !== "master" && condominioIds.size === 0
+          ? "Selecione pelo menos um condomínio para o acesso pessoal."
+          : null
+  const canSubmit = motivoBloqueio === null
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -231,6 +239,10 @@ export function UsuarioDialog({ condominios, usuario, condominiosAutorizadosInic
             )}
           </div>
         </div>
+
+        {motivoBloqueio && (
+          <p className="px-1 text-xs text-destructive">{motivoBloqueio}</p>
+        )}
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>
