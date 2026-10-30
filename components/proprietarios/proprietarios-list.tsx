@@ -64,6 +64,9 @@ interface ProprietariosListProps {
   // Pautas da assembleia aberta — pro "Registrar voto manual" direto na lista
   // (pedido do Carlos: não trocar de tela). O dialog filtra as abertas sozinho.
   pautasDaAberta?: Pauta[]
+  // A assembleia aberta exige presença pela mesa? Gate do voto manual por linha:
+  // nesse modo só aparece pra quem está presente (igual à lista de busca).
+  exigePresencaAberta?: boolean
   isAdmin?: boolean
   // Visualizador = só leitura: esconde editar/excluir/adicionar/remover unidade.
   podeEditar?: boolean
@@ -114,6 +117,7 @@ export function ProprietariosList({
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
   pautasDaAberta,
+  exigePresencaAberta = false,
   isAdmin = false,
   podeEditar = true,
   criterioPeso = "unidade",
@@ -678,6 +682,10 @@ export function ProprietariosList({
                 participante={participantesLocal.get(p.id) ?? ""}
                 conjuge={p.conjuge}
                 onSetParticipante={handleSetParticipante}
+                assembleiaAbertaId={assembleiaAbertaId}
+                assembleiaAbertaTitulo={assembleiaAbertaTitulo}
+                pautasDaAberta={pautasDaAberta}
+                exigePresencaAberta={exigePresencaAberta}
               />
             ))}
           </div>
@@ -712,6 +720,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
   participante,
   conjuge,
   onSetParticipante,
+  assembleiaAbertaId,
+  assembleiaAbertaTitulo,
+  pautasDaAberta,
+  exigePresencaAberta,
 }: {
   proprietario: Proprietario
   condominioId: string
@@ -744,6 +756,12 @@ const ProprietarioRow = memo(function ProprietarioRow({
   // toque pra anotar "quem participou" sem digitar. null = não cadastrado.
   conjuge: string | null
   onSetParticipante: (proprietarioId: string, nome: string) => void
+  // Dados da assembleia aberta pro voto manual DIRETO na coluna Ações (pedido
+  // do Carlos). undefined = sem assembleia aberta → sem o botão.
+  assembleiaAbertaId?: string
+  assembleiaAbertaTitulo?: string
+  pautasDaAberta?: Pauta[]
+  exigePresencaAberta?: boolean
 }) {
   const [novaUnidade, setNovaUnidade] = useState("")
   const [showAdd, setShowAdd] = useState(false)
@@ -783,8 +801,33 @@ const ProprietarioRow = memo(function ProprietarioRow({
     })
   }
 
+  // Voto manual DIRETO na linha (pedido do Carlos: "já estando com o ponteiro na
+  // pessoa, só clicar na Ação"). Só aparece pra quem PODE receber voto agora:
+  // assembleia aberta com dados em mãos, não inadimplente, não outorgante (quem
+  // vota é o procurador) e que ainda não votou tudo (votou geral = nada a
+  // lançar). Com presença exigida pela mesa, só pra quem está presente — igual à
+  // lista de busca (o núcleo também recusa, isto é só pra não oferecer em vão).
+  const podeVotoManual =
+    !!assembleiaAbertaId &&
+    !!assembleiaAbertaTitulo &&
+    !!pautasDaAberta &&
+    mostrarPresenca &&
+    !proprietario.inadimplente &&
+    !outorgante &&
+    !(votou && !parcial) &&
+    (!exigePresencaAberta || presente)
+
   const acoes = (
     <>
+      {podeVotoManual && (
+        <RegistrarVotoManualDialog
+          assembleiaId={assembleiaAbertaId!}
+          assembleiaTitulo={assembleiaAbertaTitulo!}
+          condominioId={condominioId}
+          pautas={pautasDaAberta!}
+          proprietarioDireto={{ id: proprietario.id, nome: proprietario.nome }}
+        />
+      )}
       <EditarProprietarioDialog
         proprietario={proprietario}
         condominioId={condominioId}

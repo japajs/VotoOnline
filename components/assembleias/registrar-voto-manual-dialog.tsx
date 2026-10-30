@@ -29,6 +29,10 @@ interface Props {
   assembleiaTitulo: string
   condominioId: string
   pautas: Pauta[]
+  // Modo DIRETO (pedido do Carlos): acionado pelo botão da linha, na coluna
+  // Ações — já sabe quem é, então pula a busca e vai direto pro voto dessa
+  // pessoa. O gatilho vira um ícone compacto. Ausente = modo lista (busca).
+  proprietarioDireto?: { id: string; nome: string }
 }
 
 type Etapa = "escolher" | "votar"
@@ -47,7 +51,13 @@ function agoraDatetimeLocal(): string {
 // lançar o voto de quem votou presencialmente ou não tem e-mail, com o
 // mesmo formulário e as mesmas travas de integridade do voto público (ver
 // AssembleiaVotoForm + createAssembleiaRespostas) — só muda quem aciona.
-export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, condominioId, pautas }: Props) {
+export function RegistrarVotoManualDialog({
+  assembleiaId,
+  assembleiaTitulo,
+  condominioId,
+  pautas,
+  proprietarioDireto,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [etapa, setEtapa] = useState<Etapa>("escolher")
   const [carregando, setCarregando] = useState(false)
@@ -57,6 +67,9 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
   const [exigePresenca, setExigePresenca] = useState(false)
   const [busca, setBusca] = useState("")
   const [proprietarioSelecionado, setProprietarioSelecionado] = useState<ProprietarioSemVoto | null>(null)
+  // Nome de quem está votando (título/toast do passo votar). Vale pros dois
+  // modos: na busca vem do item escolhido, no direto vem do proprietarioDireto.
+  const [nomeVotante, setNomeVotante] = useState("")
   const [sendId, setSendId] = useState<string | null>(null)
   // Pautas que o formulário vai oferecer pra esta pessoa (no modo pauta-por-pauta,
   // só as abertas que ela ainda não votou). Definido no "iniciar".
@@ -78,6 +91,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     setExigePresenca(false)
     setBusca("")
     setProprietarioSelecionado(null)
+    setNomeVotante("")
     setSendId(null)
     setPautaIdsParaVotar([])
     setDataVoto("")
@@ -87,6 +101,12 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
   function handleOpenChange(next: boolean) {
     setOpen(next)
     if (next) {
+      // Modo direto (botão da linha): já sabe quem é — pula a busca e abre o
+      // voto dessa pessoa na hora.
+      if (proprietarioDireto) {
+        iniciarPara(proprietarioDireto.id, proprietarioDireto.nome)
+        return
+      }
       setCarregando(true)
       getProprietariosSemVotoAction(assembleiaId, condominioId).then((result) => {
         setCarregando(false)
@@ -102,10 +122,12 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     }
   }
 
-  function handleEscolher(p: ProprietarioSemVoto) {
-    setProprietarioSelecionado(p)
+  // Abre o passo de votar para um proprietário (id + nome). Compartilhado pelos
+  // dois modos: a busca chama com o item escolhido; o direto, com o da linha.
+  function iniciarPara(id: string, nome: string) {
+    setNomeVotante(nome)
     startIniciarTransition(async () => {
-      const result = await iniciarVotoManualAction(assembleiaId, condominioId, p.id)
+      const result = await iniciarVotoManualAction(assembleiaId, condominioId, id)
       if (result.success && result.sendId) {
         const ids = result.pautaIds ?? []
         // Pauta-por-pauta: se não há pauta aberta pendente pra esta pessoa, não
@@ -113,6 +135,8 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
         if (ids.length === 0) {
           toast.message("Nenhuma pauta aberta para registrar o voto desta pessoa agora.")
           setProprietarioSelecionado(null)
+          // No modo direto não há lista pra voltar — fecha o dialog.
+          if (proprietarioDireto) setOpen(false)
           return
         }
         setPautaIdsParaVotar(ids)
@@ -124,8 +148,14 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
       } else {
         toast.error(result.error)
         setProprietarioSelecionado(null)
+        if (proprietarioDireto) setOpen(false)
       }
     })
+  }
+
+  function handleEscolher(p: ProprietarioSemVoto) {
+    setProprietarioSelecionado(p)
+    iniciarPara(p.id, p.nome)
   }
 
   // Busca por nome OU imóvel (ex.: "A0105"), insensível a acento/hífen/espaço
@@ -135,19 +165,43 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
     return !q || normalizarBusca(p.nome).includes(q) || normalizarBusca(p.imoveis).includes(q)
   })
 
+  // No modo direto o passo "escolher" (busca) não existe: ou está carregando o
+  // "iniciar" dessa pessoa, ou já foi pro "votar".
+  const mostrarBusca = !proprietarioDireto && etapa === "escolher"
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
-        <UserPlus className="h-3.5 w-3.5" />
-        Registrar voto manual
-      </DialogTrigger>
+      {proprietarioDireto ? (
+        // Gatilho compacto (ícone) pra caber na coluna Ações da linha.
+        <DialogTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+            />
+          }
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          <span className="sr-only">Registrar voto manual de {proprietarioDireto.nome}</span>
+        </DialogTrigger>
+      ) : (
+        <DialogTrigger render={<Button variant="outline" size="sm" />}>
+          <UserPlus className="h-3.5 w-3.5" />
+          Registrar voto manual
+        </DialogTrigger>
+      )}
 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {etapa === "escolher" ? "Registrar voto manual" : `Votando por: ${proprietarioSelecionado?.nome}`}
+            {etapa === "votar"
+              ? `Votando por: ${nomeVotante}`
+              : proprietarioDireto
+                ? `Registrar voto de ${proprietarioDireto.nome}`
+                : "Registrar voto manual"}
           </DialogTitle>
-          {etapa === "escolher" && (
+          {mostrarBusca && (
             <DialogDescription>
               Pra quem votou presencialmente, por procuração em papel, ou não tem e-mail cadastrado.
               O voto fica registrado com seu nome como responsável pelo lançamento.
@@ -163,7 +217,7 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
           )}
         </DialogHeader>
 
-        {etapa === "escolher" ? (
+        {mostrarBusca ? (
           <div className="space-y-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -311,12 +365,18 @@ export function RegistrarVotoManualDialog({ assembleiaId, assembleiaTitulo, cond
                 )
               }
               onDone={() => {
-                toast.success(`Voto de ${proprietarioSelecionado?.nome} registrado.`)
+                toast.success(`Voto de ${nomeVotante} registrado.`)
                 setTimeout(() => handleOpenChange(false), 1200)
               }}
             />
           </div>
-        ) : null}
+        ) : (
+          // Modo direto enquanto o "iniciar" carrega (ou se foi fechado por
+          // bloqueio): spinner, nunca um dialog vazio.
+          <div className="flex items-center justify-center py-10 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

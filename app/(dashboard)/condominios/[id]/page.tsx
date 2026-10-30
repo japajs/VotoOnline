@@ -184,6 +184,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           pautasDaAberta={assembleiaAberta?.pautas}
+          exigePresencaAberta={assembleiaAberta?.exige_presenca}
           isAdmin={session?.perfil === "administrador"}
           podeEditar={session?.perfil !== "visualizador"}
           criterioPeso={condominio.criterio_peso}
