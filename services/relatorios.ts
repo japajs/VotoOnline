@@ -26,9 +26,12 @@ export interface HistoricoParticipante {
 
 // Item 6 do pedido de evolução do fluxo: controle interno de participação
 // por proprietário (não entra no PDF/XLSX oficiais, só na tela de detalhe
-// da assembleia) — quantas pautas cada um já respondeu e quando foi a
-// última resposta, via assembleia_respostas.created_at (já existe, não
-// precisou de coluna nova).
+// da assembleia) — quantas pautas cada um já respondeu e a data do voto.
+// A data vem de assembleia_sends.votado_em (NÃO do created_at da resposta):
+// é a MESMA fonte do detalhamento e da ata, e é a que respeita o ajuste de
+// data do voto manual (lançamento retroativo). Antes usava created_at, que é
+// o instante real da gravação no banco e nunca reflete a data ajustada —
+// causava a divergência entre esta tela e o detalhamento (bug do Carlos).
 export async function getHistoricoParticipacao(
   assembleiaId: string,
   totalPautas: number
@@ -37,39 +40,39 @@ export async function getHistoricoParticipacao(
 
   const { data: sends, error } = await db
     .from("assembleia_sends")
-    .select("id, nome_snapshot, proprietarios(nome)")
+    .select("id, nome_snapshot, votado_em, proprietarios(nome)")
     .eq("assembleia_id", assembleiaId)
   if (error) throw new Error(error.message)
 
   const sendIds = (sends ?? []).map((s) => s.id as string)
   if (sendIds.length === 0) return []
 
+  // Só o número de pautas respondidas por send (a data é o votado_em acima).
   const { data: respostas, error: respError } = await db
     .from("assembleia_respostas")
-    .select("send_id, created_at")
+    .select("send_id")
     .in("send_id", sendIds)
   if (respError) throw new Error(respError.message)
 
-  const porSend = new Map<string, { count: number; ultima: string }>()
-  for (const r of (respostas ?? []) as { send_id: string; created_at: string }[]) {
-    const atual = porSend.get(r.send_id) ?? { count: 0, ultima: r.created_at }
-    atual.count++
-    if (r.created_at > atual.ultima) atual.ultima = r.created_at
-    porSend.set(r.send_id, atual)
+  const countPorSend = new Map<string, number>()
+  for (const r of (respostas ?? []) as { send_id: string }[]) {
+    countPorSend.set(r.send_id, (countPorSend.get(r.send_id) ?? 0) + 1)
   }
 
-  type SendRow = { id: string; nome_snapshot: string | null; proprietarios: { nome: string } | null }
+  type SendRow = {
+    id: string
+    nome_snapshot: string | null
+    votado_em: string | null
+    proprietarios: { nome: string } | null
+  }
 
   return ((sends ?? []) as unknown as SendRow[])
-    .map((s) => {
-      const info = porSend.get(s.id)
-      return {
-        proprietarioNome: s.nome_snapshot ?? s.proprietarios?.nome ?? "—",
-        totalPautas,
-        pautasRespondidas: info?.count ?? 0,
-        ultimaResposta: info?.ultima ?? null,
-      }
-    })
+    .map((s) => ({
+      proprietarioNome: s.nome_snapshot ?? s.proprietarios?.nome ?? "—",
+      totalPautas,
+      pautasRespondidas: countPorSend.get(s.id) ?? 0,
+      ultimaResposta: s.votado_em ?? null,
+    }))
     .sort((a, b) => a.proprietarioNome.localeCompare(b.proprietarioNome, "pt-BR"))
 }
 
