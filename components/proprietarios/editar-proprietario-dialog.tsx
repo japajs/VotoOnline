@@ -237,6 +237,9 @@ export function EditarProprietarioDialog({
     (conjuge.trim() || null) !== (proprietario.conjuge ?? null) ||
     inadimplente !== proprietario.inadimplente
   const canSalvar = algumCampoMudou && nome.trim().length > 0
+  // Só avisamos o caso que confunde (nome apagado). "Nenhuma alteração" é um
+  // botão desabilitado auto-explicativo — não precisa de aviso vermelho.
+  const motivoSalvar: string | null = !nome.trim() ? "Informe o nome." : null
 
   function handleSalvarDados() {
     startSalvarTransition(async () => {
@@ -260,6 +263,10 @@ export function EditarProprietarioDialog({
 
   const cpfMudou = (novoCpfAdmin.trim() || "") !== (proprietario.cpf ?? "")
   const canSalvarCpf = confirmarAlterarCpf && cpfMudou
+  // Aviso só pro caso que confunde: mudou o CPF mas esqueceu de marcar a
+  // confirmação. CPF igual ao atual = botão desabilitado auto-explicativo.
+  const motivoCpf: string | null =
+    cpfMudou && !confirmarAlterarCpf ? "Marque a confirmação para alterar o CPF/CNPJ." : null
 
   function handleSalvarCpf() {
     startCpfTransition(async () => {
@@ -456,6 +463,7 @@ export function EditarProprietarioDialog({
                       />
                       Confirmo que desejo alterar o CPF/CNPJ deste proprietário.
                     </label>
+                    {motivoCpf && <p className="text-xs text-destructive">{motivoCpf}</p>}
                     <Button
                       size="sm"
                       variant="outline"
@@ -493,6 +501,7 @@ export function EditarProprietarioDialog({
                 </span>
               </label>
 
+              {motivoSalvar && <p className="text-xs text-destructive">{motivoSalvar}</p>}
               <Button
                 onClick={handleSalvarDados}
                 disabled={isPendingSalvar || !canSalvar}

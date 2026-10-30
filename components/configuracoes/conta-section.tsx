@@ -141,7 +141,16 @@ function SenhaForm() {
     })
   }
 
-  const canSave = senhaAtual && novaSenha.length >= 8 && confirmaSenha === novaSenha
+  // Motivo do bloqueio, em texto — sem isto o botão travava sem dizer por quê
+  // (ex.: a confirmação não bate com a nova senha). canSave derivado daqui.
+  const motivoBloqueio: string | null = !senhaAtual
+    ? "Informe a senha atual."
+    : novaSenha.length < 8
+      ? "A nova senha precisa ter pelo menos 8 caracteres."
+      : confirmaSenha !== novaSenha
+        ? "A confirmação não confere com a nova senha."
+        : null
+  const canSave = motivoBloqueio === null
 
   return (
     <div className="space-y-3">
@@ -177,6 +186,11 @@ function SenhaForm() {
             placeholder="••••••••"
           />
         </div>
+        {/* Só mostra o motivo depois que o usuário começou a preencher — não
+            acusa "informe a senha atual" num formulário ainda em branco. */}
+        {motivoBloqueio && (senhaAtual || novaSenha || confirmaSenha) && (
+          <p className="text-xs text-destructive">{motivoBloqueio}</p>
+        )}
         <Button
           size="default"
           variant="outline"

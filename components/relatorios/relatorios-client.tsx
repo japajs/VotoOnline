@@ -221,6 +221,13 @@ export function RelatoriosClient({ condominios, perfil }: Props) {
               Seu perfil (Visualizador) não tem permissão para exportar relatórios.
             </p>
           )}
+          {/* Por que exportar está desabilitado quando o perfil PODE exportar:
+              falta escolher a assembleia (não travar em silêncio). */}
+          {canExport && !assembleiaId && (
+            <p className="text-center text-xs text-muted-foreground">
+              Selecione um condomínio e uma assembleia acima para habilitar a exportação.
+            </p>
+          )}
         </div>
       </div>
 

@@ -93,7 +93,13 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
 
   // E-mail OU CPF: o condômino que vota pelo link presencial entra por unidade
   // + CPF; quem recebe convite por e-mail usa o e-mail. Pelo menos um é preciso.
-  const canSubmit = nome.trim() && (email.trim() || cpf.trim())
+  // motivoBloqueio diz por que o botão está travado (não travar em silêncio).
+  const motivoBloqueio: string | null = !nome.trim()
+    ? "Informe o nome."
+    : !(email.trim() || cpf.trim())
+      ? "Informe o e-mail ou o CPF (pelo menos um é obrigatório)."
+      : null
+  const canSubmit = motivoBloqueio === null
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -237,6 +243,10 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
               confirme abaixo.
             </p>
           </div>
+        )}
+
+        {motivoBloqueio && (
+          <p className="px-1 text-xs text-destructive">{motivoBloqueio}</p>
         )}
 
         <DialogFooter>

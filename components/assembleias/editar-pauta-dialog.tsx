@@ -63,10 +63,15 @@ export function EditarPautaDialog({ pauta, assembleiaId, condominioId }: Props) 
   const opcoesValidas = opcoes.map((o) => o.trim()).filter(Boolean).length
   const quorumNum = Number(quorumAprovacao.replace(",", "."))
   const quorumValido = !Number.isNaN(quorumNum) && quorumNum > 0 && quorumNum <= 100
-  const canSubmit =
-    titulo.trim().length > 0 &&
-    (tipo !== "multipla_escolha" || opcoesValidas >= MIN_OPCOES) &&
-    (tipo !== "sim_nao" || quorumValido)
+  // Motivo do bloqueio do Salvar, em texto (não travar o botão em silêncio).
+  const motivoBloqueio: string | null = !titulo.trim()
+    ? "Informe o título da pauta."
+    : tipo === "multipla_escolha" && opcoesValidas < MIN_OPCOES
+      ? `Múltipla escolha precisa de pelo menos ${MIN_OPCOES} opções preenchidas.`
+      : tipo === "sim_nao" && !quorumValido
+        ? "Informe um quórum de aprovação válido (entre 1 e 100)."
+        : null
+  const canSubmit = motivoBloqueio === null
 
   function handleSalvar() {
     startTransition(async () => {
@@ -243,6 +248,10 @@ export function EditarPautaDialog({ pauta, assembleiaId, condominioId }: Props) 
             </div>
           )}
         </div>
+
+        {motivoBloqueio && (
+          <p className="px-1 text-xs text-destructive">{motivoBloqueio}</p>
+        )}
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>
