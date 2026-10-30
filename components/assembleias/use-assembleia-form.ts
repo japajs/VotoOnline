@@ -185,18 +185,37 @@ export function useAssembleiaForm(initial?: Partial<AssembleiaFormValues>) {
     ((dataEncerramento.trim() === "" || new Date(data1aConvocacao) <= new Date(dataEncerramento)) &&
       (dataAbertura.trim() === "" || new Date(data1aConvocacao) >= new Date(dataAbertura)))
 
-  const canSubmit =
-    titulo.trim().length > 0 &&
-    quorumValido(quorumMinimo, false) &&
-    quorumValido(quorumMinimo2a, false) &&
-    convocacaoValida &&
-    pautas.length > 0 &&
-    pautas.every((p) => {
-      if (!p.titulo.trim()) return false
-      if (!quorumValido(p.quorumAprovacao, true)) return false
-      if (p.tipo !== "multipla_escolha") return true
-      return p.opcoes.map((o) => o.trim()).filter(Boolean).length >= MIN_OPCOES
-    })
+  // Motivo pelo qual o Salvar está bloqueado (primeiro problema encontrado),
+  // em texto pro usuário — antes o botão só ficava desabilitado sem dizer por
+  // quê (bug do Carlos: mudava a abertura e "não salvava", sem saber que a
+  // data-limite da 1ª convocação, lá embaixo, estava antes da abertura). A
+  // tela mostra isto ao lado do botão. `canSubmit` é derivado daqui.
+  const pautaInvalida = pautas.find((p) => {
+    if (!p.titulo.trim()) return true
+    if (!quorumValido(p.quorumAprovacao, true)) return true
+    if (p.tipo !== "multipla_escolha") return false
+    return p.opcoes.map((o) => o.trim()).filter(Boolean).length < MIN_OPCOES
+  })
+  const motivoBloqueio: string | null =
+    titulo.trim().length === 0
+      ? "Informe o título da assembleia."
+      : !quorumValido(quorumMinimo, false)
+        ? "Quórum mínimo inválido — use um número entre 1 e 100, ou deixe o campo vazio."
+        : !quorumValido(quorumMinimo2a, false)
+          ? "Quórum da 2ª convocação inválido — use um número entre 1 e 100, ou deixe vazio."
+          : !convocacaoValida
+            ? "A data-limite da 1ª convocação precisa ficar entre a abertura e o encerramento. Ajuste a 1ª convocação (ou limpe o campo)."
+            : pautas.length === 0
+              ? "Adicione pelo menos uma pauta."
+              : pautaInvalida
+                ? !pautaInvalida.titulo.trim()
+                  ? "Toda pauta precisa de um título."
+                  : !quorumValido(pautaInvalida.quorumAprovacao, true)
+                    ? "Toda pauta precisa de um quórum de aprovação válido (entre 1 e 100)."
+                    : "Pauta de múltipla escolha precisa de pelo menos 2 opções preenchidas."
+                : null
+
+  const canSubmit = motivoBloqueio === null
 
   return {
     titulo,
@@ -227,6 +246,7 @@ export function useAssembleiaForm(initial?: Partial<AssembleiaFormValues>) {
     updateOpcao,
     moveOpcao,
     canSubmit,
+    motivoBloqueio,
     reset,
     pctParaFracao,
   }

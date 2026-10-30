@@ -70,6 +70,12 @@ export function CriarAssembleiaDialog({ condominioId }: { condominioId: string }
 
         <AssembleiaFormFields form={form} pautasEditaveis idPrefix="criar-asm" />
 
+        {/* Por que o Criar está bloqueado — perto do botão (mesma ideia da
+            edição: nada de "não salva sem avisar por quê"). */}
+        {form.motivoBloqueio && (
+          <p className="px-1 text-xs text-destructive">{form.motivoBloqueio}</p>
+        )}
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>
             Cancelar

@@ -171,6 +171,12 @@ export function EditarAssembleiaDialog({ assembleia, condominioId, temVotos }: P
           idPrefix="editar-asm"
         />
 
+        {/* Por que o Salvar está bloqueado — perto do botão, pra não ficar o
+            "não salva e não sei por quê" (bug do Carlos). */}
+        {form.motivoBloqueio && (
+          <p className="px-1 text-xs text-destructive">{form.motivoBloqueio}</p>
+        )}
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>
             Cancelar
