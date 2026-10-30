@@ -128,6 +128,17 @@ export default function AjudaPage() {
             Proprietário marcado como <Chip>Inadimplente</Chip> fica bloqueado de votar.
           </li>
           <li>
+            Opcionalmente, grave o <strong className="text-foreground">Cônjuge / 2º participante</strong>{" "}
+            (o co-dono que costuma comparecer). Na assembleia ele vira um atalho de um toque para
+            anotar quem participou pelo imóvel. Também pode vir já preenchido pela planilha de
+            importação.
+          </li>
+          <li>
+            Se você cadastrar alguém com um <strong className="text-foreground">nome que já existe</strong>{" "}
+            no condomínio, o sistema avisa na hora — para você confirmar se é a mesma pessoa (e evitar
+            o cadastro duplicado) ou outra pessoa com o mesmo nome.
+          </li>
+          <li>
             Tem muita gente? Use o menu <Chip>Importação</Chip> para cadastrar tudo de uma vez por
             planilha.
           </li>
@@ -144,7 +155,24 @@ export default function AjudaPage() {
             <em>Sim / Não</em> ou de <em>múltipla escolha</em>, com a opção de permitir{" "}
             <em>Abstenção</em>.
           </li>
+          <li>
+            <strong className="text-foreground">Quórum mínimo (opcional):</strong> o percentual do
+            condomínio que precisa participar para a assembleia valer. Em branco, o sistema não checa
+            quórum.
+          </li>
+          <li>
+            <strong className="text-foreground">1ª / 2ª convocação (opcional):</strong> informe a{" "}
+            <strong className="text-foreground">data-limite da 1ª convocação</strong>; passada ela,
+            vale o <strong className="text-foreground">quórum da 2ª convocação</strong>. Essa
+            data-limite precisa ficar <strong className="text-foreground">entre a abertura e o
+            encerramento</strong>.
+          </li>
           <li>Enquanto não houver votos, você ainda pode editar a assembleia e as pautas.</li>
+          <li>
+            Se o botão <Chip>Salvar</Chip> ficar bloqueado, o sistema mostra o{" "}
+            <strong className="text-foreground">motivo logo abaixo</strong> (ex.: falta o título, ou a
+            data da 1ª convocação está fora da janela) — é só ajustar o que ele apontar.
+          </li>
         </ul>
       </Secao>
 
@@ -231,6 +259,12 @@ export default function AjudaPage() {
             <strong className="text-foreground">entra sozinho</strong> na votação — não precisa
             digitar de novo.
           </li>
+          <li>
+            <strong className="text-foreground">Quem participou pelo imóvel:</strong> quando quem
+            compareceu não é o titular do cadastro (ex.: o imóvel está no nome do marido e veio a
+            esposa, também dona — diferente de procuração), anote o nome na linha do proprietário (um
+            toque usa o cônjuge cadastrado, se houver). Isso sai no boletim e na ata.
+          </li>
           <li>Não é possível desmarcar a presença de quem já votou.</li>
         </ul>
       </Secao>
@@ -242,12 +276,28 @@ export default function AjudaPage() {
             registrar quem vota representando outra unidade.
           </li>
           <li>
-            <strong className="text-foreground">Registrar voto:</strong> para quem não tem e-mail ou
-            votou na mão, use <Chip>Registrar voto</Chip> dentro da assembleia para lançar o voto
-            manualmente. Com &quot;exigir presença&quot; ligado, a lista mostra{" "}
-            <strong className="text-foreground">só quem já está presente</strong>; e o{" "}
-            <strong className="text-foreground">imóvel</strong> aparece na frente do nome para você
-            achar a pessoa rápido (dá para buscar pelo nome ou pela unidade, ex.: &quot;A0101&quot;).
+            <strong className="text-foreground">Limite de procurações:</strong> no cadastro do
+            condomínio dá para definir o máximo de procurações que uma mesma pessoa pode receber
+            (varia conforme a convenção). Ao passar do limite, o sistema <strong className="text-foreground">avisa</strong>{" "}
+            — e você decide registrar assim mesmo ou escolher outro representante.
+          </li>
+          <li>
+            <strong className="text-foreground">Registrar voto manual:</strong> para quem não tem
+            e-mail ou votou na mão. Use <Chip>Registrar voto manual</Chip> no topo da lista (busca a
+            pessoa) ou, mais rápido, pelo <strong className="text-foreground">ícone na coluna Ações da
+            própria linha</strong> do proprietário — já com o ponteiro na pessoa, sem trocar de tela.
+            Com &quot;exigir presença&quot; ligado, só aparece quem já está presente; e o imóvel
+            aparece na frente do nome (dá para buscar pelo nome ou pela unidade, ex.: &quot;A0101&quot;).
+          </li>
+          <li>
+            <strong className="text-foreground">Data e hora do voto:</strong> no voto manual dá para
+            ajustar a data/hora — útil quando a pessoa votou antes (ex.: no chat da reunião) e você
+            lança depois. Sem mexer, vale a hora atual.
+          </li>
+          <li>
+            O sistema <strong className="text-foreground">não registra voto de quem não tem imóvel
+            vinculado</strong> (sem peso de voto) — nem pela mesa, nem pelo link. Vincule um imóvel ao
+            cadastro ou registre por procuração.
           </li>
         </ul>
       </Secao>
@@ -266,8 +316,9 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Modo compartilhar (LGPD):</strong> o botão{" "}
-            <Chip>Modo compartilhar</Chip> oculta e-mail, CPF e celular da lista e deixa só nome,
-            situação e imóvel — útil para projetar ou compartilhar a tela (ex.: os presentes online
+            <Chip>Modo compartilhar</Chip> oculta e-mail, CPF e celular da lista e deixa só nome
+            (com quem participou pelo imóvel, quando anotado), situação e imóvel — útil para projetar
+            ou compartilhar a tela (ex.: os presentes online
             conferirem se já constam como presentes) sem expor os dados dos condôminos. Clicar de
             novo volta ao normal.
           </li>
@@ -280,6 +331,19 @@ export default function AjudaPage() {
           projetar no salão. Mostra o resultado parcial em tempo real. Está liberado inclusive para o
           Visualizador — o advogado pode abrir e acompanhar sem depender do síndico.
         </p>
+        <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
+          <li>
+            <strong className="text-foreground">QR de entrada fixo:</strong> enquanto a votação está
+            aberta, o telão mantém o <strong className="text-foreground">QR de entrada fixo no
+            canto</strong>, sempre à vista mesmo rolando a tela — os presentes escaneiam e entram
+            para votar sem sair do lugar.
+          </li>
+          <li>
+            Quando a assembleia está <strong className="text-foreground">pausada</strong>, o telão
+            mostra <Chip>PAUSADA</Chip> (não &quot;AO VIVO&quot;), para não dar a entender que ainda
+            está recebendo voto.
+          </li>
+        </ul>
       </Secao>
 
       <Secao icon={LockKeyhole} titulo="10. Encerrar e apurar">
@@ -287,6 +351,19 @@ export default function AjudaPage() {
           <li>
             <Chip>Encerrar</Chip> fecha a votação. A tela passa a mostrar o resultado ponderado (em
             imóveis ou em % da fração ideal, conforme o critério do condomínio).
+          </li>
+          <li>
+            <strong className="text-foreground">Hora do encerramento:</strong> dá para corrigir a
+            data/hora que a mesa declarou encerrada (sai no boletim e na ata) sem precisar reabrir a
+            assembleia.
+          </li>
+          <li>
+            <strong className="text-foreground">Mesa da ata (3 assinaturas):</strong> antes de gerar
+            a Ata, use o botão <Chip>Mesa</Chip> (ao lado da Ata) para informar{" "}
+            <strong className="text-foreground">presidente</strong> e{" "}
+            <strong className="text-foreground">secretário</strong> — a ata sai com as três
+            assinaturas (síndico, presidente e secretário). Em branco, sai só a linha com o cargo
+            (assina à mão).
           </li>
           <li>
             Baixe os relatórios: <strong className="text-foreground">PDF</strong>,{" "}
