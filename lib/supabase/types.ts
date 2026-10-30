@@ -202,6 +202,8 @@ export type Database = {
           quorum_minimo_2a: number | null
           exige_presenca: boolean
           votacao_por_pauta: boolean
+          mesa_presidente: string | null
+          mesa_secretario: string | null
           created_at: string
           updated_at: string
         }
@@ -218,6 +220,8 @@ export type Database = {
           quorum_minimo_2a?: number | null
           exige_presenca?: boolean
           votacao_por_pauta?: boolean
+          mesa_presidente?: string | null
+          mesa_secretario?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -232,6 +236,8 @@ export type Database = {
           quorum_minimo_2a?: number | null
           exige_presenca?: boolean
           votacao_por_pauta?: boolean
+          mesa_presidente?: string | null
+          mesa_secretario?: string | null
           updated_at?: string
         }
         Relationships: []
