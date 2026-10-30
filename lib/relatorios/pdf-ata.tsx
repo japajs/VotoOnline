@@ -89,16 +89,24 @@ const s = StyleSheet.create({
   pautaResult: { fontFamily: "Helvetica-Bold" },
   presentesGrid: { flexDirection: "row", flexWrap: "wrap" },
   presenteItem: { width: "50%", fontSize: 9, marginBottom: 3 },
-  signatureBlock: { marginTop: 48, alignItems: "center" },
-  signatureLine: {
+  // Mesa da assembleia: 3 assinaturas lado a lado (síndico, presidente,
+  // secretário) — pedido do Carlos. Cada coluna: espaço pra assinar, linha,
+  // nome impresso (quando informado) e o cargo embaixo.
+  assinaturasRow: {
+    marginTop: 48,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  assinaturaCol: { width: "31%", alignItems: "center" },
+  assinaturaLinha: {
     borderTopWidth: 1,
     borderTopColor: C.text,
-    width: 260,
+    width: "100%",
+    marginTop: 44,
     paddingTop: 4,
-    marginTop: 40,
-    textAlign: "center",
   },
-  signatureLabel: { fontSize: 9 },
+  assinaturaNome: { fontSize: 9, fontFamily: "Helvetica-Bold", textAlign: "center" },
+  assinaturaCargo: { fontSize: 8, color: C.muted, textAlign: "center" },
 })
 
 function participantesUnicos(votos: VotoDetalhado[]): { nome: string; unidades: string }[] {
@@ -235,10 +243,21 @@ export function AtaPDF({
           ata, gerada eletronicamente pelo sistema {APP_NAME} em {emitidoEm}, por {emitidoPor}.
         </Text>
 
-        <View style={s.signatureBlock} wrap={false}>
-          <View style={s.signatureLine}>
-            <Text style={s.signatureLabel}>{condominio.sindico_nome ?? "Síndico(a) / Administração"}</Text>
-          </View>
+        {/* Assinaturas da mesa: síndico (do cadastro) + presidente e secretário
+            (campos da assembleia — pedido do Carlos). Quando o nome não foi
+            informado, sai só a linha com o cargo (assina à mão). */}
+        <View style={s.assinaturasRow} wrap={false}>
+          {[
+            { nome: condominio.sindico_nome ?? null, cargo: "Síndico(a)" },
+            { nome: assembleia.mesa_presidente ?? null, cargo: "Presidente da mesa" },
+            { nome: assembleia.mesa_secretario ?? null, cargo: "Secretário(a)" },
+          ].map((a, i) => (
+            <View key={i} style={s.assinaturaCol}>
+              <View style={s.assinaturaLinha} />
+              {a.nome ? <Text style={s.assinaturaNome}>{a.nome}</Text> : null}
+              <Text style={s.assinaturaCargo}>{a.cargo}</Text>
+            </View>
+          ))}
         </View>
 
         <View style={s.pageFooter} fixed>

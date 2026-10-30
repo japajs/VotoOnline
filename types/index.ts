@@ -213,6 +213,11 @@ export interface Assembleia {
   // validarVotoOuFalhar). Default false = abrir a assembleia libera todas as
   // pautas. Opcional pelo mesmo motivo de exige_presenca (nem toda query traz).
   votacao_por_pauta?: boolean
+  // Mesa da assembleia (pedido do Carlos): presidente e secretário que assinam
+  // a ata, junto do síndico. Opcionais — a ata mostra a linha com o cargo mesmo
+  // sem o nome (assina à mão). Preenchidos na tela da apuração.
+  mesa_presidente?: string | null
+  mesa_secretario?: string | null
   created_at: string
   updated_at: string
   // joined

@@ -11,6 +11,7 @@ import { EditarAssembleiaDialog } from "@/components/assembleias/editar-assemble
 import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-dialog"
 import { EditarPautaDialog } from "@/components/assembleias/editar-pauta-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
+import { MesaAssembleiaDialog } from "@/components/assembleias/mesa-assembleia-dialog"
 import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
@@ -365,19 +366,30 @@ export function ApuracaoAssembleia({
                       depois que a assembleia encerra (é o documento final,
                       não um relatório parcial). */}
                   {assembleia.status === "encerrada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const a = document.createElement("a")
-                        a.href = `/api/relatorios/apuracao/${assembleia.id}/ata`
-                        a.click()
-                      }}
-                      className="gap-1.5"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      Ata
-                    </Button>
+                    <>
+                      {/* Mesa (presidente/secretário) que assina a ata — pedido
+                          do Carlos. Fica junto da Ata pra preencher na hora de
+                          gerar o documento. */}
+                      <MesaAssembleiaDialog
+                        assembleiaId={assembleia.id}
+                        condominioId={condominioId}
+                        presidenteInicial={assembleia.mesa_presidente ?? null}
+                        secretarioInicial={assembleia.mesa_secretario ?? null}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const a = document.createElement("a")
+                          a.href = `/api/relatorios/apuracao/${assembleia.id}/ata`
+                          a.click()
+                        }}
+                        className="gap-1.5"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        Ata
+                      </Button>
+                    </>
                   )}
                 </>
               )}

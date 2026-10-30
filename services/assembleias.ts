@@ -43,6 +43,8 @@ type JoinedAssembleia = {
   quorum_minimo_2a: number | null
   exige_presenca?: boolean
   votacao_por_pauta?: boolean
+  mesa_presidente?: string | null
+  mesa_secretario?: string | null
   created_at: string
   updated_at: string
   pautas: JoinedPauta[] | null
@@ -95,6 +97,8 @@ function rowToAssembleia(row: JoinedAssembleia): Assembleia {
     quorum_minimo_2a: row.quorum_minimo_2a ?? null,
     exige_presenca: row.exige_presenca ?? false,
     votacao_por_pauta: row.votacao_por_pauta ?? false,
+    mesa_presidente: row.mesa_presidente ?? null,
+    mesa_secretario: row.mesa_secretario ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     pautas: (row.pautas ?? []).map(rowToPauta).sort((a, b) => a.ordem - b.ordem),
@@ -137,6 +141,21 @@ export async function setVotacaoPorPauta(assembleiaId: string, value: boolean): 
   const { error } = await db
     .from("assembleias")
     .update({ votacao_por_pauta: value })
+    .eq("id", assembleiaId)
+  if (error) throw new Error(error.message)
+}
+
+// Mesa da assembleia (presidente/secretário) que assinam a ata — pedido do
+// Carlos. null em cada campo = sem nome (a ata mostra só o cargo, assina à mão).
+export async function updateMesaAssembleia(
+  assembleiaId: string,
+  presidente: string | null,
+  secretario: string | null
+): Promise<void> {
+  const db = createServerClient()
+  const { error } = await db
+    .from("assembleias")
+    .update({ mesa_presidente: presidente, mesa_secretario: secretario })
     .eq("id", assembleiaId)
   if (error) throw new Error(error.message)
 }

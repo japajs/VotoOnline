@@ -9,6 +9,7 @@ import {
   reabrirAssembleia,
   setVotacaoPorPauta,
   setDataEncerramento,
+  updateMesaAssembleia,
 } from "@/services/assembleias"
 import {
   createPautasBatch,
@@ -452,6 +453,32 @@ export async function setVotacaoPorPautaAction(
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao atualizar a opção." }
+  }
+}
+
+// Mesa da assembleia (presidente/secretário) que assinam a ata — pedido do
+// Carlos. Nome vazio = null (a ata mostra só o cargo). Limita o tamanho pra não
+// estourar a linha de assinatura do PDF.
+export async function atualizarMesaAction(
+  assembleiaId: string,
+  condominioId: string,
+  presidente: string,
+  secretario: string
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    const limpa = (s: string) => {
+      const t = s.trim().replace(/\s+/g, " ")
+      return t ? t.slice(0, 120) : null
+    }
+    await updateMesaAssembleia(assembleiaId, limpa(presidente), limpa(secretario))
+    revalidatePath(ROUTES.condominioAssembleia(condominioId, assembleiaId))
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar a mesa." }
   }
 }
 

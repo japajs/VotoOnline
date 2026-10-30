@@ -664,3 +664,13 @@ alter table assembleia_sends add column if not exists participante_nome text;
 -- código que grava/lê esta coluna.
 -- ============================================================
 alter table proprietarios add column if not exists conjuge text;
+
+-- ============================================================
+-- Mesa da assembleia: presidente e secretário que assinam a ata, junto do
+-- síndico (pedido do Carlos — ata com 3 assinaturas, mais "nível cartório").
+-- Opcionais: a ata mostra a linha com o cargo mesmo sem o nome (assina à mão).
+-- Preenchidos na tela da apuração. Texto livre. Aditivo e idempotente. Rodar no
+-- SQL Editor ANTES de publicar o código que grava/lê estas colunas.
+-- ============================================================
+alter table assembleias add column if not exists mesa_presidente text;
+alter table assembleias add column if not exists mesa_secretario text;
