@@ -674,3 +674,13 @@ alter table proprietarios add column if not exists conjuge text;
 -- ============================================================
 alter table assembleias add column if not exists mesa_presidente text;
 alter table assembleias add column if not exists mesa_secretario text;
+
+-- ============================================================
+-- Limite de procurações por representante (pedido do Carlos). Varia por
+-- convenção (1, 3, 6, 10…); o Código Civil não limita, então o default é NULL =
+-- sem limite. É um AVISO na hora de registrar a procuração (a mesa pode superar
+-- com confirmação), não um bloqueio seco. Aditivo e idempotente. Rodar no SQL
+-- Editor ANTES de publicar o código que grava/lê esta coluna.
+-- ============================================================
+alter table condominios add column if not exists limite_procuracoes integer
+  check (limite_procuracoes is null or limite_procuracoes >= 1);

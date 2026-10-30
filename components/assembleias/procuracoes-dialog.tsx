@@ -175,6 +175,9 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
   const [buscaOutorgante, setBuscaOutorgante] = useState("")
   const [buscaOutorgado, setBuscaOutorgado] = useState("")
   const [isPendingCriar, startCriarTransition] = useTransition()
+  // Aviso de limite de procurações da convenção (pedido do Carlos): quando o
+  // representante bateria o máximo. Não bloqueia — mostra e deixa confirmar.
+  const [avisoLimite, setAvisoLimite] = useState<{ atual: number; limite: number } | null>(null)
   const [confirmarRemoverId, setConfirmarRemoverId] = useState<string | null>(null)
   const limparAoFecharRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -205,6 +208,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
       }
       carregar()
     } else {
+      setAvisoLimite(null)
       limparAoFecharRef.current = setTimeout(() => {
         setOutorganteId("")
         setOutorgadoId("")
@@ -215,17 +219,30 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
     }
   }
 
-  function handleCriar() {
+  // permitirExcederLimite só vira true no clique "Registrar assim mesmo", depois
+  // do operador ver o aviso de limite da convenção.
+  function handleCriar(permitirExcederLimite = false) {
     if (!outorganteId || !outorgadoId) return
     startCriarTransition(async () => {
-      const result = await createProcuracaoAction(assembleiaId, condominioId, outorganteId, outorgadoId)
+      const result = await createProcuracaoAction(
+        assembleiaId,
+        condominioId,
+        outorganteId,
+        outorgadoId,
+        permitirExcederLimite
+      )
       if (result.success) {
         toast.success("Procuração registrada.")
+        setAvisoLimite(null)
         setOutorganteId("")
         setOutorgadoId("")
         setBuscaOutorgante("")
         setBuscaOutorgado("")
         carregar()
+      } else if (result.limiteExcedido) {
+        // Bateria o limite da convenção: não registra de cara — mostra o aviso
+        // e deixa o operador confirmar ou trocar o representante.
+        setAvisoLimite({ atual: result.atual ?? 0, limite: result.limite ?? 0 })
       } else {
         toast.error(result.error)
       }
@@ -320,7 +337,12 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                     busca={buscaOutorgado}
                     onBuscaChange={setBuscaOutorgado}
                     selecionadoId={outorgadoId}
-                    onSelecionar={setOutorgadoId}
+                    // Trocar o representante descarta o aviso de limite (a conta
+                    // muda; o botão volta a ser "Registrar procuração").
+                    onSelecionar={(id) => {
+                      setOutorgadoId(id)
+                      setAvisoLimite(null)
+                    }}
                     opcoes={elegiveisOutorgado}
                   />
                   {outorgadoId && (
@@ -335,15 +357,45 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                   Ninguém disponível — todos já votaram ou não há proprietários cadastrados.
                 </p>
               )}
-              <Button
-                size="sm"
-                onClick={handleCriar}
-                disabled={!outorganteId || !outorgadoId || isPendingCriar}
-                className="w-full gap-1.5"
-              >
-                {isPendingCriar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                Registrar procuração
-              </Button>
+
+              {/* Aviso de limite de procurações da convenção (pedido do Carlos).
+                  Não bloqueia: deixa confirmar ou trocar o representante. */}
+              {avisoLimite && (
+                <div className="rounded-lg border border-amber-400/60 bg-amber-500/10 px-3 py-2.5">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    {elegiveis.find((p) => p.id === outorgadoId)?.nome ?? "Este representante"} já
+                    representa {avisoLimite.atual}{" "}
+                    {avisoLimite.atual === 1 ? "procuração" : "procurações"} — o limite da convenção é{" "}
+                    {avisoLimite.limite}.
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                    Confira a convenção. Você pode registrar assim mesmo ou escolher outro
+                    representante.
+                  </p>
+                </div>
+              )}
+
+              {avisoLimite ? (
+                <Button
+                  size="sm"
+                  onClick={() => handleCriar(true)}
+                  disabled={!outorganteId || !outorgadoId || isPendingCriar}
+                  className="w-full gap-1.5 bg-amber-600 text-white hover:bg-amber-700"
+                >
+                  {isPendingCriar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Registrar assim mesmo
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => handleCriar(false)}
+                  disabled={!outorganteId || !outorgadoId || isPendingCriar}
+                  className="w-full gap-1.5"
+                >
+                  {isPendingCriar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Registrar procuração
+                </Button>
+              )}
             </div>
           </div>
         )}

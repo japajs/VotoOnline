@@ -84,6 +84,9 @@ export async function updateCondominioInfoAction(
     sindico_nome: string
     sindico_contato: string
     criterio_peso: CriterioPeso
+    // Máximo de procurações por representante (texto do form): vazio = sem
+    // limite. Validado pra inteiro >= 1 abaixo.
+    limite_procuracoes: string
   }
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
@@ -91,6 +94,17 @@ export async function updateCondominioInfoAction(
   const acesso = await requireAcessoCondominio(id)
   if (!acesso.ok) return { success: false, error: acesso.error }
   if (!nome.trim()) return { success: false, error: "Nome obrigatório." }
+
+  // Limite de procurações: vazio = sem limite (null). Se informado, inteiro >= 1.
+  let limiteProcuracoes: number | null = null
+  const limiteTexto = info.limite_procuracoes.trim()
+  if (limiteTexto !== "") {
+    const n = Number(limiteTexto)
+    if (!Number.isInteger(n) || n < 1) {
+      return { success: false, error: "O limite de procurações deve ser um número inteiro de 1 ou mais (ou vazio, para sem limite)." }
+    }
+    limiteProcuracoes = n
+  }
 
   // Auditoria de assembleias — Fase 1: trocar o critério de peso muda o
   // resultado de qualquer votação em andamento (o peso "ao vivo" de cada
@@ -146,6 +160,7 @@ export async function updateCondominioInfoAction(
       sindico_nome: info.sindico_nome.trim() || null,
       sindico_contato: info.sindico_contato.trim() || null,
       criterio_peso: info.criterio_peso,
+      limite_procuracoes: limiteProcuracoes,
     })
     revalidatePath(ROUTES.condominios)
     revalidatePath(`${ROUTES.condominios}/${id}`)

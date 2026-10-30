@@ -98,6 +98,7 @@ export type Database = {
           sindico_nome: string | null
           sindico_contato: string | null
           criterio_peso: "unidade" | "fracao_ideal"
+          limite_procuracoes: number | null
           created_at: string
         }
         Insert: {
@@ -108,6 +109,7 @@ export type Database = {
           sindico_nome?: string | null
           sindico_contato?: string | null
           criterio_peso?: "unidade" | "fracao_ideal"
+          limite_procuracoes?: number | null
           created_at?: string
         }
         Update: {
@@ -117,6 +119,7 @@ export type Database = {
           sindico_nome?: string | null
           sindico_contato?: string | null
           criterio_peso?: "unidade" | "fracao_ideal"
+          limite_procuracoes?: number | null
         }
         Relationships: []
       }

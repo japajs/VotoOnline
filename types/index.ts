@@ -102,6 +102,11 @@ export interface Condominio {
   sindico_nome: string | null
   sindico_contato: string | null
   criterio_peso: CriterioPeso
+  // Máximo de procurações que um mesmo representante pode receber por assembleia
+  // (pedido do Carlos — varia por convenção: 1, 3, 6, 10…). null = sem limite
+  // (o Código Civil não limita; a trava é da convenção de cada condomínio). É
+  // um AVISO na hora de registrar a procuração, não um bloqueio seco.
+  limite_procuracoes: number | null
   created_at: string
 }
 
