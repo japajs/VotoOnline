@@ -263,7 +263,8 @@ export default function AjudaPage() {
             <strong className="text-foreground">Quem participou pelo imóvel:</strong> quando quem
             compareceu não é o titular do cadastro (ex.: o imóvel está no nome do marido e veio a
             esposa, também dona — diferente de procuração), anote o nome na linha do proprietário (um
-            toque usa o cônjuge cadastrado, se houver). Isso sai no boletim e na ata.
+            toque usa o cônjuge cadastrado, se houver). Essa anotação sai no detalhamento do relatório
+            de apuração (PDF).
           </li>
           <li>Não é possível desmarcar a presença de quem já votou.</li>
         </ul>
