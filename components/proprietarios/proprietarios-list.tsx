@@ -13,10 +13,13 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  Eraser,
+  Download,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { APP_NAME } from "@/lib/constants"
 import {
   deleteProprietarioAction,
   addUnidadeAction,
@@ -38,6 +41,8 @@ import type { Proprietario, CriterioPeso, Pauta } from "@/types"
 interface ProprietariosListProps {
   proprietarios: Proprietario[]
   condominioId: string
+  // Nome do condomínio — só pro nome do arquivo na exportação XLSX.
+  condominioNome?: string
   proprietariosQueJaVotaram?: Set<string>
   // Quem já votou NA ASSEMBLEIA ABERTA agora (badge "votou/não votou" +
   // filtro). undefined = não há assembleia aberta → sem badge/filtro.
@@ -107,6 +112,7 @@ const GRID_COLUNAS_COMPARTILHAR = "lg:grid-cols-[minmax(0,1fr)_64px_72px]"
 export function ProprietariosList({
   proprietarios,
   condominioId,
+  condominioNome,
   proprietariosQueJaVotaram,
   votouNaAberta,
   presentesNaAberta,
@@ -125,6 +131,7 @@ export function ProprietariosList({
   const [busca, setBusca] = useState("")
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
   const [filtroVoto, setFiltroVoto] = useState<FiltroVoto>("todos")
+  const [exportando, setExportando] = useState(false)
   // Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar a tela
   // sem expor dados pessoais (pedido do Carlos — os presentes online conferem
   // se estão marcados como presentes sem ver os dados dos outros).
@@ -372,6 +379,44 @@ export function ProprietariosList({
     tentandoEntrar,
   ])
 
+  // Há busca ou filtro ativo? Habilita o botão "Limpar" (pedido do Carlos:
+  // um botão só que zera busca + filtro e volta a mostrar todos os imóveis,
+  // em vez de ter que apagar a busca na mão).
+  const temFiltroAtivo = busca.trim() !== "" || filtroVoto !== "todos"
+
+  function limparBuscaEFiltros() {
+    setBusca("")
+    setFiltroVoto("todos")
+  }
+
+  // Exporta em XLSX exatamente o que está sendo exibido (busca + filtro) —
+  // pedido do Carlos: antes exportava os 300 mesmo filtrando. Manda os ids
+  // visíveis pro endpoint, que gera o arquivo (com a coluna Imóvel).
+  async function exportarXlsx() {
+    if (exportando) return
+    setExportando(true)
+    try {
+      const ids = proprietariosExibidos.map((p) => p.id)
+      const res = await fetch(`/api/condominios/${condominioId}/exportar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${APP_NAME}_${(condominioNome ?? "Proprietarios").replace(/[^a-z0-9]/gi, "_")}_Proprietarios.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("Não foi possível exportar a planilha. Tente novamente.")
+    } finally {
+      setExportando(false)
+    }
+  }
+
   // Totalizações por IMÓVEL, não por pessoa (pedido do Carlos): a assembleia
   // gira em torno do imóvel — um proprietário com 2 imóveis conta como 2
   // (presença, voto e quórum). Os botões abaixo mostram contagem de imóveis;
@@ -525,6 +570,33 @@ export function ProprietariosList({
             {modoCompartilhar ? "Mostrar dados" : "Modo compartilhar"}
           </span>
         </button>
+        {/* Limpar busca + filtros de uma vez (pedido do Carlos) — só aparece
+            quando há algo a limpar; volta a lista a 100% dos imóveis. */}
+        {temFiltroAtivo && (
+          <button
+            type="button"
+            onClick={limparBuscaEFiltros}
+            title="Limpar a busca e o filtro — volta a mostrar todos os imóveis"
+            className="flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/40"
+          >
+            <Eraser className="h-4 w-4" />
+            <span className="hidden sm:inline">Limpar</span>
+          </button>
+        )}
+        {/* Exportar XLSX do que está EXIBIDO (respeita busca + filtro) — pedido
+            do Carlos. Fica aqui na barra porque é onde vive o filtro. */}
+        {podeEditar && (
+          <button
+            type="button"
+            onClick={exportarXlsx}
+            disabled={exportando}
+            title="Exportar em XLSX o que está sendo exibido (respeita a busca e o filtro)"
+            className="flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/40 disabled:opacity-50"
+          >
+            {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            <span className="hidden sm:inline">Exportar XLSX</span>
+          </button>
+        )}
       </div>
 
       {/* Aviso discreto quando o modo compartilhar está ligado — fica visível
