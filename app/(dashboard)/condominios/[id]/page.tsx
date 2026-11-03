@@ -20,7 +20,6 @@ import { ProprietariosList } from "@/components/proprietarios/proprietarios-list
 import { CriarAssembleiaDialog } from "@/components/assembleias/criar-assembleia-dialog"
 import { AssembleiasList } from "@/components/assembleias/assembleias-list"
 import { CondominioInfoCard } from "@/components/condominios/condominio-info-card"
-import { ExportarProprietariosButton } from "@/components/condominios/exportar-proprietarios-button"
 import { FracaoEscalaAviso } from "@/components/condominios/fracao-escala-aviso"
 import { detectarDivisorEscalaFracaoIdeal } from "@/lib/peso"
 import { ROUTES } from "@/lib/constants"
@@ -165,15 +164,13 @@ export default async function CondominioDetailPage({ params }: Props) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {proprietarios.length > 0 && (
-              <ExportarProprietariosButton condominioId={id} condominioNome={condominio.nome} />
-            )}
             <CriarProprietarioDialog condominioId={id} />
           </div>
         </div>
         <ProprietariosList
           proprietarios={proprietarios}
           condominioId={id}
+          condominioNome={condominio.nome}
           proprietariosQueJaVotaram={proprietariosQueJaVotaram}
           votouNaAberta={votouNaAberta}
           presentesNaAberta={presentesNaAberta}
