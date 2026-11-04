@@ -160,6 +160,35 @@ export async function deleteProprietarioAction(
   }
 }
 
+// Anula o VOTO de um proprietário nas assembleias EM ANDAMENTO (pedido do
+// Carlos: corrigir voto lançado errado, limpar "participante fantasma" e
+// destravar a exclusão de quem votou). Remove as respostas e zera votado_em
+// (some da apuração); a presença e o cadastro ficam. Assembleia ENCERRADA não é
+// tocada (resultado/ata definitivos). Exige senha — é destrutivo.
+export async function anularVotoAction(
+  proprietarioId: string,
+  condominioId: string,
+  senha: string
+): Promise<{ success: boolean; error?: string; anulados?: number }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  const senhaOk = await verificarSenhaUsuarioAtual(senha)
+  if (!senhaOk.ok) return { success: false, error: senhaOk.error }
+  try {
+    const emAndamento = await getAssembleiaIdsEmAndamento(condominioId)
+    const anulados = await anularVotosDoProprietario(proprietarioId, emAndamento)
+    if (anulados === 0) {
+      return { success: false, error: "Não há voto em assembleia em andamento para anular." }
+    }
+    revalidatePath(`${ROUTES.condominios}/${condominioId}`)
+    return { success: true, anulados }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao anular o voto." }
+  }
+}
+
 export async function addUnidadeAction(
   proprietarioId: string,
   condominioId: string,

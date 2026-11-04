@@ -15,6 +15,7 @@ import {
   EyeOff,
   Eraser,
   Download,
+  Undo2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,7 @@ import {
   deleteProprietarioAction,
   addUnidadeAction,
   removeUnidadeAction,
+  anularVotoAction,
 } from "@/app/actions/proprietarios"
 import {
   marcarPresencaAction,
@@ -862,6 +864,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   const [novaUnidade, setNovaUnidade] = useState("")
   const [showAdd, setShowAdd] = useState(false)
   const [showExcluir, setShowExcluir] = useState(false)
+  const [showAnular, setShowAnular] = useState(false)
   const [unidadeExcluir, setUnidadeExcluir] = useState<string | null>(null)
   const [isPendingAdd, startAddTransition] = useTransition()
   // Edição inline de "quem participou" (a gravação é otimista no pai).
@@ -930,6 +933,21 @@ const ProprietarioRow = memo(function ProprietarioRow({
         isAdmin={isAdmin}
         criterioPeso={criterioPeso}
       />
+      {/* Anular voto (pedido do Carlos): aparece só pra quem votou na assembleia
+          aberta. Zera o voto (some da apuração) — serve pra corrigir voto errado,
+          limpar "fantasma" e destravar a exclusão de quem votou. Pede senha. */}
+      {mostrarVoto && votou && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowAnular(true)}
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400"
+          title="Anular o voto desta pessoa nesta assembleia"
+        >
+          <Undo2 className="h-3.5 w-3.5" />
+          <span className="sr-only">Anular voto</span>
+        </Button>
+      )}
       <Button
         variant="ghost"
         size="sm"
@@ -1245,6 +1263,25 @@ const ProprietarioRow = memo(function ProprietarioRow({
           </>
         }
         onConfirmar={(senha) => deleteProprietarioAction(proprietario.id, condominioId, senha)}
+      />
+
+      <ConfirmarSenhaDialog
+        open={showAnular}
+        onOpenChange={setShowAnular}
+        titulo="Anular voto"
+        confirmLabel="Anular voto"
+        descricao={
+          <>
+            O voto de <strong className="text-foreground">{proprietario.nome}</strong> nesta
+            assembleia será anulado (some da apuração). A presença e o cadastro continuam. Use para
+            corrigir um voto lançado errado ou para depois poder excluir o cadastro.
+          </>
+        }
+        onConfirmar={(senha) => anularVotoAction(proprietario.id, condominioId, senha)}
+        onSuccess={() => {
+          setShowAnular(false)
+          toast.success("Voto anulado.")
+        }}
       />
 
       <ConfirmarSenhaDialog
