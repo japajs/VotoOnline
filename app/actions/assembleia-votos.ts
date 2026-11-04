@@ -167,13 +167,15 @@ export async function enviarAssembleiaAction(
   }
 
   const now = new Date().toISOString()
-  const { sent: sentIds, failed: failedEmailIds } = await sendAssembleiaEmailBatch(
+  const { sent: sentIds, failed: failedEmailIds, resendIds } = await sendAssembleiaEmailBatch(
     emailInputs,
     anexoValidado ? { filename: anexoValidado.filename, content: anexoValidado.buffer } : undefined
   )
 
   await Promise.all([
-    ...sentIds.map((id) => updateAssembleiaSendStatus(id, "sent", now)),
+    // Guarda o resend_id de cada envio (pra casar os eventos de entrega do
+    // webhook) e zera o status de entrega anterior (novo envio = tracking novo).
+    ...sentIds.map((id) => updateAssembleiaSendStatus(id, "sent", now, resendIds[id])),
     // Grava a data também na falha — assim o histórico de disparos mostra quando
     // a tentativa aconteceu, não só "falhou" sem data.
     ...failedEmailIds.map((id) => updateAssembleiaSendStatus(id, "failed", now)),
@@ -222,7 +224,7 @@ export async function notificarNovaPautaAction(
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
-    const { sent, failed } = await sendNovaPautaEmailBatch(
+    const { sent, failed, resendIds } = await sendNovaPautaEmailBatch(
       comEmail.map((s) => ({
         sendId: s.id,
         to: s.proprietarioEmail!,
@@ -232,6 +234,14 @@ export async function notificarNovaPautaAction(
         votoUrl: `${appUrl}${ROUTES.publicCondoVoto(s.token)}`,
       }))
     )
+
+    // Registra o envio no histórico/tracking (status + resend_id do e-mail mais
+    // recente a cada pessoa, pra o webhook de entrega casar).
+    const now = new Date().toISOString()
+    await Promise.all([
+      ...sent.map((id) => updateAssembleiaSendStatus(id, "sent", now, resendIds[id])),
+      ...failed.map((id) => updateAssembleiaSendStatus(id, "failed", now)),
+    ])
 
     return {
       success: true,
@@ -293,7 +303,7 @@ export async function notificarNaoVotaramAction(
     const condominio = await getCondominioById(assembleia.condominio_id).catch(() => null)
     const criterioPeso = condominio?.criterio_peso ?? "unidade"
 
-    const { sent, failed } = await sendLembreteVotoEmailBatch(
+    const { sent, failed, resendIds } = await sendLembreteVotoEmailBatch(
       comEmail.map((s) => ({
         sendId: s.id,
         to: s.proprietarioEmail!,
@@ -306,6 +316,14 @@ export async function notificarNaoVotaramAction(
         criterioPeso,
       }))
     )
+
+    // Registra o envio no histórico/tracking (status + resend_id do e-mail mais
+    // recente a cada pessoa, pra o webhook de entrega casar).
+    const now = new Date().toISOString()
+    await Promise.all([
+      ...sent.map((id) => updateAssembleiaSendStatus(id, "sent", now, resendIds[id])),
+      ...failed.map((id) => updateAssembleiaSendStatus(id, "failed", now)),
+    ])
 
     return {
       success: true,

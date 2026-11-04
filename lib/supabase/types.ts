@@ -338,6 +338,10 @@ export type Database = {
           presente_em: string | null
           tentou_entrar_em: string | null
           participante_nome: string | null
+          resend_id: string | null
+          entregue_em: string | null
+          bounce_em: string | null
+          spam_em: string | null
           created_at: string
         }
         Insert: {
@@ -360,6 +364,10 @@ export type Database = {
           presente_em?: string | null
           tentou_entrar_em?: string | null
           participante_nome?: string | null
+          resend_id?: string | null
+          entregue_em?: string | null
+          bounce_em?: string | null
+          spam_em?: string | null
           created_at?: string
         }
         Update: {
@@ -379,6 +387,10 @@ export type Database = {
           presente_em?: string | null
           tentou_entrar_em?: string | null
           participante_nome?: string | null
+          resend_id?: string | null
+          entregue_em?: string | null
+          bounce_em?: string | null
+          spam_em?: string | null
         }
         Relationships: []
       }

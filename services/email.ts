@@ -34,6 +34,9 @@ function getFromEmail(): string {
 export interface EmailBatchResult {
   sent: string[]   // sendIds that succeeded
   failed: string[] // sendIds that failed
+  // sendId → id da mensagem no Resend (pra casar os eventos de entrega do
+  // webhook — ver /api/webhooks/resend). Só pros que foram enviados.
+  resendIds: Record<string, string>
 }
 
 // ─── Assembleia email template ────────────────────────────────────────────────
@@ -292,6 +295,7 @@ export async function sendNovaPautaEmailBatch(
   const from = getFromEmail()
   const sent: string[] = []
   const failed: string[] = []
+  const resendIds: Record<string, string> = {}
 
   const CHUNK = 100
   for (let i = 0; i < emails.length; i += CHUNK) {
@@ -311,15 +315,20 @@ export async function sendNovaPautaEmailBatch(
       // Achado de auditoria: resend.batch.send nunca rejeita em falha de
       // API, só resolve com { error } — sem checar isso, um lote recusado
       // era registrado como enviado.
-      const { error } = await resend.batch.send(batch)
+      const { data, error } = await resend.batch.send(batch)
       if (error) chunk.forEach((e) => failed.push(e.sendId))
-      else chunk.forEach((e) => sent.push(e.sendId))
+      else
+        chunk.forEach((e, j) => {
+          sent.push(e.sendId)
+          const rid = data?.data?.[j]?.id
+          if (rid) resendIds[e.sendId] = rid
+        })
     } catch {
       chunk.forEach((e) => failed.push(e.sendId))
     }
   }
 
-  return { sent, failed }
+  return { sent, failed, resendIds }
 }
 
 // Auditoria de assembleias — Fase 6: lembrete manual pra quem ainda não
@@ -439,6 +448,7 @@ export async function sendLembreteVotoEmailBatch(
   const from = getFromEmail()
   const sent: string[] = []
   const failed: string[] = []
+  const resendIds: Record<string, string> = {}
 
   const CHUNK = 100
   for (let i = 0; i < emails.length; i += CHUNK) {
@@ -461,15 +471,20 @@ export async function sendLembreteVotoEmailBatch(
       // Achado de auditoria: resend.batch.send nunca rejeita em falha de
       // API, só resolve com { error } — sem checar isso, um lote recusado
       // era registrado como enviado.
-      const { error } = await resend.batch.send(batch)
+      const { data, error } = await resend.batch.send(batch)
       if (error) chunk.forEach((e) => failed.push(e.sendId))
-      else chunk.forEach((e) => sent.push(e.sendId))
+      else
+        chunk.forEach((e, j) => {
+          sent.push(e.sendId)
+          const rid = data?.data?.[j]?.id
+          if (rid) resendIds[e.sendId] = rid
+        })
     } catch {
       chunk.forEach((e) => failed.push(e.sendId))
     }
   }
 
-  return { sent, failed }
+  return { sent, failed, resendIds }
 }
 
 export interface AssembleiaEmailInput {
@@ -511,6 +526,7 @@ export async function sendAssembleiaEmailBatch(
   const from = getFromEmail()
   const sent: string[] = []
   const failed: string[] = []
+  const resendIds: Record<string, string> = {}
 
   if (anexo) {
     for (const e of emails) {
@@ -521,7 +537,7 @@ export async function sendAssembleiaEmailBatch(
         // todo envio era registrado como "sent" mesmo quando a Resend
         // recusou, e o síndico via "enviado" achando que o proprietário
         // tinha sido notificado da convocação sem isso ser verdade.
-        const { error } = await resend.emails.send({
+        const { data, error } = await resend.emails.send({
           from,
           to: e.to,
           subject: `Assembleia: ${e.assembleiaTitulo}`,
@@ -539,12 +555,15 @@ export async function sendAssembleiaEmailBatch(
           attachments: [{ filename: anexo.filename, content: anexo.content }],
         })
         if (error) failed.push(e.sendId)
-        else sent.push(e.sendId)
+        else {
+          sent.push(e.sendId)
+          if (data?.id) resendIds[e.sendId] = data.id
+        }
       } catch {
         failed.push(e.sendId)
       }
     }
-    return { sent, failed }
+    return { sent, failed, resendIds }
   }
 
   const CHUNK = 100
@@ -569,15 +588,20 @@ export async function sendAssembleiaEmailBatch(
         }),
       }))
 
-      const { error } = await resend.batch.send(batch)
+      const { data, error } = await resend.batch.send(batch)
       if (error) chunk.forEach((e) => failed.push(e.sendId))
-      else chunk.forEach((e) => sent.push(e.sendId))
+      else
+        chunk.forEach((e, j) => {
+          sent.push(e.sendId)
+          const rid = data?.data?.[j]?.id
+          if (rid) resendIds[e.sendId] = rid
+        })
     } catch {
       chunk.forEach((e) => failed.push(e.sendId))
     }
   }
 
-  return { sent, failed }
+  return { sent, failed, resendIds }
 }
 
 // ─── Alerta de segurança: senha alterada ───────────────────────────────────────
