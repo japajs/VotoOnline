@@ -95,8 +95,8 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
         <DialogHeader>
           <DialogTitle>Histórico de disparos</DialogTitle>
           <DialogDescription>
-            E-mails enviados nesta assembleia — quem recebeu, quando e o status. A prova de entrega
-            (entregue, spam ou retorno) fica no painel do provedor de e-mail.
+            E-mails enviados nesta assembleia — quem recebeu, quando e o status de entrega. A
+            confirmação (Entregue, Bounce ou Spam) chega automaticamente do provedor de e-mail.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,8 +129,8 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
             </div>
             {!temEntrega && (
               <p className="text-[11px] text-muted-foreground">
-                A confirmação de entrega (entregue / spam / bounce) aparece quando o webhook do
-                provedor de e-mail está configurado. Sem ele, mostramos só o registro de envio.
+                A confirmação de entrega (Entregue / Bounce / Spam) chega conforme o provedor de
+                e-mail retorna os eventos. Disparos feitos antes de ativá-la ficam como “Enviado”.
               </p>
             )}
 

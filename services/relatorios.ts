@@ -21,8 +21,8 @@ export interface UnidadeRelatorio {
 // abertura). Só os envios que de fato tiveram tentativa de e-mail (status
 // 'sent'/'failed') — os sends de link/voto manual ficam 'pending' e não entram.
 // Como o send é um por proprietário (upsert), o status/data é do ÚLTIMO disparo
-// a cada pessoa (reenvio de lembrete atualiza). Prova de ENTREGA (entregue/
-// spam/bounce) é no painel do provedor (Resend) — isto é o registro do app.
+// a cada pessoa (reenvio de lembrete atualiza). A prova de ENTREGA (entregue/
+// spam/bounce) chega pelo webhook do Resend e vem nos campos *_em abaixo.
 export interface DisparoHistorico {
   nome: string
   email: string | null
