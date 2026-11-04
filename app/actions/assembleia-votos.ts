@@ -23,6 +23,7 @@ import {
   type ProprietarioSemVoto,
 } from "@/services/assembleia-votos"
 import { getExigePresenca } from "@/services/presenca"
+import { getHistoricoDisparos, type DisparoHistorico } from "@/services/relatorios"
 import type { AssembleiaStatus, PautaTipo } from "@/types"
 import { sendAssembleiaEmailBatch, sendNovaPautaEmailBatch, sendLembreteVotoEmailBatch } from "@/services/email"
 import { generateSurveyToken } from "@/lib/tokens"
@@ -434,6 +435,24 @@ export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | n
 // IDs dos proprietários que JÁ votaram nesta assembleia — usado no disparo de
 // e-mail pra o operador filtrar "só quem ainda não votou" e mandar o lembrete
 // só pra quem falta (pedido do Carlos: a tela marcava todos). Read-only.
+// Histórico de disparos de e-mail (pedido do Carlos: rastrear os envios desde a
+// abertura). Read-only; visualizador também lê.
+export async function getHistoricoDisparosAction(
+  assembleiaId: string,
+  condominioId: string
+): Promise<{ success: boolean; disparos: DisparoHistorico[]; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador", "visualizador"])
+  if (!auth.ok) return { success: false, disparos: [], error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, disparos: [], error: acesso.error }
+  try {
+    const disparos = await getHistoricoDisparos(assembleiaId)
+    return { success: true, disparos }
+  } catch (err) {
+    return { success: false, disparos: [], error: err instanceof Error ? err.message : "Erro ao buscar o histórico." }
+  }
+}
+
 export async function getProprietarioIdsVotaramAction(
   assembleiaId: string,
   condominioId: string

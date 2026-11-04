@@ -17,6 +17,44 @@ export interface UnidadeRelatorio {
   email: string | null
 }
 
+// Histórico de disparos de e-mail (pedido do Carlos: rastrear os envios desde a
+// abertura). Só os envios que de fato tiveram tentativa de e-mail (status
+// 'sent'/'failed') — os sends de link/voto manual ficam 'pending' e não entram.
+// Como o send é um por proprietário (upsert), o status/data é do ÚLTIMO disparo
+// a cada pessoa (reenvio de lembrete atualiza). Prova de ENTREGA (entregue/
+// spam/bounce) é no painel do provedor (Resend) — isto é o registro do app.
+export interface DisparoHistorico {
+  nome: string
+  email: string | null
+  status: "sent" | "failed"
+  sentAt: string | null
+}
+
+export async function getHistoricoDisparos(assembleiaId: string): Promise<DisparoHistorico[]> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select("status, sent_at, email_snapshot, nome_snapshot, proprietarios(nome, email)")
+    .eq("assembleia_id", assembleiaId)
+    .in("status", ["sent", "failed"])
+    .order("sent_at", { ascending: false, nullsFirst: false })
+  if (error) throw new Error(error.message)
+
+  type Row = {
+    status: "sent" | "failed"
+    sent_at: string | null
+    email_snapshot: string | null
+    nome_snapshot: string | null
+    proprietarios: { nome: string; email: string | null } | null
+  }
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    nome: r.nome_snapshot ?? r.proprietarios?.nome ?? "—",
+    email: r.email_snapshot ?? r.proprietarios?.email ?? null,
+    status: r.status,
+    sentAt: r.sent_at,
+  }))
+}
+
 export interface HistoricoParticipante {
   proprietarioNome: string
   totalPautas: number
