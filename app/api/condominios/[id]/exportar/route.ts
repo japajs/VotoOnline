@@ -13,37 +13,30 @@ import type { Proprietario } from "@/types"
 // Carlos: a exportação não trazia o imóvel pra filtrar no Excel; as colunas
 // Unidade/Bloco separadas continuam, mas "Imóvel" é a que casa com a lista.
 function gerarXlsxProprietarios(nomeCondominio: string, proprietarios: Proprietario[]) {
+  // Ordem das colunas pedida pelo Carlos: Imóvel · Nome · E-mail · Telefone ·
+  // CPF · Cônjuge. O "Imóvel" é o formato combinado da tela (ex.: "D0204"),
+  // pra dar pra filtrar por imóvel no Excel.
   const rows: string[][] = []
   for (const prop of proprietarios) {
     const unidades = prop.unidades ?? []
     const conjuge = prop.conjuge ?? ""
+    const dados = [prop.nome, prop.email ?? "", prop.telefone ?? "", prop.cpf ?? "", conjuge]
     if (unidades.length === 0) {
-      rows.push([prop.nome, prop.email ?? "", prop.cpf ?? "", prop.telefone ?? "", conjuge, "", "", ""])
+      rows.push(["", ...dados])
     } else {
       for (const u of unidades) {
-        rows.push([
-          prop.nome,
-          prop.email ?? "",
-          prop.cpf ?? "",
-          prop.telefone ?? "",
-          conjuge,
-          formatUnidade(u),
-          u.numero,
-          u.bloco ?? "",
-        ])
+        rows.push([formatUnidade(u), ...dados])
       }
     }
   }
 
-  const header = ["Nome", "E-mail", "CPF", "Telefone / WhatsApp", "Cônjuge", "Imóvel", "Unidade", "Bloco"]
+  const header = ["Imóvel", "Nome", "E-mail", "Telefone / WhatsApp", "CPF", "Cônjuge"]
   // Auditoria de segurança: escapa células que começam com = + - @ (nome/
   // e-mail/CPF vêm do cadastro e poderiam virar fórmula no Excel). Mesma
   // defesa já usada na apuração (ver lib/relatorios/utils.ts:sanitizarLinhas).
   const ws = XLSX.utils.aoa_to_sheet(sanitizarLinhas([header, ...rows]))
 
-  ws["!cols"] = [
-    { wch: 36 }, { wch: 30 }, { wch: 16 }, { wch: 20 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
-  ]
+  ws["!cols"] = [{ wch: 12 }, { wch: 36 }, { wch: 30 }, { wch: 20 }, { wch: 16 }, { wch: 28 }]
 
   const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1")
   for (let c = range.s.c; c <= range.e.c; c++) {
@@ -100,7 +93,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if ("erro" in r) return r.erro
 
   const body = await request.json().catch(() => null)
-  const ids = Array.isArray(body?.ids) ? (body.ids as unknown[]).filter((x): x is string => typeof x === "string") : null
-  const proprietarios = ids ? r.proprietarios.filter((p) => ids.includes(p.id)) : r.proprietarios
+  const ids = Array.isArray(body?.ids)
+    ? (body.ids as unknown[]).filter((x): x is string => typeof x === "string")
+    : null
+
+  let proprietarios = r.proprietarios
+  if (ids) {
+    // Preserva a ORDEM enviada pela lista (Imóvel/Nome, como está na tela) —
+    // pedido do Carlos: o arquivo sai na mesma ordem exibida, não re-ordenado.
+    const porId = new Map(r.proprietarios.map((p) => [p.id, p]))
+    proprietarios = ids.map((id) => porId.get(id)).filter((p): p is Proprietario => !!p)
+  }
   return gerarXlsxProprietarios(r.condominio.nome, proprietarios)
 }
