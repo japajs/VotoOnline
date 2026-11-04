@@ -33,6 +33,16 @@ import {
   setParticipanteNomeAction,
 } from "@/app/actions/presenca"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, formatCpf, normalizarBusca } from "@/lib/format"
@@ -866,6 +876,8 @@ const ProprietarioRow = memo(function ProprietarioRow({
   const [showExcluir, setShowExcluir] = useState(false)
   const [showAnular, setShowAnular] = useState(false)
   const [unidadeExcluir, setUnidadeExcluir] = useState<string | null>(null)
+  // Imóvel digitado no +Add já existe em outro cadastro → confirma mover.
+  const [moverImovelDe, setMoverImovelDe] = useState<string | null>(null)
   const [isPendingAdd, startAddTransition] = useTransition()
   // Edição inline de "quem participou" (a gravação é otimista no pai).
   const [editandoPart, setEditandoPart] = useState(false)
@@ -887,14 +899,28 @@ const ProprietarioRow = memo(function ProprietarioRow({
   const cpfFmt = formatCpf(proprietario.cpf)
   const unidadeAlvo = unidades.find((u) => u.id === unidadeExcluir)
 
-  function handleAddUnidade() {
+  // confirmarMover vira true no "Mover", depois do aviso de que o imóvel já está
+  // em outro cadastro (pedido do Carlos: avisar e mover, não ficar em 2).
+  function handleAddUnidade(confirmarMover = false) {
     if (!novaUnidade.trim()) return
     startAddTransition(async () => {
-      const result = await addUnidadeAction(proprietario.id, condominioId, novaUnidade)
+      const result = await addUnidadeAction(
+        proprietario.id,
+        condominioId,
+        novaUnidade,
+        confirmarMover
+      )
       if (result.success) {
+        if (result.movidoDe) toast.success(`Imóvel movido de ${result.movidoDe}.`)
         setNovaUnidade("")
         setShowAdd(false)
+        setMoverImovelDe(null)
+      } else if (result.imovelExistente && result.donoAtual) {
+        // Já está em outro cadastro — pergunta se move.
+        setMoverImovelDe(result.donoAtual)
       } else {
+        // Erro real (ex.: dono atual já votou) — fecha o aviso e mostra o motivo.
+        setMoverImovelDe(null)
         toast.error(result.error)
       }
     })
@@ -1141,7 +1167,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
             />
             <button
               type="button"
-              onClick={handleAddUnidade}
+              onClick={() => handleAddUnidade()}
               disabled={isPendingAdd || !novaUnidade.trim()}
               className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded px-2 text-xs text-primary hover:underline disabled:opacity-40"
             >
@@ -1303,6 +1329,28 @@ const ProprietarioRow = memo(function ProprietarioRow({
         }
         onSuccess={() => setUnidadeExcluir(null)}
       />
+
+      {/* Imóvel já está em OUTRO cadastro (pedido do Carlos): avisa e, se
+          confirmar, MOVE (remove do outro) — pra o imóvel não ficar em 2. */}
+      <AlertDialog open={moverImovelDe !== null} onOpenChange={(o) => !o && setMoverImovelDe(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Imóvel já cadastrado em outro</AlertDialogTitle>
+            <AlertDialogDescription>
+              O imóvel <strong className="text-foreground">{novaUnidade}</strong> já está no cadastro
+              de <strong className="text-foreground">{moverImovelDe}</strong>. Mover para{" "}
+              <strong className="text-foreground">{proprietario.nome}</strong>? Ele será removido do
+              outro cadastro para não ficar em dois ao mesmo tempo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleAddUnidade(true)} disabled={isPendingAdd}>
+              Mover para cá
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 })

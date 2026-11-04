@@ -5,6 +5,7 @@ import {
   createProprietario,
   deleteProprietario,
   getProprietarioById,
+  getAllProprietarios,
   registrarHistoricoAlteracao,
   updateProprietario,
   cpfJaCadastrado,
@@ -21,7 +22,8 @@ import { anularVotosDoProprietario } from "@/services/assembleia-votos"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
-import { normalizarCelular, validarEmailFormato, normalizarCpf, cpfCompleto, validarCpf } from "@/lib/format"
+import { normalizarCelular, validarEmailFormato, normalizarCpf, cpfCompleto, validarCpf, normalizarBusca } from "@/lib/format"
+import { formatUnidade } from "@/lib/unidade-format"
 
 // Auditoria funcional: antes, qualquer erro de constraint única virava
 // sempre "já existe... com esse e-mail", mesmo quando o CPF é que estava
@@ -192,19 +194,30 @@ export async function anularVotoAction(
 export async function addUnidadeAction(
   proprietarioId: string,
   condominioId: string,
-  numero: string
-): Promise<{ success: boolean; error?: string }> {
+  numero: string,
+  // Confirmação de que o imóvel pode ser MOVIDO de outro cadastro (pedido do
+  // Carlos: avisar e mover automaticamente pra o imóvel não ficar em 2). Só
+  // move com true — a tela liga depois do operador confirmar o aviso.
+  confirmarMover = false
+): Promise<{
+  success: boolean
+  error?: string
+  // Imóvel já está em OUTRO cadastro: a tela avisa e, se confirmar, move.
+  imovelExistente?: boolean
+  donoAtual?: string
+  // Nome de quem perdeu o imóvel quando foi movido (pra mensagem de sucesso).
+  movidoDe?: string
+}> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
   if (!numero.trim()) return { success: false, error: "Número da unidade obrigatório." }
 
-  // Pedido do Carlos: quem já votou numa assembleia em andamento não pode
-  // ganhar novo imóvel — o peso do voto é congelado no momento do voto, então
-  // somar uma unidade depois bagunçaria o encerramento. Mesma checagem (peso
-  // congelado por voto ou por procuração) usada na transferência de unidade.
   try {
+    // Pedido do Carlos: quem já votou numa assembleia em andamento não pode
+    // ganhar novo imóvel — o peso é congelado no voto, somar/mover depois
+    // bagunçaria o encerramento. Vale pro DESTINO aqui; pra ORIGEM, mais abaixo.
     const assembleiaIdsEmAndamento = await getAssembleiaIdsEmAndamento(condominioId)
     if (await pesoJaFoiCongeladoEmAssembleiaAtiva(assembleiaIdsEmAndamento, proprietarioId)) {
       return {
@@ -213,11 +226,41 @@ export async function addUnidadeAction(
           "Este proprietário já votou em uma assembleia em andamento. Não é possível adicionar imóvel agora — o peso do voto já foi registrado.",
       }
     }
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Erro ao validar." }
-  }
 
-  try {
+    // Imóvel já existe em OUTRO cadastro do mesmo condomínio? (pedido do Carlos:
+    // um imóvel não pode ficar em 2 cadastros.) Compara pelo imóvel normalizado
+    // (formatUnidade, sem acento/espaço) — pega "A0101" seja ele guardado como
+    // numero combinado ou numero+bloco separados.
+    const alvo = normalizarBusca(numero.trim())
+    const todos = await getAllProprietarios(condominioId)
+    const donoAtual = todos.find(
+      (p) =>
+        p.id !== proprietarioId &&
+        (p.unidades ?? []).some((u) => normalizarBusca(formatUnidade(u)) === alvo)
+    )
+
+    if (donoAtual) {
+      if (!confirmarMover) {
+        // Avisa a tela — ela pergunta se move (remove do outro cadastro).
+        return { success: false, imovelExistente: true, donoAtual: donoAtual.nome }
+      }
+      // Mover = transferir a unidade existente (preserva id/fração). Trava também
+      // pelo peso congelado do dono ATUAL: se ele já votou, não dá pra mover.
+      if (await pesoJaFoiCongeladoEmAssembleiaAtiva(assembleiaIdsEmAndamento, donoAtual.id)) {
+        return {
+          success: false,
+          error: `${donoAtual.nome} já votou em uma assembleia em andamento — não é possível mover o imóvel agora.`,
+        }
+      }
+      const unidadeAlvo = (donoAtual.unidades ?? []).find(
+        (u) => normalizarBusca(formatUnidade(u)) === alvo
+      )!
+      await updateUnidade(unidadeAlvo.id, { proprietario_id: proprietarioId })
+      revalidatePath(`${ROUTES.condominios}/${condominioId}`)
+      return { success: true, movidoDe: donoAtual.nome }
+    }
+
+    // Não existe em outro cadastro → cria normal.
     await createUnidade({ proprietario_id: proprietarioId, numero: numero.trim(), bloco: null })
     revalidatePath(`${ROUTES.condominios}/${condominioId}`)
     return { success: true }
