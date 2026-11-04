@@ -20,7 +20,7 @@ import {
   type EnviarAssembleiaResult,
 } from "@/app/actions/assembleia-votos"
 import { normalizarBusca, pluralImovel } from "@/lib/format"
-import { formatUnidade } from "@/lib/unidade-format"
+import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import type { Assembleia, Proprietario } from "@/types"
 
 type Step = "compose" | "sending" | "done"
@@ -58,14 +58,26 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
   const proprietariosFiltrados = useMemo(() => {
     const base = soNaoVotaram ? proprietarios.filter((p) => !votaramIds.has(p.id)) : proprietarios
     const termo = normalizarBusca(busca.trim())
-    if (!termo) return base
-    return base.filter((p) => {
-      const alvo = [
-        p.nome,
-        p.email ?? "",
-        ...(p.unidades ?? []).flatMap((u) => [u.numero, u.bloco ?? ""]),
-      ].join(" ")
-      return normalizarBusca(alvo).includes(termo)
+    const filtrados = !termo
+      ? base
+      : base.filter((p) => {
+          const alvo = [
+            p.nome,
+            p.email ?? "",
+            ...(p.unidades ?? []).flatMap((u) => [u.numero, u.bloco ?? ""]),
+          ].join(" ")
+          return normalizarBusca(alvo).includes(termo)
+        })
+    // Ordena por IMÓVEL (pedido do Carlos: disparar por etapas na sequência dos
+    // imóveis — ex.: A0101, A0102… — pra controlar o limite diário de e-mail).
+    // Sem imóvel vai pro fim; empate cai no nome.
+    return [...filtrados].sort((a, b) => {
+      const na = menorNumeroUnidade(a.unidades ?? [])
+      const nb = menorNumeroUnidade(b.unidades ?? [])
+      if (na === null && nb === null) return a.nome.localeCompare(b.nome, "pt-BR")
+      if (na === null) return 1
+      if (nb === null) return -1
+      return na.localeCompare(nb, undefined, { numeric: true })
     })
   }, [proprietarios, busca, soNaoVotaram, votaramIds])
 
