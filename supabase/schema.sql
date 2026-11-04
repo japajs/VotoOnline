@@ -684,3 +684,16 @@ alter table assembleias add column if not exists mesa_secretario text;
 -- ============================================================
 alter table condominios add column if not exists limite_procuracoes integer
   check (limite_procuracoes is null or limite_procuracoes >= 1);
+
+-- ============================================================
+-- Prova de ENTREGA de e-mail via webhook do Resend (pedido do Carlos). Guarda o
+-- id da mensagem do Resend no envio (pra casar o evento do webhook) e as datas
+-- dos eventos de entrega: entregue, bounce (rejeitado) e spam (reclamação). O
+-- histórico de disparos mostra o status real. Aditivo e idempotente. Rodar no
+-- SQL Editor ANTES de publicar o código que grava/lê estas colunas.
+-- ============================================================
+alter table assembleia_sends add column if not exists resend_id  text;
+alter table assembleia_sends add column if not exists entregue_em timestamptz;
+alter table assembleia_sends add column if not exists bounce_em   timestamptz;
+alter table assembleia_sends add column if not exists spam_em     timestamptz;
+create index if not exists idx_assembleia_sends_resend_id on assembleia_sends(resend_id);

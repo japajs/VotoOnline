@@ -221,15 +221,44 @@ export async function upsertAssembleiaSend(input: {
 export async function updateAssembleiaSendStatus(
   id: string,
   status: SendStatus,
-  sent_at?: string
+  sent_at?: string,
+  // Id da mensagem no Resend — quando informado (um NOVO envio), guarda o id e
+  // ZERA o status de entrega (entregue/bounce/spam), pra os eventos do webhook
+  // deste novo envio preencherem do zero. Ver prova de entrega via webhook.
+  resend_id?: string
 ): Promise<void> {
   const db = createServerClient()
   const { error } = await db
     .from("assembleia_sends")
-    .update({ status, ...(sent_at ? { sent_at } : {}) })
+    .update({
+      status,
+      ...(sent_at ? { sent_at } : {}),
+      ...(resend_id ? { resend_id, entregue_em: null, bounce_em: null, spam_em: null } : {}),
+    })
     .eq("id", id)
 
   if (error) throw new Error(error.message)
+}
+
+// Marca um evento de ENTREGA (webhook do Resend) no envio que tem aquele
+// resend_id. Idempotente — um retry do webhook só regrava a mesma data. Devolve
+// true se achou o envio (false = evento de uma mensagem que não é nossa ou já
+// foi sobrescrita por um reenvio, que é ignorado com segurança).
+export async function marcarEventoEntregaResend(
+  resendId: string,
+  evento: "entregue" | "bounce" | "spam",
+  em: string
+): Promise<boolean> {
+  const db = createServerClient()
+  const patch =
+    evento === "entregue" ? { entregue_em: em } : evento === "bounce" ? { bounce_em: em } : { spam_em: em }
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .update(patch)
+    .eq("resend_id", resendId)
+    .select("id")
+  if (error) throw new Error(error.message)
+  return (data ?? []).length > 0
 }
 
 export async function getRespostasBySendId(sendId: string): Promise<AssembleiaResposta[]> {

@@ -28,13 +28,19 @@ export interface DisparoHistorico {
   email: string | null
   status: "sent" | "failed"
   sentAt: string | null
+  // Prova de entrega via webhook do Resend (null enquanto não chega o evento).
+  entregueEm: string | null
+  bounceEm: string | null
+  spamEm: string | null
 }
 
 export async function getHistoricoDisparos(assembleiaId: string): Promise<DisparoHistorico[]> {
   const db = createServerClient()
   const { data, error } = await db
     .from("assembleia_sends")
-    .select("status, sent_at, email_snapshot, nome_snapshot, proprietarios(nome, email)")
+    .select(
+      "status, sent_at, entregue_em, bounce_em, spam_em, email_snapshot, nome_snapshot, proprietarios(nome, email)"
+    )
     .eq("assembleia_id", assembleiaId)
     .in("status", ["sent", "failed"])
     .order("sent_at", { ascending: false, nullsFirst: false })
@@ -43,6 +49,9 @@ export async function getHistoricoDisparos(assembleiaId: string): Promise<Dispar
   type Row = {
     status: "sent" | "failed"
     sent_at: string | null
+    entregue_em: string | null
+    bounce_em: string | null
+    spam_em: string | null
     email_snapshot: string | null
     nome_snapshot: string | null
     proprietarios: { nome: string; email: string | null } | null
@@ -52,6 +61,9 @@ export async function getHistoricoDisparos(assembleiaId: string): Promise<Dispar
     email: r.email_snapshot ?? r.proprietarios?.email ?? null,
     status: r.status,
     sentAt: r.sent_at,
+    entregueEm: r.entregue_em,
+    bounceEm: r.bounce_em,
+    spamEm: r.spam_em,
   }))
 }
 
