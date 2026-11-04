@@ -64,22 +64,36 @@ export default async function CondominioDetailPage({ params }: Props) {
     votouNaAberta,
     presentesNaAberta,
     pautasVotadasNaAberta,
-    outorgantesNaAberta,
+    procuracoesNaAberta,
     participantesNaAberta,
   ] = assembleiaAberta
     ? await Promise.all([
         getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>()),
         getProprietarioIdsPresentes(assembleiaAberta.id).catch(() => new Set<string>()),
         getPautasVotadasPorProprietario(assembleiaAberta.id).catch(() => new Map<string, number>()),
-        // Quem outorgou procuração: não pode ser marcado presente (quem
-        // participa é o procurador) — a presença fica desabilitada na lista.
-        getProcuracoesByAssembleia(assembleiaAberta.id)
-          .then((ps) => new Set(ps.map((p) => p.outorgante_id)))
-          .catch(() => new Set<string>()),
+        // Procurações (bruto): quem outorgou não pode ser marcado presente (quem
+        // participa é o procurador) — e, pro funil, o imóvel conta como presente
+        // só quando o representante vota (ver outorgantesComRepVotou abaixo).
+        getProcuracoesByAssembleia(assembleiaAberta.id).catch(() => []),
         // Nome de quem participou pelo imóvel quando não é o dono (co-dono).
         getParticipantesNaAberta(assembleiaAberta.id).catch(() => new Map<string, string>()),
       ])
     : [undefined, undefined, undefined, undefined, undefined]
+
+  // Quem outorgou procuração (presença desabilitada) e, destes, quais o
+  // REPRESENTANTE já votou — pedido do Carlos: procuração conta como PRESENTE
+  // quando o representante vota e AUSENTE enquanto não vota, pra Presentes +
+  // Ausentes fecharem no total.
+  const outorgantesNaAberta = procuracoesNaAberta
+    ? new Set(procuracoesNaAberta.map((p) => p.outorgante_id))
+    : undefined
+  const outorgantesComRepVotouNaAberta = procuracoesNaAberta
+    ? new Map<string, number>(
+        procuracoesNaAberta
+          .filter((p) => votouNaAberta?.has(p.outorgado_id))
+          .map((p) => [p.outorgante_id, pautasVotadasNaAberta?.get(p.outorgado_id) ?? 0])
+      )
+    : undefined
 
   // Denominador do "voto total" (vs. parcial): no modo pauta-por-pauta só
   // contam as pautas já abertas pela mesa — as demais ninguém poderia ter
@@ -176,12 +190,12 @@ export default async function CondominioDetailPage({ params }: Props) {
           presentesNaAberta={presentesNaAberta}
           pautasVotadasNaAberta={pautasVotadasNaAberta}
           outorgantesNaAberta={outorgantesNaAberta}
+          outorgantesComRepVotouNaAberta={outorgantesComRepVotouNaAberta}
           participantesNaAberta={participantesNaAberta}
           totalPautasVotaveis={totalPautasVotaveis}
           assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           pautasDaAberta={assembleiaAberta?.pautas}
-          exigePresencaAberta={assembleiaAberta?.exige_presenca}
           isAdmin={session?.perfil === "administrador"}
           podeEditar={session?.perfil !== "visualizador"}
           criterioPeso={condominio.criterio_peso}

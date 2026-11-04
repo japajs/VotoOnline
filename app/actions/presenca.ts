@@ -162,6 +162,11 @@ export type EstadoVotacaoLive = {
   // serializar (o cliente remonta o Map). Distingue voto total de parcial.
   pautasVotadas: [string, number][]
   outorgantes: string[]
+  // Outorgantes cujo REPRESENTANTE (outorgado) já votou — pares [outorganteId,
+  // nº de pautas que o representante respondeu]. Pedido do Carlos: a procuração
+  // conta como PRESENTE quando o representante vota (e AUSENTE enquanto não
+  // vota), e entra no voto geral/parcial conforme esse nº de pautas.
+  outorgantesComRepVotou: [string, number][]
   // Denominador do voto total: nº de pautas em votação (todas, ou só as já
   // abertas pela mesa no modo pauta-por-pauta). Muda ao vivo nesse modo.
   totalPautasVotaveis: number
@@ -174,6 +179,7 @@ const ESTADO_VOTACAO_VAZIO: EstadoVotacaoLive = {
   votaram: [],
   pautasVotadas: [],
   outorgantes: [],
+  outorgantesComRepVotou: [],
   totalPautasVotaveis: 0,
   tentando: [],
 }
@@ -206,12 +212,19 @@ export async function getEstadoVotacaoLiveAction(
         ? (assembleia.pautas ?? []).filter((p) => p.votacao_aberta_em != null).length
         : (assembleia.pautas ?? []).length
       : 0
+    // Outorgantes cujo representante já votou (procuração "votou" = presente),
+    // com o nº de pautas que o representante respondeu (pra geral × parcial).
+    const votouSet = new Set(status.votaram)
+    const outorgantesComRepVotou: [string, number][] = procuracoes
+      .filter((p) => votouSet.has(p.outorgado_id))
+      .map((p) => [p.outorgante_id, pautasMap.get(p.outorgado_id) ?? 0])
     return {
       success: true,
       presentes: status.presentes,
       votaram: status.votaram,
       pautasVotadas: [...pautasMap.entries()],
       outorgantes: procuracoes.map((p) => p.outorgante_id),
+      outorgantesComRepVotou,
       totalPautasVotaveis,
       tentando: status.tentando,
     }

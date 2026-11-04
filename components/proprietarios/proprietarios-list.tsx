@@ -59,6 +59,11 @@ interface ProprietariosListProps {
   // Quem outorgou procuração na assembleia aberta — não pode ser marcado
   // presente (a presença é representada pelo procurador): toggle desabilitado.
   outorgantesNaAberta?: Set<string>
+  // Outorgantes cujo REPRESENTANTE já votou → quantas pautas ele respondeu
+  // (pedido do Carlos: procuração conta como PRESENTE quando o representante
+  // vota, e como AUSENTE enquanto não vota; se votou, entra no voto geral/parcial
+  // conforme o representante). Ausência da chave = representante ainda não votou.
+  outorgantesComRepVotouNaAberta?: Map<string, number>
   // Nome de quem participou pelo imóvel quando não é o dono do cadastro (co-dono
   // presente, ex.: esposa). Semente do servidor; a mesa edita direto na linha.
   participantesNaAberta?: Map<string, string>
@@ -69,9 +74,6 @@ interface ProprietariosListProps {
   // Pautas da assembleia aberta — pro "Registrar voto manual" direto na lista
   // (pedido do Carlos: não trocar de tela). O dialog filtra as abertas sozinho.
   pautasDaAberta?: Pauta[]
-  // A assembleia aberta exige presença pela mesa? Gate do voto manual por linha:
-  // nesse modo só aparece pra quem está presente (igual à lista de busca).
-  exigePresencaAberta?: boolean
   isAdmin?: boolean
   // Visualizador = só leitura: esconde editar/excluir/adicionar/remover unidade.
   podeEditar?: boolean
@@ -119,11 +121,11 @@ export function ProprietariosList({
   pautasVotadasNaAberta,
   totalPautasVotaveis,
   outorgantesNaAberta,
+  outorgantesComRepVotouNaAberta,
   participantesNaAberta,
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
   pautasDaAberta,
-  exigePresencaAberta = false,
   isAdmin = false,
   podeEditar = true,
   criterioPeso = "unidade",
@@ -202,6 +204,12 @@ export function ProprietariosList({
   const [outorgantesLocal, setOutorgantesLocal] = useState<Set<string>>(
     () => new Set(outorgantesNaAberta)
   )
+  // Outorgantes cujo representante já votou → nº de pautas que o representante
+  // respondeu. A presença e o voto do imóvel de procuração herdam disto (ver
+  // presenteEfetivo/votouEfetivo abaixo). Semente da prop, sincronizado no poll.
+  const [outorgantesComRepVotouLocal, setOutorgantesComRepVotouLocal] = useState<
+    Map<string, number>
+  >(() => new Map(outorgantesComRepVotouNaAberta))
 
   // Alerta "tentando entrar" na própria tela de cadastro (pedido do Carlos: é a
   // tela que a secretária fica o tempo todo). id → horário da tentativa. Buscado
@@ -223,6 +231,7 @@ export function ProprietariosList({
     setPautasVotadasLocal(new Map(r.pautasVotadas))
     setTotalPautasVotaveisLocal(r.totalPautasVotaveis)
     setOutorgantesLocal(new Set(r.outorgantes))
+    setOutorgantesComRepVotouLocal(new Map(r.outorgantesComRepVotou))
     setPresentesLocal((prev) => {
       const servidor = new Set(r.presentes)
       // Preserva TODAS as marcações em voo deste dispositivo (o servidor pode
@@ -298,31 +307,54 @@ export function ProprietariosList({
     setMarcandoId((atual) => (atual === proprietarioId ? null : atual))
   }
 
+  // Presença/voto "EFETIVOS" — a procuração herda o status do REPRESENTANTE
+  // (pedido do Carlos): o imóvel de quem outorgou conta como PRESENTE quando o
+  // representante vota e como AUSENTE enquanto não vota; se votou, entra no voto
+  // geral/parcial conforme quantas pautas o representante respondeu. Quem NÃO é
+  // outorgante cai no próprio estado (presença/voto direto) — comportamento
+  // idêntico ao de antes. Assim Presentes + Ausentes = total E Presentes =
+  // Votou geral + Parcial + Não votaram (o funil continua fechando).
+  const presenteEfetivo = useCallback(
+    (id: string) =>
+      outorgantesLocal.has(id) ? outorgantesComRepVotouLocal.has(id) : presentesLocal.has(id),
+    [outorgantesLocal, outorgantesComRepVotouLocal, presentesLocal]
+  )
+  const votouEfetivo = useCallback(
+    (id: string) =>
+      outorgantesLocal.has(id) ? outorgantesComRepVotouLocal.has(id) : votaramLocal.has(id),
+    [outorgantesLocal, outorgantesComRepVotouLocal, votaramLocal]
+  )
+  const pautasEfetivas = useCallback(
+    (id: string) =>
+      outorgantesLocal.has(id)
+        ? outorgantesComRepVotouLocal.get(id) ?? 0
+        : pautasVotadasLocal.get(id) ?? 0,
+    [outorgantesLocal, outorgantesComRepVotouLocal, pautasVotadasLocal]
+  )
+
   // Quem votou em ALGUMAS pautas, mas não em todas as que estavam em votação
   // (voto parcial). Só faz sentido quando há denominador (pautas em votação).
+  // Usa o voto EFETIVO (procuração conta pelo representante).
   const parciaisNaAberta = useMemo(() => {
     const s = new Set<string>()
     if (!temAssembleiaAberta || !totalPautasVotaveisLocal) return s
     for (const p of proprietarios) {
-      if (!votaramLocal.has(p.id)) continue
-      const votadas = pautasVotadasLocal.get(p.id) ?? 0
-      if (votadas < totalPautasVotaveisLocal) s.add(p.id)
+      if (!votouEfetivo(p.id)) continue
+      if (pautasEfetivas(p.id) < totalPautasVotaveisLocal) s.add(p.id)
     }
     return s
-  }, [proprietarios, temAssembleiaAberta, votaramLocal, pautasVotadasLocal, totalPautasVotaveisLocal])
+  }, [proprietarios, temAssembleiaAberta, totalPautasVotaveisLocal, votouEfetivo, pautasEfetivas])
 
   const proprietariosExibidos = useMemo(() => {
     const porVoto =
       temAssembleiaAberta && filtroVoto !== "todos"
         ? proprietarios.filter((p) => {
-            const ehOutorgante = outorgantesLocal.has(p.id)
-            if (filtroVoto === "presentes") return presentesLocal.has(p.id)
-            // "ausentes": quem ainda não confirmou presença (e não é procuração
-            // — essa tem balde próprio). Pedido do Carlos: no início todo mundo
-            // é "Ausente"; ao marcar presente vira "Não votou".
-            if (filtroVoto === "ausentes")
-              return !presentesLocal.has(p.id) && !ehOutorgante
-            if (filtroVoto === "procuracao") return ehOutorgante
+            // Presença/voto EFETIVOS: a procuração conta pelo representante
+            // (presente/votou se o representante votou). Assim Presentes +
+            // Ausentes fecham e a procuração não fica num limbo.
+            if (filtroVoto === "presentes") return presenteEfetivo(p.id)
+            if (filtroVoto === "ausentes") return !presenteEfetivo(p.id)
+            if (filtroVoto === "procuracao") return outorgantesLocal.has(p.id)
             if (filtroVoto === "inadimplentes") return p.inadimplente
             if (filtroVoto === "tentando") return tentandoEntrar.has(p.id)
             // "votaram" = votaram TUDO (todas as pautas). Junto com "parcial" e
@@ -330,12 +362,12 @@ export function ProprietariosList({
             // quem votou em parte e quem não votou nada — três baldes que
             // somam os presentes, sem sobreposição.
             if (filtroVoto === "votaram")
-              return votaramLocal.has(p.id) && !parciaisNaAberta.has(p.id)
+              return votouEfetivo(p.id) && !parciaisNaAberta.has(p.id)
             if (filtroVoto === "parcial") return parciaisNaAberta.has(p.id)
             // "nao" — presentes que AINDA não votaram (não soma quem nem está
             // na assembleia): pedido do Carlos, "Não votaram = presentes sem
-            // voto", não "todos menos os que votaram".
-            return presentesLocal.has(p.id) && !votaramLocal.has(p.id)
+            // voto".
+            return presenteEfetivo(p.id) && !votouEfetivo(p.id)
           })
         : proprietarios
 
@@ -372,8 +404,8 @@ export function ProprietariosList({
     ordenacao,
     filtroVoto,
     temAssembleiaAberta,
-    votaramLocal,
-    presentesLocal,
+    presenteEfetivo,
+    votouEfetivo,
     parciaisNaAberta,
     outorgantesLocal,
     tentandoEntrar,
@@ -423,11 +455,12 @@ export function ProprietariosList({
   // a lista continua uma linha por proprietário.
   const imoveisDe = (p: Proprietario) => p.unidades?.length ?? 0
   const totalImoveis = proprietarios.reduce((n, p) => n + imoveisDe(p), 0)
-  // "Votaram" = votaram TUDO (todas as pautas em votação). Com "Parcial" e
-  // "Não votaram", particiona os presentes (funil do Carlos), sem sobrepor.
+  // Contadores por IMÓVEL com presença/voto EFETIVOS (procuração conta pelo
+  // representante — pedido do Carlos). Invariantes: Presentes + Ausentes =
+  // Total; Presentes = Votou geral + Parcial + Não votaram.
   const nVotaram = temAssembleiaAberta
     ? proprietarios.reduce(
-        (n, p) => n + (votaramLocal.has(p.id) && !parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0),
+        (n, p) => n + (votouEfetivo(p.id) && !parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0),
         0
       )
     : 0
@@ -435,26 +468,20 @@ export function ProprietariosList({
     ? proprietarios.reduce((n, p) => n + (parciaisNaAberta.has(p.id) ? imoveisDe(p) : 0), 0)
     : 0
   const nPresentes = temAssembleiaAberta
-    ? proprietarios.reduce((n, p) => n + (presentesLocal.has(p.id) ? imoveisDe(p) : 0), 0)
+    ? proprietarios.reduce((n, p) => n + (presenteEfetivo(p.id) ? imoveisDe(p) : 0), 0)
     : 0
-  // "Não votaram" = imóveis de quem está PRESENTE e ainda não votou (pedido do
-  // Carlos). Antes era total − votaram, que somava também quem nem participou
-  // da assembleia — número sem sentido para a gestão cobrar quem falta votar.
+  // "Não votaram" = imóveis de quem está PRESENTE (efetivo) e ainda não votou.
   const nNao = temAssembleiaAberta
     ? proprietarios.reduce(
-        (n, p) => n + (presentesLocal.has(p.id) && !votaramLocal.has(p.id) ? imoveisDe(p) : 0),
+        (n, p) => n + (presenteEfetivo(p.id) && !votouEfetivo(p.id) ? imoveisDe(p) : 0),
         0
       )
     : 0
-  // Ausentes (imóveis de quem não confirmou presença e não é procuração) +
-  // Procuração (outorgantes) + Inadimplentes. Partição: Total = Presentes +
-  // Ausentes + Procuração. Inadimplentes cruza as demais (só informativo).
+  // Ausentes = imóveis que NÃO estão presentes (efetivo). Procuração cujo
+  // representante ainda não votou cai aqui (pedido do Carlos), então Presentes
+  // + Ausentes fecham no total. "Procuração" abaixo segue como destaque (cruza).
   const nAusentes = temAssembleiaAberta
-    ? proprietarios.reduce(
-        (n, p) =>
-          n + (!presentesLocal.has(p.id) && !outorgantesLocal.has(p.id) ? imoveisDe(p) : 0),
-        0
-      )
+    ? proprietarios.reduce((n, p) => n + (!presenteEfetivo(p.id) ? imoveisDe(p) : 0), 0)
     : 0
   const nProcuracao = temAssembleiaAberta
     ? proprietarios.reduce((n, p) => n + (outorgantesLocal.has(p.id) ? imoveisDe(p) : 0), 0)
@@ -757,7 +784,6 @@ export function ProprietariosList({
                 assembleiaAbertaId={assembleiaAbertaId}
                 assembleiaAbertaTitulo={assembleiaAbertaTitulo}
                 pautasDaAberta={pautasDaAberta}
-                exigePresencaAberta={exigePresencaAberta}
               />
             ))}
           </div>
@@ -795,7 +821,6 @@ const ProprietarioRow = memo(function ProprietarioRow({
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
   pautasDaAberta,
-  exigePresencaAberta,
 }: {
   proprietario: Proprietario
   condominioId: string
@@ -833,7 +858,6 @@ const ProprietarioRow = memo(function ProprietarioRow({
   assembleiaAbertaId?: string
   assembleiaAbertaTitulo?: string
   pautasDaAberta?: Pauta[]
-  exigePresencaAberta?: boolean
 }) {
   const [novaUnidade, setNovaUnidade] = useState("")
   const [showAdd, setShowAdd] = useState(false)
@@ -874,20 +898,18 @@ const ProprietarioRow = memo(function ProprietarioRow({
   }
 
   // Voto manual DIRETO na linha (pedido do Carlos: "já estando com o ponteiro na
-  // pessoa, só clicar na Ação"). Só aparece pra quem PODE receber voto agora:
-  // assembleia aberta com dados em mãos, não inadimplente, não outorgante (quem
-  // vota é o procurador) e que ainda não votou tudo (votou geral = nada a
-  // lançar). Com presença exigida pela mesa, só pra quem está presente — igual à
-  // lista de busca (o núcleo também recusa, isto é só pra não oferecer em vão).
+  // pessoa, só clicar na Ação"). Só aparece pra quem está PRESENTE e ainda NÃO
+  // votou geral (pedido do Carlos) — além de não ser inadimplente nem outorgante
+  // (quem vota é o procurador) e de ter os dados da assembleia em mãos.
   const podeVotoManual =
     !!assembleiaAbertaId &&
     !!assembleiaAbertaTitulo &&
     !!pautasDaAberta &&
     mostrarPresenca &&
+    presente &&
     !proprietario.inadimplente &&
     !outorgante &&
-    !(votou && !parcial) &&
-    (!exigePresencaAberta || presente)
+    !(votou && !parcial)
 
   const acoes = (
     <>
