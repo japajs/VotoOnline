@@ -14,6 +14,7 @@ import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-vo
 import { MesaAssembleiaDialog } from "@/components/assembleias/mesa-assembleia-dialog"
 import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
+import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
@@ -336,6 +337,10 @@ export function ApuracaoAssembleia({
               )}
               {canExport && (
                 <>
+                  {/* Histórico de disparos de e-mail (pedido do Carlos: rastrear
+                      os envios desde a abertura). Disponível também encerrada,
+                      pra revisar depois. */}
+                  <HistoricoDisparosDialog assembleiaId={assembleia.id} condominioId={condominioId} />
                   <Button
                     variant="outline"
                     size="sm"
