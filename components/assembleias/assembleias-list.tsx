@@ -100,7 +100,6 @@ function AssembleiaRow({
   // "Cancelar", não a ação destrutiva/excepcional — quem confirmar sem
   // querer (Enter, toque duplo etc.) cancela por padrão, precisa mover pra
   // excluir/encerrar/reabrir de propósito.
-  const cancelEncerrarRef = useRef<HTMLButtonElement>(null)
   const cancelReabrirRef = useRef<HTMLButtonElement>(null)
 
   function handleStatusChange(nextStatus: AssembleiaStatus) {
@@ -112,15 +111,6 @@ function AssembleiaRow({
         toast.error(result.error)
       }
     })
-  }
-
-  // Achado de auditoria: encerrar era um clique só, sem confirmação — e é
-  // uma ação irreversível (updateAssembleiaStatus bloqueia reabrir depois),
-  // que trava voto de quem ainda não votou. Mesmo padrão de confirmação já
-  // usado pra excluir.
-  function handleEncerrar() {
-    setEncerrarOpen(false)
-    handleStatusChange("encerrada")
   }
 
   // Correção excepcional (ver reabrirAssembleia em services/assembleias.ts)
@@ -283,34 +273,26 @@ function AssembleiaRow({
           onConfirmar={(senha) => deleteAssembleiaAction(assembleia.id, condominioId, senha)}
         />
 
-        <AlertDialog open={encerrarOpen} onOpenChange={setEncerrarOpen}>
-          <AlertDialogContent initialFocus={cancelEncerrarRef}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Encerrar assembleia?</AlertDialogTitle>
-              <AlertDialogDescription>
-                <strong>&quot;{assembleia.titulo}&quot;</strong> deixará de aceitar novos votos. Reabrir
-                depois é possível, mas só deve ser usado em caráter excepcional pra corrigir um
-                problema pontual — não é um fluxo normal. Confira se todos que precisavam votar
-                já votaram antes de continuar.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                ref={cancelEncerrarRef}
-                className="border-destructive/40 bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:border-ring focus:ring-3 focus:ring-ring/50"
-              >
-                Cancelar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                variant="outline"
-                onClick={handleEncerrar}
-                className="active:border-destructive active:bg-destructive active:text-destructive-foreground"
-              >
-                Encerrar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Encerrar pede SENHA (pedido do Carlos: o botão fica colado no
+            Disparar e ele encerrava sem querer). Mesmo padrão do excluir —
+            digitar a senha evita o encerramento acidental. */}
+        <ConfirmarSenhaDialog
+          open={encerrarOpen}
+          onOpenChange={setEncerrarOpen}
+          titulo="Encerrar assembleia"
+          confirmLabel="Encerrar"
+          descricao={
+            <>
+              <strong className="text-foreground">&quot;{assembleia.titulo}&quot;</strong> deixará de
+              aceitar novos votos. Reabrir depois só em caráter excepcional. Confirme com a sua senha
+              para evitar o encerramento acidental.
+            </>
+          }
+          onConfirmar={(senha) =>
+            updateAssembleiaStatusAction(assembleia.id, condominioId, "encerrada", senha)
+          }
+          onSuccess={() => toast.success("Assembleia encerrada com sucesso.")}
+        />
 
         <AlertDialog open={reabrirOpen} onOpenChange={setReabrirOpen}>
           <AlertDialogContent initialFocus={cancelReabrirRef}>

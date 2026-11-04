@@ -521,12 +521,20 @@ export async function fecharVotacaoPautaAction(input: {
 export async function updateAssembleiaStatusAction(
   id: string,
   condominioId: string,
-  status: AssembleiaStatus
+  status: AssembleiaStatus,
+  // Encerrar pede SENHA (pedido do Carlos: o botão fica colado no Disparar e
+  // ele encerrava a assembleia sem querer). Só é exigida pra "encerrada" — as
+  // outras transições (pausar/retomar) seguem sem senha, são reversíveis.
+  senha?: string
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, error: acesso.error }
+  if (status === "encerrada") {
+    const senhaOk = await verificarSenhaUsuarioAtual(senha ?? "")
+    if (!senhaOk.ok) return { success: false, error: senhaOk.error }
+  }
   try {
     await updateAssembleiaStatus(id, status)
     revalidatePath(`${ROUTES.condominios}/${condominioId}`)
