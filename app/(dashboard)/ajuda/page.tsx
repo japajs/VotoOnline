@@ -139,6 +139,13 @@ export default function AjudaPage() {
             o cadastro duplicado) ou outra pessoa com o mesmo nome.
           </li>
           <li>
+            <strong className="text-foreground">Mover um imóvel entre cadastros:</strong> ao usar{" "}
+            <Chip>+ Add imóvel</Chip> num proprietário e digitar uma unidade que já está vinculada a
+            outro cadastro, o sistema <strong className="text-foreground">avisa de quem é</strong> e,
+            se você confirmar, <strong className="text-foreground">move o imóvel</strong> (tira do
+            cadastro antigo) — a mesma unidade nunca fica com dois donos ao mesmo tempo.
+          </li>
+          <li>
             Tem muita gente? Use o menu <Chip>Importação</Chip> para cadastrar tudo de uma vez por
             planilha.
           </li>
@@ -190,7 +197,11 @@ export default function AjudaPage() {
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
             <strong className="text-foreground">Por e-mail:</strong> o botão <Chip>Disparar</Chip>{" "}
-            envia a cada proprietário com e-mail o seu link pessoal de voto.
+            envia a cada proprietário com e-mail o seu link pessoal de voto. A lista vem{" "}
+            <strong className="text-foreground">em ordem de imóvel</strong> e você pode{" "}
+            <strong className="text-foreground">marcar só uma parte</strong> (ou só quem ainda não
+            votou) — útil para <strong className="text-foreground">fracionar o envio em dias</strong>{" "}
+            e respeitar o limite diário de e-mails do provedor.
           </li>
           <li>
             <strong className="text-foreground">Link de entrada (WhatsApp):</strong> copie o{" "}
@@ -300,6 +311,16 @@ export default function AjudaPage() {
             vinculado</strong> (sem peso de voto) — nem pela mesa, nem pelo link. Vincule um imóvel ao
             cadastro ou registre por procuração.
           </li>
+          <li>
+            <strong className="text-foreground">Anular voto:</strong> pelo ícone na coluna{" "}
+            <Chip>Ações</Chip> da linha do proprietário (aparece só para quem já votou nesta
+            assembleia). Serve para corrigir um voto lançado errado ou para liberar a exclusão do
+            cadastro. Pede a sua senha.
+          </li>
+          <li>
+            <strong className="text-foreground">Excluir cadastro:</strong> também pela coluna{" "}
+            <Chip>Ações</Chip>. Pede a sua senha. Se a pessoa já votou, anule o voto antes.
+          </li>
         </ul>
       </Secao>
 
@@ -312,8 +333,28 @@ export default function AjudaPage() {
             votou geral, parcial ou ainda não votou).
           </li>
           <li>
+            O botão <Chip>Limpar</Chip> zera a busca e o filtro de uma vez e volta a lista para os
+            100% dos imóveis (só aparece quando há algo a limpar).
+          </li>
+          <li>
             O botão <Chip>Lembrar quem não votou</Chip> reenvia o e-mail só para quem ainda está
             pendente.
+          </li>
+          <li>
+            <strong className="text-foreground">Histórico de disparos:</strong> o botão{" "}
+            <Chip>Histórico de disparos</Chip> mostra todos os e-mails enviados na assembleia — quem
+            recebeu, quando e o status. Quando o provedor confirma, o status vira{" "}
+            <strong className="text-foreground">Entregue</strong> (ou{" "}
+            <strong className="text-foreground">Bounce</strong>, quando o e-mail não existe, ou{" "}
+            <strong className="text-foreground">Spam</strong>). Disparos feitos antes de ativar essa
+            confirmação ficam como <em>Enviado</em>.
+          </li>
+          <li>
+            <strong className="text-foreground">Exportar a lista (Excel):</strong> o botão{" "}
+            <Chip>Exportar XLSX</Chip> gera a planilha com <strong className="text-foreground">só o
+            que está à vista</strong> (respeita a busca e o filtro) e na mesma ordem da tela, com as
+            colunas <strong className="text-foreground">Imóvel · Nome · E-mail · Telefone · CPF ·
+            Cônjuge</strong>.
           </li>
           <li>
             <strong className="text-foreground">Modo compartilhar (LGPD):</strong> o botão{" "}
@@ -350,8 +391,10 @@ export default function AjudaPage() {
       <Secao icon={LockKeyhole} titulo="10. Encerrar e apurar">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
-            <Chip>Encerrar</Chip> fecha a votação. A tela passa a mostrar o resultado ponderado (em
-            imóveis ou em % da fração ideal, conforme o critério do condomínio).
+            <Chip>Encerrar</Chip> fecha a votação e <strong className="text-foreground">pede a sua
+            senha</strong> para confirmar — como o botão fica ao lado do <Chip>Disparar</Chip>, a
+            senha evita encerrar a assembleia sem querer. Depois, a tela passa a mostrar o resultado
+            ponderado (em imóveis ou em % da fração ideal, conforme o critério do condomínio).
           </li>
           <li>
             <strong className="text-foreground">Hora do encerramento:</strong> dá para corrigir a
