@@ -174,7 +174,9 @@ export async function enviarAssembleiaAction(
 
   await Promise.all([
     ...sentIds.map((id) => updateAssembleiaSendStatus(id, "sent", now)),
-    ...failedEmailIds.map((id) => updateAssembleiaSendStatus(id, "failed")),
+    // Grava a data também na falha — assim o histórico de disparos mostra quando
+    // a tentativa aconteceu, não só "falhou" sem data.
+    ...failedEmailIds.map((id) => updateAssembleiaSendStatus(id, "failed", now)),
   ])
 
   revalidatePath(ROUTES.dashboard)
@@ -432,16 +434,15 @@ export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | n
   }
 }
 
-// IDs dos proprietários que JÁ votaram nesta assembleia — usado no disparo de
-// e-mail pra o operador filtrar "só quem ainda não votou" e mandar o lembrete
-// só pra quem falta (pedido do Carlos: a tela marcava todos). Read-only.
 // Histórico de disparos de e-mail (pedido do Carlos: rastrear os envios desde a
-// abertura). Read-only; visualizador também lê.
+// abertura). Read-only, mas só operador/admin: mostra e-mails dos condôminos, e
+// o botão na apuração já aparece só pra quem pode operar (canExport exclui o
+// visualizador) — manter a action no mesmo nível evita vazar e-mail por fora.
 export async function getHistoricoDisparosAction(
   assembleiaId: string,
   condominioId: string
 ): Promise<{ success: boolean; disparos: DisparoHistorico[]; error?: string }> {
-  const auth = await requirePerfil(["administrador", "operador", "visualizador"])
+  const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, disparos: [], error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, disparos: [], error: acesso.error }
@@ -453,6 +454,9 @@ export async function getHistoricoDisparosAction(
   }
 }
 
+// IDs dos proprietários que JÁ votaram nesta assembleia — usado no disparo de
+// e-mail pra o operador filtrar "só quem ainda não votou" e mandar o lembrete
+// só pra quem falta (pedido do Carlos: a tela marcava todos). Read-only.
 export async function getProprietarioIdsVotaramAction(
   assembleiaId: string,
   condominioId: string

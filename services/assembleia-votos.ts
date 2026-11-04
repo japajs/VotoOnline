@@ -185,9 +185,14 @@ export async function upsertAssembleiaSend(input: {
   token: string
 }): Promise<AssembleiaSend> {
   const db = createServerClient()
+  // NÃO força `status` aqui: a coluna tem default 'pending' pra linha NOVA, e num
+  // upsert de send que JÁ EXISTE isto PRESERVA o status real (ex.: 'sent' de um
+  // disparo). Antes forçava 'pending' e apagava o histórico de disparo quando a
+  // mesa lançava um voto manual (iniciarVotoManual) pra quem já tinha recebido
+  // o e-mail. Nada no app gateia por este status — só o relatório/histórico lê.
   const { data, error } = await db
     .from("assembleia_sends")
-    .upsert({ ...input, status: "pending" as const }, { onConflict: "assembleia_id,proprietario_id" })
+    .upsert(input, { onConflict: "assembleia_id,proprietario_id" })
     .select()
     .single()
 
