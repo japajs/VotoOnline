@@ -79,10 +79,11 @@ interface ProprietariosListProps {
   // Nome de quem participou pelo imóvel quando não é o dono do cadastro (co-dono
   // presente, ex.: esposa). Semente do servidor; a mesa edita direto na linha.
   participantesNaAberta?: Map<string, string>
-  // Proprietários cujo e-mail de disparo voltou (bounce) ou caiu em spam — marca
-  // "e-mail não chegou, use WhatsApp" na linha (pedido do Carlos após os bounces
-  // de endereços errados em Caldas Novas).
-  emailNaoEntregueNaAberta?: Set<string>
+  // Proprietários cujo e-mail de disparo teve problema: "bounce" (voltou) ou
+  // "spam" (marcado como spam) — marca "use WhatsApp" na linha (pedido do Carlos
+  // após os bounces de endereços errados em Caldas Novas). Escondido pra quem já
+  // votou (o aviso vira ruído).
+  emailProblemaNaAberta?: Map<string, "bounce" | "spam">
   // Id da assembleia aberta — habilita marcar presença direto na lista (sem
   // abrir a Apuração). undefined = sem assembleia aberta → sem caixa.
   assembleiaAbertaId?: string
@@ -139,7 +140,7 @@ export function ProprietariosList({
   outorgantesNaAberta,
   outorgantesComRepVotouNaAberta,
   participantesNaAberta,
-  emailNaoEntregueNaAberta,
+  emailProblemaNaAberta,
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
   pautasDaAberta,
@@ -797,7 +798,7 @@ export function ProprietariosList({
                 podeAnotarParticipante={podeMarcarPresenca}
                 participante={participantesLocal.get(p.id) ?? ""}
                 conjuge={p.conjuge}
-                emailNaoEntregue={emailNaoEntregueNaAberta?.has(p.id) ?? false}
+                emailProblema={emailProblemaNaAberta?.get(p.id)}
                 onSetParticipante={handleSetParticipante}
                 assembleiaAbertaId={assembleiaAbertaId}
                 assembleiaAbertaTitulo={assembleiaAbertaTitulo}
@@ -835,7 +836,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   podeAnotarParticipante,
   participante,
   conjuge,
-  emailNaoEntregue,
+  emailProblema,
   onSetParticipante,
   assembleiaAbertaId,
   assembleiaAbertaTitulo,
@@ -871,9 +872,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
   // Cônjuge cadastrado (co-dono que costuma comparecer) — vira o atalho de 1
   // toque pra anotar "quem participou" sem digitar. null = não cadastrado.
   conjuge: string | null
-  // E-mail do último disparo voltou (bounce) ou caiu em spam → mostra o aviso
-  // "e-mail não chegou, use WhatsApp" na coluna do e-mail.
-  emailNaoEntregue: boolean
+  // Problema no e-mail do último disparo: "bounce" (voltou) ou "spam" (marcado
+  // como spam). undefined = sem problema. Mostra o aviso "use WhatsApp" na
+  // coluna do e-mail (só pra quem ainda não votou — ver o render).
+  emailProblema?: "bounce" | "spam"
   onSetParticipante: (proprietarioId: string, nome: string) => void
   // Dados da assembleia aberta pro voto manual DIRETO na coluna Ações (pedido
   // do Carlos). undefined = sem assembleia aberta → sem o botão.
@@ -1114,12 +1116,18 @@ const ProprietarioRow = memo(function ProprietarioRow({
           {!modoCompartilhar && (
             <div className="flex min-w-0 flex-col leading-tight">
               <span className="truncate">{proprietario.email || "—"}</span>
-              {emailNaoEntregue && (
+              {emailProblema && !votou && (
                 <span
                   className="truncate text-xs font-medium text-destructive"
-                  title="O e-mail do último disparo voltou (bounce) ou caiu em spam — fale com esta pessoa pelo WhatsApp"
+                  title={
+                    emailProblema === "spam"
+                      ? "Esta pessoa marcou o e-mail como spam — fale pelo WhatsApp e evite reenviar e-mail"
+                      : "O e-mail do último disparo voltou (não existe / caixa indisponível) — fale pelo WhatsApp"
+                  }
                 >
-                  ✉ não chegou — use WhatsApp
+                  {emailProblema === "spam"
+                    ? "✉ marcou como spam — use WhatsApp"
+                    : "✉ não chegou — use WhatsApp"}
                 </span>
               )}
               {cpfFmt && (

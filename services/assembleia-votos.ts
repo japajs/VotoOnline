@@ -993,15 +993,17 @@ export async function getProprietarioIdsPresentes(assembleiaId: string): Promise
   return new Set(((data ?? []) as { proprietario_id: string }[]).map((r) => r.proprietario_id))
 }
 
-// Proprietários cujo e-mail de disparo NÃO chegou: voltou (bounce) ou foi
-// marcado como spam — pelos eventos de entrega do webhook do Resend. Serve pra
-// avisar na lista "e-mail não chegou, use WhatsApp" (pedido do Carlos após os
-// bounces reais na assembleia de Caldas Novas — a maioria era endereço errado
-// no cadastro). Como o send é 1 por proprietário, o status é do ÚLTIMO disparo
-// a cada pessoa; um reenvio bem-sucedido depois limpa esses campos.
-export async function getProprietarioIdsEmailNaoEntregue(
+// Proprietários cujo e-mail de disparo teve PROBLEMA, pelos eventos do webhook
+// do Resend: "bounce" (voltou — não existe/caixa indisponível) ou "spam"
+// (complaint — a pessoa marcou como spam; o e-mail até chegou, mas não convém
+// reenviar). Serve pra avisar na lista "use WhatsApp" (pedido do Carlos após os
+// bounces reais de Caldas Novas — a maioria era endereço errado no cadastro).
+// Como o send é 1 por proprietário, reflete o ÚLTIMO disparo a cada pessoa; um
+// reenvio bem-sucedido depois limpa esses campos. spam tem prioridade na
+// exibição (mesma ordem do Histórico de disparos).
+export async function getEmailProblemaPorProprietario(
   assembleiaId: string
-): Promise<Set<string>> {
+): Promise<Map<string, "bounce" | "spam">> {
   const db = createServerClient()
   const { data, error } = await db
     .from("assembleia_sends")
@@ -1014,7 +1016,12 @@ export async function getProprietarioIdsEmailNaoEntregue(
     bounce_em: string | null
     spam_em: string | null
   }[]
-  return new Set(rows.filter((r) => r.bounce_em || r.spam_em).map((r) => r.proprietario_id))
+  const map = new Map<string, "bounce" | "spam">()
+  for (const r of rows) {
+    if (r.spam_em) map.set(r.proprietario_id, "spam")
+    else if (r.bounce_em) map.set(r.proprietario_id, "bounce")
+  }
+  return map
 }
 
 // Quantas pautas DISTINTAS cada proprietário já respondeu nesta assembleia —

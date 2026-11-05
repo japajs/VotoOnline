@@ -10,7 +10,7 @@ import {
   getProprietarioIdsVotaram,
   getProprietarioIdsPresentes,
   getPautasVotadasPorProprietario,
-  getProprietarioIdsEmailNaoEntregue,
+  getEmailProblemaPorProprietario,
 } from "@/services/assembleia-votos"
 import { getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { getParticipantesNaAberta } from "@/services/presenca"
@@ -67,7 +67,7 @@ export default async function CondominioDetailPage({ params }: Props) {
     pautasVotadasNaAberta,
     procuracoesNaAberta,
     participantesNaAberta,
-    emailNaoEntregueNaAberta,
+    emailProblemaNaAberta,
   ] = assembleiaAberta
     ? await Promise.all([
         getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>()),
@@ -79,9 +79,11 @@ export default async function CondominioDetailPage({ params }: Props) {
         getProcuracoesByAssembleia(assembleiaAberta.id).catch(() => []),
         // Nome de quem participou pelo imóvel quando não é o dono (co-dono).
         getParticipantesNaAberta(assembleiaAberta.id).catch(() => new Map<string, string>()),
-        // E-mail que voltou (bounce) ou caiu em spam — pra avisar "use WhatsApp"
-        // na linha da pessoa (pedido do Carlos após os bounces de Caldas Novas).
-        getProprietarioIdsEmailNaoEntregue(assembleiaAberta.id).catch(() => new Set<string>()),
+        // E-mail que voltou (bounce) ou foi marcado como spam — pra avisar "use
+        // WhatsApp" na linha (pedido do Carlos após os bounces de Caldas Novas).
+        getEmailProblemaPorProprietario(assembleiaAberta.id).catch(
+          () => new Map<string, "bounce" | "spam">()
+        ),
       ])
     : [undefined, undefined, undefined, undefined, undefined, undefined]
 
@@ -197,7 +199,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           outorgantesNaAberta={outorgantesNaAberta}
           outorgantesComRepVotouNaAberta={outorgantesComRepVotouNaAberta}
           participantesNaAberta={participantesNaAberta}
-          emailNaoEntregueNaAberta={emailNaoEntregueNaAberta}
+          emailProblemaNaAberta={emailProblemaNaAberta}
           totalPautasVotaveis={totalPautasVotaveis}
           assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
