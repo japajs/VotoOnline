@@ -342,12 +342,22 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Histórico de disparos:</strong> o botão{" "}
-            <Chip>Histórico de disparos</Chip> mostra todos os e-mails enviados na assembleia — quem
-            recebeu, quando e o status. Quando o provedor confirma, o status vira{" "}
-            <strong className="text-foreground">Entregue</strong> (ou{" "}
+            <Chip>Histórico de disparos</Chip> mostra todos os e-mails enviados na assembleia — com o{" "}
+            <strong className="text-foreground">imóvel</strong> em cada linha, quem recebeu, quando e o
+            status. Dá para <strong className="text-foreground">buscar digitando o imóvel</strong> (ou
+            o nome/e-mail) e ver na hora o que aconteceu com aquela unidade. Quando o provedor confirma,
+            o status vira <strong className="text-foreground">Entregue</strong> (ou{" "}
             <strong className="text-foreground">Bounce</strong>, quando o e-mail não existe, ou{" "}
             <strong className="text-foreground">Spam</strong>). Disparos feitos antes de ativar essa
             confirmação ficam como <em>Enviado</em>.
+          </li>
+          <li>
+            <strong className="text-foreground">Comprovante de disparos (Excel):</strong> dentro do{" "}
+            <Chip>Histórico de disparos</Chip>, o botão <Chip>Exportar (Excel)</Chip> gera uma planilha
+            com <strong className="text-foreground">Imóvel · Nome · E-mail · Status · datas</strong> e um
+            resumo (enviados, entregues, bounce, spam) — serve para{" "}
+            <strong className="text-foreground">comprovar os envios</strong>, por exemplo quando a
+            síndica pede prova de que os e-mails foram disparados.
           </li>
           <li>
             <strong className="text-foreground">Exportar a lista (Excel):</strong> o botão{" "}
