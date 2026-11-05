@@ -993,6 +993,30 @@ export async function getProprietarioIdsPresentes(assembleiaId: string): Promise
   return new Set(((data ?? []) as { proprietario_id: string }[]).map((r) => r.proprietario_id))
 }
 
+// Proprietários cujo e-mail de disparo NÃO chegou: voltou (bounce) ou foi
+// marcado como spam — pelos eventos de entrega do webhook do Resend. Serve pra
+// avisar na lista "e-mail não chegou, use WhatsApp" (pedido do Carlos após os
+// bounces reais na assembleia de Caldas Novas — a maioria era endereço errado
+// no cadastro). Como o send é 1 por proprietário, o status é do ÚLTIMO disparo
+// a cada pessoa; um reenvio bem-sucedido depois limpa esses campos.
+export async function getProprietarioIdsEmailNaoEntregue(
+  assembleiaId: string
+): Promise<Set<string>> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select("proprietario_id, bounce_em, spam_em")
+    .eq("assembleia_id", assembleiaId)
+
+  if (error) throw new Error(error.message)
+  const rows = (data ?? []) as {
+    proprietario_id: string
+    bounce_em: string | null
+    spam_em: string | null
+  }[]
+  return new Set(rows.filter((r) => r.bounce_em || r.spam_em).map((r) => r.proprietario_id))
+}
+
 // Quantas pautas DISTINTAS cada proprietário já respondeu nesta assembleia —
 // usado para distinguir, na lista de proprietários, voto TOTAL (respondeu
 // todas as pautas em votação) de voto PARCIAL (respondeu só algumas). Carlos:
