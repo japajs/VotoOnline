@@ -26,6 +26,9 @@ export interface UnidadeRelatorio {
 export interface DisparoHistorico {
   nome: string
   email: string | null
+  // Imóvel(is) da pessoa — pedido do Carlos: "digitar um imóvel e ver o histórico
+  // de disparos". Vem do snapshot do voto quando existe; senão, do cadastro atual.
+  unidades: string
   status: "sent" | "failed"
   sentAt: string | null
   // Prova de entrega via webhook do Resend (null enquanto não chega o evento).
@@ -34,12 +37,25 @@ export interface DisparoHistorico {
   spamEm: string | null
 }
 
+// Formata o imóvel como o resto do app: "A-101" quando há bloco separado, só o
+// número quando o bloco está embutido (ex.: "A0101"). Ordena natural (numérico).
+type UnidadeRaw = { numero: string; bloco: string | null }
+function fmtUnidade(u: UnidadeRaw): string {
+  return u.bloco ? `${u.bloco}-${u.numero}` : u.numero
+}
+function fmtUnidades(us: UnidadeRaw[]): string {
+  return [...us]
+    .map(fmtUnidade)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .join(", ")
+}
+
 export async function getHistoricoDisparos(assembleiaId: string): Promise<DisparoHistorico[]> {
   const db = createServerClient()
   const { data, error } = await db
     .from("assembleia_sends")
     .select(
-      "status, sent_at, entregue_em, bounce_em, spam_em, email_snapshot, nome_snapshot, proprietarios(nome, email)"
+      "status, sent_at, entregue_em, bounce_em, spam_em, email_snapshot, nome_snapshot, unidades_snapshot, proprietarios(nome, email, unidades(numero, bloco))"
     )
     .eq("assembleia_id", assembleiaId)
     .in("status", ["sent", "failed"])
@@ -54,17 +70,27 @@ export async function getHistoricoDisparos(assembleiaId: string): Promise<Dispar
     spam_em: string | null
     email_snapshot: string | null
     nome_snapshot: string | null
-    proprietarios: { nome: string; email: string | null } | null
+    unidades_snapshot: UnidadeRaw[] | null
+    proprietarios: { nome: string; email: string | null; unidades: UnidadeRaw[] | null } | null
   }
-  return ((data ?? []) as unknown as Row[]).map((r) => ({
-    nome: r.nome_snapshot ?? r.proprietarios?.nome ?? "—",
-    email: r.email_snapshot ?? r.proprietarios?.email ?? null,
-    status: r.status,
-    sentAt: r.sent_at,
-    entregueEm: r.entregue_em,
-    bounceEm: r.bounce_em,
-    spamEm: r.spam_em,
-  }))
+  return ((data ?? []) as unknown as Row[]).map((r) => {
+    // Integridade histórica (Etapa 3): se a pessoa já votou, o imóvel está
+    // congelado no snapshot do voto; se o disparo ainda não virou voto, o
+    // snapshot é null — aí cai no cadastro atual do proprietário.
+    const snap =
+      r.unidades_snapshot && r.unidades_snapshot.length > 0 ? r.unidades_snapshot : null
+    const unidades = snap ?? r.proprietarios?.unidades ?? []
+    return {
+      nome: r.nome_snapshot ?? r.proprietarios?.nome ?? "—",
+      email: r.email_snapshot ?? r.proprietarios?.email ?? null,
+      unidades: unidades.length > 0 ? fmtUnidades(unidades) : "—",
+      status: r.status,
+      sentAt: r.sent_at,
+      entregueEm: r.entregue_em,
+      bounceEm: r.bounce_em,
+      spamEm: r.spam_em,
+    }
+  })
 }
 
 export interface HistoricoParticipante {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { History, Loader2, Search, CheckCircle2, XCircle } from "lucide-react"
+import { History, Loader2, Search, CheckCircle2, XCircle, Download } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -74,7 +74,7 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
 
   const filtrados = disparos.filter((d) => {
     const q = normalizarBusca(busca.trim())
-    return !q || normalizarBusca(`${d.nome} ${d.email ?? ""}`).includes(q)
+    return !q || normalizarBusca(`${d.unidades} ${d.nome} ${d.email ?? ""}`).includes(q)
   })
   const nEnviados = disparos.filter((d) => d.status === "sent").length
   const nFalhas = disparos.filter((d) => d.status === "failed").length
@@ -139,7 +139,7 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
               <Input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nome ou e-mail…"
+                placeholder="Buscar por imóvel, nome ou e-mail…"
                 className="pl-9"
                 autoFocus
               />
@@ -154,7 +154,12 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
                 filtrados.map((d, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 px-3 py-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{d.nome}</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+                          {d.unidades}
+                        </span>
+                        <p className="truncate text-sm font-medium">{d.nome}</p>
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">{d.email ?? "sem e-mail"}</p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
@@ -176,6 +181,24 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
         )}
 
         <DialogFooter>
+          {disparos.length > 0 && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => {
+                // Mesmo padrão de download dos relatórios de apuração: a rota
+                // devolve o XLSX como anexo (Content-Disposition). Exporta a
+                // lista COMPLETA de disparos (não o filtro da busca) — é o
+                // comprovante pra documentar/provar os envios à síndica.
+                const a = document.createElement("a")
+                a.href = `/api/relatorios/disparos/${assembleiaId}/xlsx`
+                a.click()
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Exportar (Excel)
+            </Button>
+          )}
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>
             Fechar
           </Button>
