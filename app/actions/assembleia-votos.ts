@@ -10,6 +10,7 @@ import { getPesoParticipante } from "@/lib/peso"
 import {
   upsertAssembleiaSend,
   updateAssembleiaSendStatus,
+  registrarDisparos,
   createAssembleiaRespostas,
   getSendsJaVotaram,
   getSendsNaoVotaram,
@@ -181,6 +182,11 @@ export async function enviarAssembleiaAction(
     ...failedEmailIds.map((id) => updateAssembleiaSendStatus(id, "failed", now)),
   ])
 
+  // Histórico COMPLETO: grava uma linha por disparo no log append-only (o
+  // upsert acima só guarda o último envio a cada pessoa). Best-effort — não
+  // estoura nem atrasa a resposta; o comprovante lê desse log.
+  await registrarDisparos({ assembleiaId, tipo: "convocacao", sentIds, failedIds: failedEmailIds, resendIds })
+
   revalidatePath(ROUTES.dashboard)
 
   return {
@@ -242,6 +248,8 @@ export async function notificarNovaPautaAction(
       ...sent.map((id) => updateAssembleiaSendStatus(id, "sent", now, resendIds[id])),
       ...failed.map((id) => updateAssembleiaSendStatus(id, "failed", now)),
     ])
+    // Log append-only: uma linha por disparo, pra o comprovante mostrar todos.
+    await registrarDisparos({ assembleiaId, tipo: "nova_pauta", sentIds: sent, failedIds: failed, resendIds })
 
     return {
       success: true,
@@ -324,6 +332,8 @@ export async function notificarNaoVotaramAction(
       ...sent.map((id) => updateAssembleiaSendStatus(id, "sent", now, resendIds[id])),
       ...failed.map((id) => updateAssembleiaSendStatus(id, "failed", now)),
     ])
+    // Log append-only: uma linha por disparo, pra o comprovante mostrar todos.
+    await registrarDisparos({ assembleiaId, tipo: "lembrete", sentIds: sent, failedIds: failed, resendIds })
 
     return {
       success: true,
@@ -458,14 +468,17 @@ export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | n
 // visualizador) — manter a action no mesmo nível evita vazar e-mail por fora.
 export async function getHistoricoDisparosAction(
   assembleiaId: string,
-  condominioId: string
+  condominioId: string,
+  // Período opcional (ISO) — o dialog carrega tudo e filtra a lista no cliente,
+  // mas o filtro server-side está disponível aqui pra quem quiser.
+  opts?: { de?: string | null; ate?: string | null }
 ): Promise<{ success: boolean; disparos: DisparoHistorico[]; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
   if (!auth.ok) return { success: false, disparos: [], error: auth.error }
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return { success: false, disparos: [], error: acesso.error }
   try {
-    const disparos = await getHistoricoDisparos(assembleiaId)
+    const disparos = await getHistoricoDisparos(assembleiaId, opts)
     return { success: true, disparos }
   } catch (err) {
     return { success: false, disparos: [], error: err instanceof Error ? err.message : "Erro ao buscar o histórico." }

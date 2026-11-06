@@ -17,17 +17,22 @@ export interface UnidadeRelatorio {
   email: string | null
 }
 
-// Histórico de disparos de e-mail (pedido do Carlos: rastrear os envios desde a
-// abertura). Só os envios que de fato tiveram tentativa de e-mail (status
-// 'sent'/'failed') — os sends de link/voto manual ficam 'pending' e não entram.
-// Como o send é um por proprietário (upsert), o status/data é do ÚLTIMO disparo
-// a cada pessoa (reenvio de lembrete atualiza). A prova de ENTREGA (entregue/
-// spam/bounce) chega pelo webhook do Resend e vem nos campos *_em abaixo.
+// Histórico COMPLETO de disparos de e-mail (pedido do Carlos/síndica do Águas
+// da Serra: provar TODOS os envios de um imóvel, não só o último). Lê da tabela
+// de LOG append-only `assembleia_disparos` — UMA linha por disparo, com data e
+// status próprios — e não mais da assembleia_sends (que é upsert e só guarda o
+// último envio a cada pessoa). A prova de ENTREGA (entregue/spam/bounce) chega
+// pelo webhook do Resend e vem nos campos *_em, casada por disparo.
+export type DisparoTipo = "convocacao" | "nova_pauta" | "lembrete" | "backfill"
+
 export interface DisparoHistorico {
+  // Que envio foi esse: convocação, aviso de nova pauta, lembrete — ou
+  // "backfill" (registro do último disparo conhecido migrado do modelo antigo,
+  // de antes do log existir).
+  tipo: DisparoTipo
   nome: string
   email: string | null
-  // Imóvel(is) da pessoa — pedido do Carlos: "digitar um imóvel e ver o histórico
-  // de disparos". Vem do snapshot do voto quando existe; senão, do cadastro atual.
+  // Imóvel(is) congelado(s) no momento do disparo.
   unidades: string
   status: "sent" | "failed"
   sentAt: string | null
@@ -50,39 +55,40 @@ function fmtUnidades(us: UnidadeRaw[]): string {
     .join(", ")
 }
 
-export async function getHistoricoDisparos(assembleiaId: string): Promise<DisparoHistorico[]> {
+// Filtro opcional por período (pedido do Carlos: "solicitar a data antes de
+// filtrar"). `de`/`ate` são instantes ISO (timestamptz) — a camada de cima
+// converte o dia escolhido pra o começo/fim do dia no fuso de Brasília.
+export async function getHistoricoDisparos(
+  assembleiaId: string,
+  opts?: { de?: string | null; ate?: string | null }
+): Promise<DisparoHistorico[]> {
   const db = createServerClient()
-  const { data, error } = await db
-    .from("assembleia_sends")
-    .select(
-      "status, sent_at, entregue_em, bounce_em, spam_em, email_snapshot, nome_snapshot, unidades_snapshot, proprietarios(nome, email, unidades(numero, bloco))"
-    )
+  let query = db
+    .from("assembleia_disparos")
+    .select("tipo, status, sent_at, entregue_em, bounce_em, spam_em, email_enviado, nome_snapshot, unidades_snapshot")
     .eq("assembleia_id", assembleiaId)
-    .in("status", ["sent", "failed"])
-    .order("sent_at", { ascending: false, nullsFirst: false })
+  if (opts?.de) query = query.gte("sent_at", opts.de)
+  if (opts?.ate) query = query.lte("sent_at", opts.ate)
+  const { data, error } = await query.order("sent_at", { ascending: false, nullsFirst: false })
   if (error) throw new Error(error.message)
 
   type Row = {
+    tipo: DisparoTipo
     status: "sent" | "failed"
     sent_at: string | null
     entregue_em: string | null
     bounce_em: string | null
     spam_em: string | null
-    email_snapshot: string | null
+    email_enviado: string | null
     nome_snapshot: string | null
     unidades_snapshot: UnidadeRaw[] | null
-    proprietarios: { nome: string; email: string | null; unidades: UnidadeRaw[] | null } | null
   }
   return ((data ?? []) as unknown as Row[]).map((r) => {
-    // Integridade histórica (Etapa 3): se a pessoa já votou, o imóvel está
-    // congelado no snapshot do voto; se o disparo ainda não virou voto, o
-    // snapshot é null — aí cai no cadastro atual do proprietário.
-    const snap =
-      r.unidades_snapshot && r.unidades_snapshot.length > 0 ? r.unidades_snapshot : null
-    const unidades = snap ?? r.proprietarios?.unidades ?? []
+    const unidades = r.unidades_snapshot ?? []
     return {
-      nome: r.nome_snapshot ?? r.proprietarios?.nome ?? "—",
-      email: r.email_snapshot ?? r.proprietarios?.email ?? null,
+      tipo: r.tipo,
+      nome: r.nome_snapshot ?? "—",
+      email: r.email_enviado ?? null,
       unidades: unidades.length > 0 ? fmtUnidades(unidades) : "—",
       status: r.status,
       sentAt: r.sent_at,

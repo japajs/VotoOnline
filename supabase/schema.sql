@@ -697,3 +697,74 @@ alter table assembleia_sends add column if not exists entregue_em timestamptz;
 alter table assembleia_sends add column if not exists bounce_em   timestamptz;
 alter table assembleia_sends add column if not exists spam_em     timestamptz;
 create index if not exists idx_assembleia_sends_resend_id on assembleia_sends(resend_id);
+
+-- ============================================================
+-- Histórico COMPLETO de disparos — tabela de LOG append-only (pedido do
+-- Carlos / síndica do Águas da Serra: provar TODOS os envios de um imóvel,
+-- não só o último). A assembleia_sends é um UPSERT (1 linha por proprietário)
+-- e só guarda o ÚLTIMO disparo; esta tabela grava UMA LINHA POR DISPARO,
+-- nunca sobrescrita, pra o comprovante mostrar cada remessa com data e
+-- status. O webhook do Resend casa o evento de entrega pelo resend_id — aqui
+-- ele é único por disparo, então entregue/bounce/spam ficam na remessa certa
+-- (na assembleia_sends o id é sobrescrito pelo reenvio, só reflete o último).
+-- Aditivo e idempotente. Rodar no SQL Editor ANTES de publicar o código que
+-- grava/lê esta tabela.
+-- ⚠️ Forward-only: só registra disparos a partir daqui. Os envios passados
+-- não existem remessa-a-remessa no banco — o backfill abaixo cria UMA linha
+-- por send (o "último disparo conhecido") pra o histórico não nascer vazio;
+-- a trilha data-a-data do passado fica no painel do Resend.
+-- ============================================================
+create table if not exists assembleia_disparos (
+  id                uuid        primary key default uuid_generate_v4(),
+  assembleia_id     uuid        not null references assembleias(id)   on delete cascade,
+  send_id           uuid        references assembleia_sends(id)       on delete set null,
+  proprietario_id   uuid        references proprietarios(id)          on delete set null,
+  tipo              text        not null default 'convocacao'
+                                check (tipo in ('convocacao', 'nova_pauta', 'lembrete', 'backfill')),
+  status            text        not null
+                                check (status in ('sent', 'failed')),
+  email_enviado     text,
+  nome_snapshot     text,
+  unidades_snapshot jsonb,
+  resend_id         text,
+  sent_at           timestamptz not null default now(),
+  entregue_em       timestamptz,
+  bounce_em         timestamptz,
+  spam_em           timestamptz,
+  created_at        timestamptz not null default now()
+);
+create index if not exists idx_assembleia_disparos_assembleia on assembleia_disparos(assembleia_id);
+create index if not exists idx_assembleia_disparos_resend_id  on assembleia_disparos(resend_id);
+create index if not exists idx_assembleia_disparos_sent_at    on assembleia_disparos(assembleia_id, sent_at desc);
+
+grant select, insert, update, delete on public.assembleia_disparos to service_role;
+
+-- Backfill: uma linha por send já disparado (status sent/failed), como o
+-- "último disparo conhecido". Idempotente — só insere pra sends que ainda não
+-- têm NENHUMA linha de log, então rodar de novo não duplica. O imóvel/nome/
+-- e-mail vêm do snapshot do voto quando existe; senão, do cadastro atual.
+insert into assembleia_disparos
+  (assembleia_id, send_id, proprietario_id, tipo, status, email_enviado,
+   nome_snapshot, unidades_snapshot, resend_id, sent_at, entregue_em, bounce_em, spam_em)
+select
+  s.assembleia_id,
+  s.id,
+  s.proprietario_id,
+  'backfill',
+  s.status,
+  coalesce(s.email_snapshot, p.email),
+  coalesce(s.nome_snapshot, p.nome),
+  coalesce(
+    s.unidades_snapshot,
+    (select jsonb_agg(jsonb_build_object('numero', u.numero, 'bloco', u.bloco) order by u.numero)
+       from unidades u where u.proprietario_id = s.proprietario_id)
+  ),
+  s.resend_id,
+  coalesce(s.sent_at, s.created_at),
+  s.entregue_em,
+  s.bounce_em,
+  s.spam_em
+from assembleia_sends s
+left join proprietarios p on p.id = s.proprietario_id
+where s.status in ('sent', 'failed')
+  and not exists (select 1 from assembleia_disparos d where d.send_id = s.id);

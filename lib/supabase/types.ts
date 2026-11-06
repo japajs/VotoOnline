@@ -394,6 +394,50 @@ export type Database = {
         }
         Relationships: []
       }
+      assembleia_disparos: {
+        Row: {
+          id: string
+          assembleia_id: string
+          send_id: string | null
+          proprietario_id: string | null
+          tipo: "convocacao" | "nova_pauta" | "lembrete" | "backfill"
+          status: "sent" | "failed"
+          email_enviado: string | null
+          nome_snapshot: string | null
+          unidades_snapshot: Json | null
+          resend_id: string | null
+          sent_at: string
+          entregue_em: string | null
+          bounce_em: string | null
+          spam_em: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          assembleia_id: string
+          send_id?: string | null
+          proprietario_id?: string | null
+          tipo?: "convocacao" | "nova_pauta" | "lembrete" | "backfill"
+          status: "sent" | "failed"
+          email_enviado?: string | null
+          nome_snapshot?: string | null
+          unidades_snapshot?: Json | null
+          resend_id?: string | null
+          sent_at?: string
+          entregue_em?: string | null
+          bounce_em?: string | null
+          spam_em?: string | null
+          created_at?: string
+        }
+        Update: {
+          status?: "sent" | "failed"
+          resend_id?: string | null
+          entregue_em?: string | null
+          bounce_em?: string | null
+          spam_em?: string | null
+        }
+        Relationships: []
+      }
       assembleia_respostas: {
         Row: {
           id: string
@@ -495,3 +539,6 @@ export type DbAssembleiaSendInsert = Database["public"]["Tables"]["assembleia_se
 
 export type DbAssembleiaResposta = Database["public"]["Tables"]["assembleia_respostas"]["Row"]
 export type DbAssembleiaRespostaInsert = Database["public"]["Tables"]["assembleia_respostas"]["Insert"]
+
+export type DbAssembleiaDisparo = Database["public"]["Tables"]["assembleia_disparos"]["Row"]
+export type DbAssembleiaDisparoInsert = Database["public"]["Tables"]["assembleia_disparos"]["Insert"]

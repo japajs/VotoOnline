@@ -342,22 +342,32 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Histórico de disparos:</strong> o botão{" "}
-            <Chip>Histórico de disparos</Chip> mostra todos os e-mails enviados na assembleia — com o{" "}
-            <strong className="text-foreground">imóvel</strong> em cada linha, quem recebeu, quando e o
-            status. Dá para <strong className="text-foreground">buscar digitando o imóvel</strong> (ou
-            o nome/e-mail) e ver na hora o que aconteceu com aquela unidade. Quando o provedor confirma,
-            o status vira <strong className="text-foreground">Entregue</strong> (ou{" "}
+            <Chip>Histórico de disparos</Chip> mostra <strong className="text-foreground">todos os
+            envios</strong> da assembleia — <strong className="text-foreground">cada remessa</strong> a
+            cada imóvel, não só a última. Em cada linha aparece o{" "}
+            <strong className="text-foreground">imóvel</strong>, quem recebeu, a data e o status. Dá para{" "}
+            <strong className="text-foreground">buscar digitando o imóvel</strong> (ou o nome/e-mail) e
+            ver <strong className="text-foreground">todas as datas</strong> em que aquela unidade foi
+            avisada. Quando o provedor confirma, o status vira{" "}
+            <strong className="text-foreground">Entregue</strong> (ou{" "}
             <strong className="text-foreground">Bounce</strong>, quando o e-mail não existe, ou{" "}
             <strong className="text-foreground">Spam</strong>). Disparos feitos antes de ativar essa
             confirmação ficam como <em>Enviado</em>.
           </li>
           <li>
-            <strong className="text-foreground">Comprovante de disparos (Excel):</strong> dentro do{" "}
-            <Chip>Histórico de disparos</Chip>, o botão <Chip>Exportar (Excel)</Chip> gera uma planilha
-            com <strong className="text-foreground">Imóvel · Nome · E-mail · Status · datas</strong> e um
-            resumo (enviados, entregues, bounce, spam) — serve para{" "}
-            <strong className="text-foreground">comprovar os envios</strong>, por exemplo quando a
-            síndica pede prova de que os e-mails foram disparados.
+            <strong className="text-foreground">Filtrar por data:</strong> dentro do{" "}
+            <Chip>Histórico de disparos</Chip>, os campos <Chip>De</Chip> e <Chip>Até</Chip> deixam
+            escolher o <strong className="text-foreground">período</strong> — a lista e o comprovante
+            passam a mostrar só os disparos daquelas datas. Deixe em branco para incluir tudo.
+          </li>
+          <li>
+            <strong className="text-foreground">Comprovante de disparos (PDF):</strong> ainda dentro do{" "}
+            <Chip>Histórico de disparos</Chip>, o botão <Chip>Exportar (PDF)</Chip> gera um documento
+            organizado, em ordem cronológica, com{" "}
+            <strong className="text-foreground">Data · Imóvel · Nome · E-mail · Tipo · Status</strong>,
+            um resumo (enviados, entregues, bounce, spam) e a explicação de cada status — pronto para{" "}
+            <strong className="text-foreground">apresentar à síndica</strong> como prova de que os
+            e-mails foram disparados. Respeita o período escolhido em <Chip>De</Chip>/<Chip>Até</Chip>.
           </li>
           <li>
             <strong className="text-foreground">Exportar a lista (Excel):</strong> o botão{" "}
