@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server"
+import type { Json, DbAssembleiaDisparoInsert } from "@/lib/supabase/types"
 import { getPesoParticipante, getPesoTotalCondominio, getQuorumEfetivo } from "@/lib/peso"
 import { marcarPautaEmVotacaoSeNecessario } from "@/services/pautas"
 import { getCondominioById } from "@/services/condominios"
@@ -244,6 +245,14 @@ export async function updateAssembleiaSendStatus(
 // resend_id. Idempotente — um retry do webhook só regrava a mesma data. Devolve
 // true se achou o envio (false = evento de uma mensagem que não é nossa ou já
 // foi sobrescrita por um reenvio, que é ignorado com segurança).
+//
+// Marca TAMBÉM na tabela de log append-only (assembleia_disparos): ali o
+// resend_id é único por disparo, então o evento casa com a REMESSA exata —
+// diferente da assembleia_sends, onde um reenvio sobrescreve o id e só o
+// último disparo fica rastreado. Assim o comprovante mostra entregue/bounce/
+// spam de cada envio, não só do mais recente. O update do log é best-effort
+// (não altera o retorno nem estoura): o status "oficial" na tela continua
+// vindo da assembleia_sends.
 export async function marcarEventoEntregaResend(
   resendId: string,
   evento: "entregue" | "bounce" | "spam",
@@ -252,13 +261,78 @@ export async function marcarEventoEntregaResend(
   const db = createServerClient()
   const patch =
     evento === "entregue" ? { entregue_em: em } : evento === "bounce" ? { bounce_em: em } : { spam_em: em }
-  const { data, error } = await db
-    .from("assembleia_sends")
-    .update(patch)
-    .eq("resend_id", resendId)
-    .select("id")
-  if (error) throw new Error(error.message)
-  return (data ?? []).length > 0
+  const [sends] = await Promise.all([
+    db.from("assembleia_sends").update(patch).eq("resend_id", resendId).select("id"),
+    // Log append-only — ignora o resultado/erro de propósito (best-effort).
+    db.from("assembleia_disparos").update(patch).eq("resend_id", resendId),
+  ])
+  if (sends.error) throw new Error(sends.error.message)
+  return (sends.data ?? []).length > 0
+}
+
+// Registra no LOG append-only (assembleia_disparos) UMA LINHA POR DISPARO —
+// diferente de updateAssembleiaSendStatus, que faz upsert e só guarda o ÚLTIMO
+// envio a cada pessoa. É o que permite o comprovante mostrar TODOS os envios de
+// um imóvel, com data e status de cada remessa (pedido do Carlos/síndica). O
+// imóvel/nome/e-mail são congelados no momento do disparo: snapshot do voto
+// quando já existe, senão o cadastro atual do proprietário. Best-effort por
+// contrato: NUNCA estoura — o disparo e o voto não podem quebrar por causa do
+// log; uma falha aqui só perde linhas de histórico (os status "ao vivo" das
+// badges continuam na assembleia_sends).
+export async function registrarDisparos(args: {
+  assembleiaId: string
+  tipo: "convocacao" | "nova_pauta" | "lembrete"
+  sentIds: string[]
+  failedIds?: string[]
+  resendIds: Record<string, string>
+}): Promise<void> {
+  const { assembleiaId, tipo, sentIds, failedIds = [], resendIds } = args
+  const ids = [...sentIds, ...failedIds]
+  if (ids.length === 0) return
+  try {
+    const db = createServerClient()
+    const { data, error } = await db
+      .from("assembleia_sends")
+      .select(
+        "id, proprietario_id, nome_snapshot, email_snapshot, unidades_snapshot, proprietarios(nome, email, unidades(numero, bloco))"
+      )
+      .in("id", ids)
+    if (error || !data) return
+
+    type UnidadeRaw = { numero: string; bloco: string | null }
+    type Row = {
+      id: string
+      proprietario_id: string
+      nome_snapshot: string | null
+      email_snapshot: string | null
+      unidades_snapshot: UnidadeRaw[] | null
+      proprietarios: { nome: string; email: string | null; unidades: UnidadeRaw[] | null } | null
+    }
+
+    const sentSet = new Set(sentIds)
+    const now = new Date().toISOString()
+    const rows: DbAssembleiaDisparoInsert[] = (data as unknown as Row[]).map((r) => {
+      const unidades =
+        r.unidades_snapshot && r.unidades_snapshot.length > 0
+          ? r.unidades_snapshot
+          : (r.proprietarios?.unidades ?? [])
+      return {
+        assembleia_id: assembleiaId,
+        send_id: r.id,
+        proprietario_id: r.proprietario_id,
+        tipo,
+        status: sentSet.has(r.id) ? "sent" : "failed",
+        email_enviado: r.email_snapshot ?? r.proprietarios?.email ?? null,
+        nome_snapshot: r.nome_snapshot ?? r.proprietarios?.nome ?? null,
+        unidades_snapshot: unidades as unknown as Json,
+        resend_id: resendIds[r.id] ?? null,
+        sent_at: now,
+      }
+    })
+    if (rows.length > 0) await db.from("assembleia_disparos").insert(rows)
+  } catch {
+    // Log é best-effort — nunca quebra o disparo nem o voto.
+  }
 }
 
 export async function getRespostasBySendId(sendId: string): Promise<AssembleiaResposta[]> {

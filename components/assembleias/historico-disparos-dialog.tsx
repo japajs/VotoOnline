@@ -23,6 +23,13 @@ interface Props {
   condominioId: string
 }
 
+const TIPO_LABEL: Record<string, string> = {
+  convocacao: "Convocação",
+  nova_pauta: "Nova pauta",
+  lembrete: "Lembrete",
+  backfill: "Registro anterior",
+}
+
 function dataBR(iso: string | null): string {
   if (!iso) return "—"
   return new Date(iso).toLocaleString("pt-BR", {
@@ -32,6 +39,14 @@ function dataBR(iso: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+// Dia local (fuso de Brasília) de um disparo, no formato YYYY-MM-DD — pra
+// comparar com os inputs de data (que vêm nesse mesmo formato). Comparação de
+// string funciona porque o formato é ordenável.
+function diaLocal(iso: string | null): string | null {
+  if (!iso) return null
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })
 }
 
 // Status mais forte do envio, na ordem de gravidade: spam > bounce > entregue >
@@ -45,15 +60,18 @@ function statusEntrega(d: DisparoHistorico): { label: string; cls: string } {
   return { label: "Enviado", cls: "bg-muted text-muted-foreground" }
 }
 
-// Histórico de disparos de e-mail (pedido do Carlos: rastrear os envios desde a
-// abertura). Mostra quem recebeu, quando e o status (enviado/falhou). A prova de
-// ENTREGA (entregue/spam/bounce) é no painel do provedor — isto é o registro do
-// app. O status/data é do ÚLTIMO disparo a cada pessoa (reenvio atualiza).
+// Histórico COMPLETO de disparos de e-mail (pedido do Carlos/síndica do Águas da
+// Serra: provar TODOS os envios de um imóvel, não só o último). Lê o log
+// append-only (uma linha por disparo): ao buscar um imóvel, aparecem todas as
+// remessas feitas a ele, com data e status de cada uma. Exporta um comprovante
+// em PDF, respeitando o filtro de período.
 export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
   const [open, setOpen] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [disparos, setDisparos] = useState<DisparoHistorico[]>([])
   const [busca, setBusca] = useState("")
+  const [de, setDe] = useState("")
+  const [ate, setAte] = useState("")
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -67,22 +85,49 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
     } else {
       setTimeout(() => {
         setBusca("")
+        setDe("")
+        setAte("")
         setDisparos([])
       }, 200)
     }
   }
 
-  const filtrados = disparos.filter((d) => {
+  // Filtro por período (pedido do Carlos: escolher a data antes de filtrar). O
+  // comprovante PDF recebe as MESMAS datas, então os números aqui batem com ele.
+  const porData = disparos.filter((d) => {
+    const dia = diaLocal(d.sentAt)
+    if (de && (!dia || dia < de)) return false
+    if (ate && (!dia || dia > ate)) return false
+    return true
+  })
+
+  const filtrados = porData.filter((d) => {
     const q = normalizarBusca(busca.trim())
     return !q || normalizarBusca(`${d.unidades} ${d.nome} ${d.email ?? ""}`).includes(q)
   })
-  const nEnviados = disparos.filter((d) => d.status === "sent").length
-  const nFalhas = disparos.filter((d) => d.status === "failed").length
-  const nEntregues = disparos.filter((d) => d.entregueEm).length
-  const nBounce = disparos.filter((d) => d.bounceEm).length
-  const nSpam = disparos.filter((d) => d.spamEm).length
+
+  const nEnviados = porData.filter((d) => d.status === "sent").length
+  const nFalhas = porData.filter((d) => d.status === "failed").length
+  const nEntregues = porData.filter((d) => d.entregueEm).length
+  const nBounce = porData.filter((d) => d.bounceEm).length
+  const nSpam = porData.filter((d) => d.spamEm).length
+  const nImoveis = new Set(porData.map((d) => d.unidades).filter((u) => u && u !== "—")).size
   // Algum evento de entrega já chegou? (indica que o webhook está configurado.)
   const temEntrega = nEntregues + nBounce + nSpam > 0
+  const temPeriodo = de !== "" || ate !== ""
+
+  function exportarPDF() {
+    // Mesmo padrão de download dos relatórios de apuração: a rota devolve o PDF
+    // como anexo (Content-Disposition). Passa o período filtrado — o
+    // comprovante sai exatamente do intervalo escolhido (ou tudo, se vazio).
+    const qs = new URLSearchParams()
+    if (de) qs.set("de", de)
+    if (ate) qs.set("ate", ate)
+    const q = qs.toString()
+    const a = document.createElement("a")
+    a.href = `/api/relatorios/disparos/${assembleiaId}/pdf${q ? `?${q}` : ""}`
+    a.click()
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -95,8 +140,9 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
         <DialogHeader>
           <DialogTitle>Histórico de disparos</DialogTitle>
           <DialogDescription>
-            E-mails enviados nesta assembleia — quem recebeu, quando e o status de entrega. A
-            confirmação (Entregue, Bounce ou Spam) chega automaticamente do provedor de e-mail.
+            Todos os e-mails enviados nesta assembleia — cada remessa a cada imóvel, com data e
+            status de entrega. A confirmação (Entregue, Bounce ou Spam) chega automaticamente do
+            provedor de e-mail.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,7 +159,8 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                {nEnviados} {nEnviados === 1 ? "enviado" : "enviados"}
+                {porData.length} {porData.length === 1 ? "disparo" : "disparos"} · {nImoveis}{" "}
+                {nImoveis === 1 ? "imóvel" : "imóveis"}
               </span>
               {nEntregues > 0 && (
                 <span className="text-emerald-600 dark:text-emerald-400">{nEntregues} entregues</span>
@@ -127,12 +174,38 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
                 </span>
               )}
             </div>
-            {!temEntrega && (
+            {!temEntrega && nEnviados > 0 && (
               <p className="text-[11px] text-muted-foreground">
                 A confirmação de entrega (Entregue / Bounce / Spam) chega conforme o provedor de
                 e-mail retorna os eventos. Disparos feitos antes de ativá-la ficam como “Enviado”.
               </p>
             )}
+
+            {/* Filtro por período — pedido do Carlos: escolher a data antes de
+                gerar o comprovante (que sai exatamente desse intervalo). */}
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                De
+                <Input type="date" value={de} max={ate || undefined} onChange={(e) => setDe(e.target.value)} className="h-8 w-[9.5rem]" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                Até
+                <Input type="date" value={ate} min={de || undefined} onChange={(e) => setAte(e.target.value)} className="h-8 w-[9.5rem]" />
+              </label>
+              {temPeriodo && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => {
+                    setDe("")
+                    setAte("")
+                  }}
+                >
+                  Limpar
+                </Button>
+              )}
+            </div>
 
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -148,7 +221,9 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
             <div className="max-h-72 divide-y divide-border/30 overflow-y-auto rounded-lg border border-border/60">
               {filtrados.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum resultado para &quot;{busca}&quot;.
+                  {busca
+                    ? `Nenhum resultado para "${busca}".`
+                    : "Nenhum disparo no período selecionado."}
                 </p>
               ) : (
                 filtrados.map((d, i) => (
@@ -172,6 +247,7 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
                         )
                       })()}
                       <span className="text-[11px] text-muted-foreground">{dataBR(d.sentAt)}</span>
+                      <span className="text-[10px] text-muted-foreground/70">{TIPO_LABEL[d.tipo] ?? d.tipo}</span>
                     </div>
                   </div>
                 ))
@@ -182,21 +258,9 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
 
         <DialogFooter>
           {disparos.length > 0 && (
-            <Button
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => {
-                // Mesmo padrão de download dos relatórios de apuração: a rota
-                // devolve o XLSX como anexo (Content-Disposition). Exporta a
-                // lista COMPLETA de disparos (não o filtro da busca) — é o
-                // comprovante pra documentar/provar os envios à síndica.
-                const a = document.createElement("a")
-                a.href = `/api/relatorios/disparos/${assembleiaId}/xlsx`
-                a.click()
-              }}
-            >
+            <Button variant="outline" className="gap-1.5" onClick={exportarPDF}>
               <Download className="h-4 w-4" />
-              Exportar (Excel)
+              Exportar (PDF)
             </Button>
           )}
           <Button variant="ghost" onClick={() => handleOpenChange(false)}>

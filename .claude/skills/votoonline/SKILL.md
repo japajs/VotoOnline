@@ -117,6 +117,16 @@ but plausible-looking result in a contestable assembly.
 - The Resend SDK **never rejects on API failure** — `resend.batch.send` /
   `resend.emails.send` resolve with `{ error }`. Always check `error` before
   marking a send as succeeded, or you'll record "sent" for mail that never left.
+- **Dispatch proof lives in an append-only log, not in `assembleia_sends`.**
+  `assembleia_sends` is an upsert (1 row per owner) and only keeps the LAST
+  send; the full per-dispatch history is `assembleia_disparos` — one row per
+  send, never overwritten, with its own unique `resend_id` so the webhook marks
+  delivery on the exact remessa. `getHistoricoDisparos` reads this log and the
+  comprovante PDF (`lib/relatorios/pdf-disparos.tsx`) is built from it. When you
+  add a new dispatch point, call `registrarDisparos` next to
+  `updateAssembleiaSendStatus` — it's **best-effort by contract** (never throws,
+  never blocks the send/vote). Note it's forward-only: history before it
+  existed isn't reconstructable in the DB (only the Resend panel has it).
 
 ## Reports (XLSX / PDF)
 
@@ -127,7 +137,9 @@ Builders live in `lib/relatorios/`, served by routes under
   `requireAcessoCondominio` — reports carry condômino PII (e-mail/CPF).
 - Run every cell through `sanitizarLinhas` (anti CSV/Formula-injection) and
   format dates with `formatDateTimeBR`.
-Reuse `lib/relatorios/xlsx-apuracao.ts` / `xlsx-disparos.ts` as the template.
+Reuse `lib/relatorios/xlsx-apuracao.ts` (XLSX) or `pdf-apuracao.tsx` /
+`pdf-disparos.tsx` (PDF via `@react-pdf/renderer`, rendered with
+`renderToBuffer` in the route) as the template.
 
 ## Small conventions worth matching
 
