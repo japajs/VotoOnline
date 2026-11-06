@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { getAllProprietarios } from "@/services/proprietarios"
+import { menorNumeroUnidade } from "@/lib/unidade-format"
 
 export interface ParticipanteRelatorio {
   nome: string
@@ -101,6 +102,10 @@ export async function getHistoricoDisparos(
 
 export interface HistoricoParticipante {
   proprietarioNome: string
+  // Imóvel(is) do proprietário — pedido do Carlos: a conferência é feita por
+  // imóvel, então a lista mostra e ordena por ele. Snapshot do voto quando
+  // existe; senão, cadastro atual.
+  unidades: string
   totalPautas: number
   pautasRespondidas: number
   ultimaResposta: string | null
@@ -122,7 +127,7 @@ export async function getHistoricoParticipacao(
 
   const { data: sends, error } = await db
     .from("assembleia_sends")
-    .select("id, nome_snapshot, votado_em, proprietarios(nome)")
+    .select("id, nome_snapshot, votado_em, unidades_snapshot, proprietarios(nome, unidades(numero, bloco))")
     .eq("assembleia_id", assembleiaId)
   if (error) throw new Error(error.message)
 
@@ -145,17 +150,39 @@ export async function getHistoricoParticipacao(
     id: string
     nome_snapshot: string | null
     votado_em: string | null
-    proprietarios: { nome: string } | null
+    unidades_snapshot: UnidadeRaw[] | null
+    proprietarios: { nome: string; unidades: UnidadeRaw[] | null } | null
   }
 
-  return ((sends ?? []) as unknown as SendRow[])
-    .map((s) => ({
+  const linhas = ((sends ?? []) as unknown as SendRow[]).map((s) => {
+    const us =
+      (s.unidades_snapshot && s.unidades_snapshot.length > 0
+        ? s.unidades_snapshot
+        : s.proprietarios?.unidades) ?? []
+    const item: HistoricoParticipante = {
       proprietarioNome: s.nome_snapshot ?? s.proprietarios?.nome ?? "—",
+      unidades: us.length > 0 ? fmtUnidades(us) : "—",
       totalPautas,
       pautasRespondidas: countPorSend.get(s.id) ?? 0,
       ultimaResposta: s.votado_em ?? null,
-    }))
-    .sort((a, b) => a.proprietarioNome.localeCompare(b.proprietarioNome, "pt-BR"))
+    }
+    // Chave de ordenação = menor número de imóvel (natural). Sem imóvel = null
+    // (vai pro fim).
+    return { item, ordem: menorNumeroUnidade(us) }
+  })
+
+  // Ordena por IMÓVEL (pedido do Carlos: conferência na sequência dos imóveis,
+  // não por nome). Sem imóvel vai pro fim; empate de imóvel cai no nome.
+  linhas.sort((a, b) => {
+    if (a.ordem === null && b.ordem === null)
+      return a.item.proprietarioNome.localeCompare(b.item.proprietarioNome, "pt-BR")
+    if (a.ordem === null) return 1
+    if (b.ordem === null) return -1
+    const cmp = a.ordem.localeCompare(b.ordem, undefined, { numeric: true })
+    return cmp !== 0 ? cmp : a.item.proprietarioNome.localeCompare(b.item.proprietarioNome, "pt-BR")
+  })
+
+  return linhas.map((l) => l.item)
 }
 
 export async function getParticipantesByAssembleia(

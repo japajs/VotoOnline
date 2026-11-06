@@ -15,6 +15,7 @@ import { MesaAssembleiaDialog } from "@/components/assembleias/mesa-assembleia-d
 import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
+import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
@@ -32,7 +33,7 @@ import {
   STATUS_EXIBIDO_CLASS as STATUS_CLASS,
   type StatusExibido,
 } from "@/lib/assembleia-status"
-import type { Assembleia, AssembleiaApuracao, CriterioPeso, PautaApuracao, PautaStatus } from "@/types"
+import type { Assembleia, AssembleiaApuracao, CriterioPeso, PautaApuracao, PautaStatus, Proprietario } from "@/types"
 
 const PAUTA_STATUS_LABEL: Record<PautaStatus, string> = {
   rascunho: "Rascunho",
@@ -52,6 +53,9 @@ interface Props {
   assembleia: Assembleia
   condominioId: string
   apuracao: AssembleiaApuracao
+  // Lista de proprietários do condomínio — usada pelo botão "Disparar" (mesma
+  // tela do Histórico de disparos, pedido do Carlos pra agilizar a conferência).
+  proprietarios: Proprietario[]
   canExport?: boolean
   // Critério do condomínio — define se o resultado ponderado é contado em
   // imóveis ou em fração ideal (ver formatPesoResultado).
@@ -103,6 +107,7 @@ export function ApuracaoAssembleia({
   assembleia,
   condominioId,
   apuracao,
+  proprietarios,
   canExport = false,
   criterioPeso = "unidade",
 }: Props) {
@@ -337,6 +342,13 @@ export function ApuracaoAssembleia({
               )}
               {canExport && (
                 <>
+                  {/* Disparar e-mails na MESMA tela do Histórico de disparos
+                      (pedido do Carlos: agilizar a logística de conferência sem
+                      voltar pra tela do condomínio). Mesmo gating da lista:
+                      enquanto a assembleia não está encerrada. */}
+                  {assembleia.status !== "encerrada" && (
+                    <DispararAssembleiaDialog assembleia={assembleia} proprietarios={proprietarios} />
+                  )}
                   {/* Histórico de disparos de e-mail (pedido do Carlos: rastrear
                       os envios desde a abertura). Disponível também encerrada,
                       pra revisar depois. */}
