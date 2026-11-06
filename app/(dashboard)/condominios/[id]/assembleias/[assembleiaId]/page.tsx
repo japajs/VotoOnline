@@ -6,6 +6,7 @@ import { getAssembleiaById } from "@/services/assembleias"
 import { getCondominioById } from "@/services/condominios"
 import { getApuracaoAssembleia } from "@/services/assembleia-votos"
 import { getHistoricoParticipacao } from "@/services/relatorios"
+import { getAllProprietarios } from "@/services/proprietarios"
 import { ApuracaoAssembleia } from "@/components/assembleias/apuracao-assembleia"
 import { HistoricoParticipacao } from "@/components/assembleias/historico-participacao"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
@@ -70,9 +71,12 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
     quorum_aplicavel: null,
   }))
 
-  const historicoParticipacao = await getHistoricoParticipacao(assembleiaId, pautas.length).catch(
-    () => []
-  )
+  // Participação (ordenada por imóvel) + a lista de proprietários pro botão
+  // "Disparar" na própria tela de apuração (pedido do Carlos). Em paralelo.
+  const [historicoParticipacao, proprietarios] = await Promise.all([
+    getHistoricoParticipacao(assembleiaId, pautas.length).catch(() => []),
+    getAllProprietarios(condominioId).catch(() => []),
+  ])
 
   return (
     <div className="flex flex-col gap-8 p-6 pt-8">
@@ -95,6 +99,7 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
         assembleia={assembleia}
         condominioId={condominioId}
         apuracao={apuracao}
+        proprietarios={proprietarios}
         canExport={session?.perfil !== "visualizador"}
         criterioPeso={condominio.criterio_peso}
       />

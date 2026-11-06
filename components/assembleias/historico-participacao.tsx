@@ -65,7 +65,7 @@ export function HistoricoParticipacao({ historico }: { historico: HistoricoParti
     const termo = normalizarBusca(busca.trim())
     return historico.filter((h) => {
       if (statusFiltro !== "todos" && statusDe(h) !== statusFiltro) return false
-      if (termo && !normalizarBusca(h.proprietarioNome).includes(termo)) return false
+      if (termo && !normalizarBusca(`${h.unidades} ${h.proprietarioNome}`).includes(termo)) return false
       return true
     })
   }, [historico, busca, statusFiltro])
@@ -85,9 +85,9 @@ export function HistoricoParticipacao({ historico }: { historico: HistoricoParti
           <Input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar proprietário…"
+            placeholder="Buscar por imóvel ou proprietário…"
             className="border-border/60 bg-background pl-10"
-            aria-label="Buscar proprietário"
+            aria-label="Buscar por imóvel ou proprietário"
           />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -122,6 +122,9 @@ export function HistoricoParticipacao({ historico }: { historico: HistoricoParti
           <thead>
             <tr className="border-b border-border/60 bg-muted/30">
               <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
+                Imóvel
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
                 Proprietário
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
@@ -138,7 +141,7 @@ export function HistoricoParticipacao({ historico }: { historico: HistoricoParti
           <tbody className="divide-y divide-border/30">
             {filtrado.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                <td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">
                   Nenhum proprietário encontrado.
                 </td>
               </tr>
@@ -147,6 +150,11 @@ export function HistoricoParticipacao({ historico }: { historico: HistoricoParti
                 const status = statusDe(h)
                 return (
                   <tr key={i}>
+                    <td className="px-4 py-2">
+                      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                        {h.unidades}
+                      </span>
+                    </td>
                     <td className="px-4 py-2 font-medium">{h.proprietarioNome}</td>
                     <td className="px-4 py-2 tabular-nums text-muted-foreground">
                       {h.pautasRespondidas}/{h.totalPautas}
