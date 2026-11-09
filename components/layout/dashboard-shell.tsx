@@ -108,10 +108,12 @@ export function DashboardShell({ user, children, initialCollapsed = false }: Pro
         />
       </div>
 
-      {/* Handle na borda esquerda — só no desktop, quando recolhido e sem
-          espiar. Abre o menu ao passar o mouse, focar (teclado) ou tocar
-          (celular/touch no desktop). O overlay cobre o handle quando aberto. */}
-      {collapsed && !peek && (
+      {/* Handle na borda esquerda — só no desktop, quando recolhido. Abre o
+          menu ao passar o mouse, focar (teclado) ou tocar (touch no desktop).
+          Fica montado também durante o "espiar" (o overlay do menu o cobre):
+          sem isso, focar o handle pelo teclado o desmontava e o foco caía no
+          corpo da página. */}
+      {collapsed && (
         <button
           type="button"
           onMouseEnter={() => setPeek(true)}
