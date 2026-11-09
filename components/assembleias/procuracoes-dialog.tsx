@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useState, useTransition } from "react"
-import { FileSignature, Loader2, X, Plus, Search } from "lucide-react"
+import { FileSignature, Loader2, Undo2, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -296,12 +296,17 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                       {" → "}
                       <span className="font-medium">{p.outorgado_nome}</span>
                     </span>
+                    {/* Anular procuração (pedido do Carlos: deixar visível que
+                        dá pra anular, com senha). O serviço já bloqueia se um dos
+                        lados já votou. */}
                     <button
                       type="button"
                       onClick={() => setConfirmarRemoverId(p.id)}
-                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Anular procuração (pede senha)"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/60 px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <Undo2 className="h-3.5 w-3.5" />
+                      Anular
                     </button>
                   </div>
                 ))}
@@ -411,18 +416,18 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
       <ConfirmarSenhaDialog
         open={confirmarRemoverId !== null}
         onOpenChange={(o) => !o && setConfirmarRemoverId(null)}
-        titulo="Remover procuração"
-        confirmLabel="Remover"
+        titulo="Anular procuração"
+        confirmLabel="Anular"
         descricao={
           procuracaoAlvo ? (
             <>
               A procuração de{" "}
               <strong className="text-foreground">{procuracaoAlvo.outorgante_nome}</strong> para{" "}
               <strong className="text-foreground">{procuracaoAlvo.outorgado_nome}</strong> será
-              removida.
+              anulada. Só é possível enquanto nenhum dos dois lados votou.
             </>
           ) : (
-            "Esta procuração será removida."
+            "Esta procuração será anulada."
           )
         }
         onConfirmar={(senha) =>
@@ -430,7 +435,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
         }
         onSuccess={() => {
           setConfirmarRemoverId(null)
-          toast.success("Procuração removida.")
+          toast.success("Procuração anulada.")
           carregar()
         }}
       />
