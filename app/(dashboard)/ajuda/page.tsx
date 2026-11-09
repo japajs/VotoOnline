@@ -81,6 +81,11 @@ export default function AjudaPage() {
         <p>
           A votação funciona à distância, presencial ou das duas formas ao mesmo tempo (híbrida).
         </p>
+        <p>
+          <strong className="text-foreground">Dica:</strong> no computador, dá para recolher o menu
+          lateral no botão do topo do próprio menu (ganha espaço na tela) — ele reaparece ao encostar
+          o mouse na borda esquerda. No celular, o menu abre pelo ícone ☰.
+        </p>
       </Secao>
 
       <Secao icon={ShieldCheck} titulo="Perfis de acesso">
@@ -288,6 +293,13 @@ export default function AjudaPage() {
             registrar quem vota representando outra unidade.
           </li>
           <li>
+            <strong className="text-foreground">Anular procuração:</strong> na lista do{" "}
+            <Chip>Procurações</Chip>, cada procuração tem o botão <Chip>Anular</Chip> — pede a sua
+            senha. Só é possível enquanto{" "}
+            <strong className="text-foreground">nenhum dos dois lados votou</strong> (depois disso o
+            sistema bloqueia, para preservar o voto já dado).
+          </li>
+          <li>
             <strong className="text-foreground">Limite de procurações:</strong> no cadastro do
             condomínio dá para definir o máximo de procurações que uma mesma pessoa pode receber
             (varia conforme a convenção). Ao passar do limite, o sistema <strong className="text-foreground">avisa</strong>{" "}
@@ -312,14 +324,15 @@ export default function AjudaPage() {
             cadastro ou registre por procuração.
           </li>
           <li>
-            <strong className="text-foreground">Anular voto:</strong> pelo ícone na coluna{" "}
-            <Chip>Ações</Chip> da linha do proprietário (aparece só para quem já votou nesta
-            assembleia). Serve para corrigir um voto lançado errado ou para liberar a exclusão do
-            cadastro. Pede a sua senha.
+            <strong className="text-foreground">Anular voto:</strong> no menu <Chip>⋯</Chip> (mais
+            ações) da coluna <Chip>Ações</Chip> da linha do proprietário (aparece só para quem já
+            votou nesta assembleia). Serve para corrigir um voto lançado errado ou para liberar a
+            exclusão do cadastro. Pede a sua senha.
           </li>
           <li>
-            <strong className="text-foreground">Excluir cadastro:</strong> também pela coluna{" "}
-            <Chip>Ações</Chip>. Pede a sua senha. Se a pessoa já votou, anule o voto antes.
+            <strong className="text-foreground">Excluir cadastro:</strong> no mesmo menu{" "}
+            <Chip>⋯</Chip> da coluna <Chip>Ações</Chip>. Pede a sua senha. Se a pessoa já votou,
+            anule o voto antes.
           </li>
         </ul>
       </Secao>
@@ -430,10 +443,13 @@ export default function AjudaPage() {
             (assina à mão).
           </li>
           <li>
-            Baixe os relatórios: <strong className="text-foreground">PDF</strong>,{" "}
-            <strong className="text-foreground">Excel</strong> e a{" "}
-            <strong className="text-foreground">Ata</strong>. O PDF já sai com os dados completos do
-            condomínio (CNPJ, endereço, síndico, contato e critério de peso) e{" "}
+            Baixe os relatórios pelo menu <Chip>Relatórios</Chip>: o{" "}
+            <strong className="text-foreground">PDF</strong> e o{" "}
+            <strong className="text-foreground">Excel</strong> da apuração e o{" "}
+            <strong className="text-foreground">Imprimir</strong> ficam agrupados ali; a{" "}
+            <strong className="text-foreground">Ata</strong> fica no botão ao lado (quando a
+            assembleia está encerrada). O PDF já sai com os dados completos do condomínio (CNPJ,
+            endereço, síndico, contato e critério de peso) e{" "}
             <strong className="text-foreground">sem expor e-mails</strong> dos votantes (LGPD).
           </li>
           <li>
