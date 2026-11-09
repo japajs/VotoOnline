@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Gavel, Menu } from "lucide-react"
+import { Gavel, Menu, ChevronRight } from "lucide-react"
 import { Sidebar } from "./sidebar"
 import { cn } from "@/lib/utils"
 import { APP_NAME, APP_VERSION, APP_AUTORIA } from "@/lib/constants"
@@ -12,15 +12,41 @@ import type { SessionUser } from "@/types"
 interface Props {
   user: SessionUser
   children: React.ReactNode
+  // Preferência de menu recolhido, lida de um cookie pelo layout no servidor —
+  // assim o primeiro render já vem no estado certo (sem flash de hidratação).
+  initialCollapsed?: boolean
 }
 
-export function DashboardShell({ user, children }: Props) {
+const COLLAPSE_COOKIE = "votoonline_sidebar_collapsed"
+
+export function DashboardShell({ user, children, initialCollapsed = false }: Props) {
   const [open, setOpen] = useState(false)
+  // Menu retrátil no DESKTOP (pedido do Carlos: o menu fixo tomava muito
+  // espaço na tela principal). `collapsed` (preferência salva num COOKIE, lido
+  // no servidor pra o primeiro render já vir certo): recolhido, o menu sai do
+  // fluxo (conteúdo ocupa a largura toda) e vira um overlay que "espia" ao
+  // encostar o mouse na borda esquerda (`peek`). No mobile nada muda — continua
+  // o drawer com o hambúrguer.
+  const [collapsed, setCollapsed] = useState(initialCollapsed)
+  const [peek, setPeek] = useState(false)
   const pathname = usePathname()
 
-  // Close sidebar on navigation
+  // Recolhe/fixa e grava a preferência num cookie (o layout lê no servidor na
+  // próxima navegação/refresh — sem flash, e sem setState dentro de effect).
+  function toggleCollapse() {
+    const next = !collapsed
+    setCollapsed(next)
+    try {
+      document.cookie = `${COLLAPSE_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`
+    } catch {
+      /* cookie bloqueado não quebra o toggle na sessão atual */
+    }
+  }
+
+  // Close sidebar (mobile) e fecha o "espiar" ao navegar
   useEffect(() => {
     setOpen(false)
+    setPeek(false)
   }, [pathname])
 
   // Auditoria de responsividade: o menu mobile é um overlay (drawer) — sem
@@ -55,19 +81,49 @@ export function DashboardShell({ user, children }: Props) {
         />
       )}
 
-      {/* Sidebar wrapper — fixed overlay on mobile, static on desktop */}
+      {/* Sidebar wrapper — overlay no mobile; no desktop fica estático (fixo) OU,
+          quando recolhido, vira overlay que "espia" ao encostar na borda. */}
       <div
         role="dialog"
         aria-modal={open ? true : undefined}
         aria-label="Menu de navegação"
+        onMouseLeave={collapsed ? () => setPeek(false) : undefined}
         className={cn(
           "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-in-out",
-          "lg:static lg:inset-auto lg:z-auto lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
+          open ? "translate-x-0" : "-translate-x-full",
+          collapsed
+            ? cn(
+                "lg:fixed lg:inset-y-0 lg:left-0 lg:z-40",
+                peek ? "lg:translate-x-0 lg:shadow-2xl" : "lg:-translate-x-full"
+              )
+            : "lg:static lg:inset-auto lg:z-auto lg:translate-x-0"
         )}
       >
-        <Sidebar user={user} open={open} onClose={() => setOpen(false)} />
+        <Sidebar
+          user={user}
+          open={open}
+          onClose={() => setOpen(false)}
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
+        />
       </div>
+
+      {/* Handle na borda esquerda — só no desktop, quando recolhido e sem
+          espiar. Abre o menu ao passar o mouse, focar (teclado) ou tocar
+          (celular/touch no desktop). O overlay cobre o handle quando aberto. */}
+      {collapsed && !peek && (
+        <button
+          type="button"
+          onMouseEnter={() => setPeek(true)}
+          onFocus={() => setPeek(true)}
+          onClick={() => setPeek(true)}
+          aria-label="Abrir menu"
+          title="Abrir menu"
+          className="fixed left-0 top-1/2 z-30 hidden h-16 w-5 -translate-y-1/2 items-center justify-center rounded-r-lg bg-sidebar text-sidebar-muted-foreground shadow-md ring-1 ring-sidebar-border/60 outline-none transition-all hover:w-6 hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 lg:flex"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
 
       {/* Content area */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

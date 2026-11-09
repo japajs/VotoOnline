@@ -12,6 +12,8 @@ import {
   Gavel,
   HelpCircle,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   Repeat,
   Settings,
   Users,
@@ -74,9 +76,14 @@ interface Props {
   user: SessionUser
   open?: boolean
   onClose?: () => void
+  // Menu retrátil no desktop (pedido do Carlos: o menu fixo tomava muito
+  // espaço). `collapsed` = recolhido (vira overlay que "espia" ao encostar na
+  // borda); `onToggleCollapse` fixa/desfixa. Só aparece no desktop (lg+).
+  collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
-export function Sidebar({ user, open, onClose }: Props) {
+export function Sidebar({ user, open, onClose, collapsed, onToggleCollapse }: Props) {
   const pathname = usePathname()
   const closeButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -157,6 +164,18 @@ export function Sidebar({ user, open, onClose }: Props) {
             aria-label="Fechar menu"
           >
             <X className="h-4 w-4" />
+          </button>
+        )}
+        {/* Recolher/fixar — só no desktop (lg+). Recolhido, o menu some e vira
+            um overlay que "espia" ao encostar na borda esquerda. */}
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="-mr-2 hidden h-8 w-8 items-center justify-center rounded-md text-sidebar-muted-foreground outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 lg:flex"
+            aria-label={collapsed ? "Fixar menu" : "Recolher menu"}
+            title={collapsed ? "Fixar menu" : "Recolher menu"}
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
         )}
       </div>
