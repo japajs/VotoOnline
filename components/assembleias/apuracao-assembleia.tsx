@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, Loader2, ArrowLeft } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, Loader2, ArrowLeft, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -16,6 +16,12 @@ import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
 import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
@@ -353,32 +359,10 @@ export function ApuracaoAssembleia({
                       os envios desde a abertura). Disponível também encerrada,
                       pra revisar depois. */}
                   <HistoricoDisparosDialog assembleiaId={assembleia.id} condominioId={condominioId} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const a = document.createElement("a")
-                      a.href = `/api/relatorios/apuracao/${assembleia.id}/pdf`
-                      a.click()
-                    }}
-                    className="gap-1.5"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    PDF
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const a = document.createElement("a")
-                      a.href = `/api/relatorios/apuracao/${assembleia.id}/xlsx`
-                      a.click()
-                    }}
-                    className="gap-1.5"
-                  >
-                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                    Excel
-                  </Button>
+                  {/* PDF e Excel da apuração foram pro menu "Relatórios"
+                      (abaixo), junto do Imprimir — POC do redesenho em menus
+                      suspensos (pedido do Carlos: agrupar pra reduzir a poluição
+                      visual da fileira de botões). */}
                   {/* Auditoria de assembleias — Fase 3: ata só faz sentido
                       depois que a assembleia encerra (é o documento final,
                       não um relatório parcial). */}
@@ -410,15 +394,50 @@ export function ApuracaoAssembleia({
                   )}
                 </>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.print()}
-                className="gap-1.5"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                Imprimir
-              </Button>
+              {/* POC do redesenho (pedido do Carlos): os relatórios/impressão
+                  da apuração agrupados num único menu suspenso "Relatórios ▾",
+                  no lugar dos botões soltos PDF/Excel/Imprimir. Fica visível pra
+                  todos (Imprimir); PDF/Excel só pra quem pode exportar. Se o
+                  Carlos curtir o padrão, replico nos outros grupos. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<Button variant="outline" size="sm" className="gap-1.5" />}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Relatórios
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {canExport && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const a = document.createElement("a")
+                          a.href = `/api/relatorios/apuracao/${assembleia.id}/pdf`
+                          a.click()
+                        }}
+                      >
+                        <FileText className="h-4 w-4" />
+                        Apuração (PDF)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const a = document.createElement("a")
+                          a.href = `/api/relatorios/apuracao/${assembleia.id}/xlsx`
+                          a.click()
+                        }}
+                      >
+                        <FileSpreadsheet className="h-4 w-4" />
+                        Apuração (Excel)
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={() => window.print()}>
+                    <Printer className="h-4 w-4" />
+                    Imprimir
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

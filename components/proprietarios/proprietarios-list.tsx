@@ -16,10 +16,17 @@ import {
   Eraser,
   Download,
   Undo2,
+  MoreVertical,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { APP_NAME } from "@/lib/constants"
 import {
   deleteProprietarioAction,
@@ -971,30 +978,41 @@ const ProprietarioRow = memo(function ProprietarioRow({
         isAdmin={isAdmin}
         criterioPeso={criterioPeso}
       />
-      {/* Anular voto (pedido do Carlos): aparece só pra quem votou na assembleia
-          aberta. Zera o voto (some da apuração) — serve pra corrigir voto errado,
-          limpar "fantasma" e destravar a exclusão de quem votou. Pede senha. */}
-      {mostrarVoto && votou && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowAnular(true)}
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400"
-          title="Anular o voto desta pessoa nesta assembleia"
+      {/* Ações secundárias/destrutivas num menu "⋯" (pedido do Carlos: a coluna
+          AÇÕES encavalava quando o 4º botão — anular — aparecia junto de voto
+          manual, editar e excluir). As frequentes (voto manual, editar) ficam
+          à mão; anular e excluir vão pro menu — nunca mais que 3 controles na
+          linha. Primeira etapa do redesenho em menus suspensos. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground"
+              title="Mais ações"
+            />
+          }
         >
-          <Undo2 className="h-3.5 w-3.5" />
-          <span className="sr-only">Anular voto</span>
-        </Button>
-      )}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setShowExcluir(true)}
-        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-        <span className="sr-only">Excluir proprietário</span>
-      </Button>
+          <MoreVertical className="h-3.5 w-3.5" />
+          <span className="sr-only">Mais ações</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {/* Anular voto (pedido do Carlos): só pra quem votou na assembleia
+              aberta. Zera o voto (some da apuração) — corrige voto errado,
+              limpa "fantasma" e destrava a exclusão de quem votou. Pede senha. */}
+          {mostrarVoto && votou && (
+            <DropdownMenuItem onClick={() => setShowAnular(true)}>
+              <Undo2 className="h-4 w-4" />
+              Anular voto
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem variant="destructive" onClick={() => setShowExcluir(true)}>
+            <Trash2 className="h-4 w-4" />
+            Excluir proprietário
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   )
 
