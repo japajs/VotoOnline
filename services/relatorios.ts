@@ -185,6 +185,137 @@ export async function getHistoricoParticipacao(
   return linhas.map((l) => l.item)
 }
 
+// Extrato de participação em PDF (pedido do Carlos: um "extrato da apuração"
+// baixável, pra apresentar/auditar — traz data e hora do voto por imóvel). É a
+// versão imprimível da tabela "Participação (controle interno)" da tela, com um
+// cabeçalho de contadores POR IMÓVEL (regra do Carlos: a assembleia gira em
+// torno do imóvel, não da pessoa). Escopo = quem tem send nesta assembleia
+// (mesmas linhas da tela). Diferente de getHistoricoParticipacao (que alimenta a
+// tela) por trazer também a contagem de imóveis por linha, a presença e o resumo.
+export type ParticipacaoStatus = "completo" | "parcial" | "pendente"
+
+export interface ExtratoParticipacaoLinha {
+  proprietarioNome: string
+  // Imóvel(is) formatado(s) ("A-101, A-102") e a quantidade (pro resumo por imóvel).
+  unidades: string
+  qtdImoveis: number
+  totalPautas: number
+  pautasRespondidas: number
+  status: ParticipacaoStatus
+  // Participou da assembleia: marcado presente pela mesa OU já votou (voto manual
+  // não passa pela chamada). Garante Presentes >= Votou geral + parcial.
+  presente: boolean
+  // Data/hora do voto (votado_em) — o dado de auditoria que o Carlos valoriza.
+  ultimaResposta: string | null
+}
+
+export interface ExtratoParticipacaoResumo {
+  imoveis: number
+  presentes: number
+  votouGeral: number
+  votouParcial: number
+  naoVotou: number
+}
+
+export interface ExtratoParticipacao {
+  linhas: ExtratoParticipacaoLinha[]
+  resumo: ExtratoParticipacaoResumo
+}
+
+export async function getExtratoParticipacao(
+  assembleiaId: string,
+  totalPautas: number
+): Promise<ExtratoParticipacao> {
+  const db = createServerClient()
+  const resumoVazio: ExtratoParticipacaoResumo = {
+    imoveis: 0,
+    presentes: 0,
+    votouGeral: 0,
+    votouParcial: 0,
+    naoVotou: 0,
+  }
+
+  const { data: sends, error } = await db
+    .from("assembleia_sends")
+    .select(
+      "id, nome_snapshot, votado_em, presente_em, unidades_snapshot, proprietarios(nome, unidades(numero, bloco))"
+    )
+    .eq("assembleia_id", assembleiaId)
+  if (error) throw new Error(error.message)
+
+  const sendIds = (sends ?? []).map((s) => s.id as string)
+  if (sendIds.length === 0) return { linhas: [], resumo: resumoVazio }
+
+  const { data: respostas, error: respError } = await db
+    .from("assembleia_respostas")
+    .select("send_id")
+    .in("send_id", sendIds)
+  if (respError) throw new Error(respError.message)
+
+  const countPorSend = new Map<string, number>()
+  for (const r of (respostas ?? []) as { send_id: string }[]) {
+    countPorSend.set(r.send_id, (countPorSend.get(r.send_id) ?? 0) + 1)
+  }
+
+  type SendRow = {
+    id: string
+    nome_snapshot: string | null
+    votado_em: string | null
+    presente_em: string | null
+    unidades_snapshot: UnidadeRaw[] | null
+    proprietarios: { nome: string; unidades: UnidadeRaw[] | null } | null
+  }
+
+  const linhas = ((sends ?? []) as unknown as SendRow[]).map((s) => {
+    const us =
+      (s.unidades_snapshot && s.unidades_snapshot.length > 0
+        ? s.unidades_snapshot
+        : s.proprietarios?.unidades) ?? []
+    const pautasRespondidas = countPorSend.get(s.id) ?? 0
+    // Mesmos três estados da tela (statusDe): pendente (0 respostas), completo
+    // (respondeu todas), parcial (algumas).
+    const status: ParticipacaoStatus =
+      pautasRespondidas === 0
+        ? "pendente"
+        : pautasRespondidas === totalPautas && totalPautas > 0
+          ? "completo"
+          : "parcial"
+    const item: ExtratoParticipacaoLinha = {
+      proprietarioNome: s.nome_snapshot ?? s.proprietarios?.nome ?? "—",
+      unidades: us.length > 0 ? fmtUnidades(us) : "—",
+      qtdImoveis: us.length,
+      totalPautas,
+      pautasRespondidas,
+      status,
+      presente: s.presente_em !== null || s.votado_em !== null,
+      ultimaResposta: s.votado_em ?? null,
+    }
+    return { item, ordem: menorNumeroUnidade(us) }
+  })
+
+  // Ordena por IMÓVEL (como a tabela da tela); sem imóvel vai pro fim.
+  linhas.sort((a, b) => {
+    if (a.ordem === null && b.ordem === null)
+      return a.item.proprietarioNome.localeCompare(b.item.proprietarioNome, "pt-BR")
+    if (a.ordem === null) return 1
+    if (b.ordem === null) return -1
+    const cmp = a.ordem.localeCompare(b.ordem, undefined, { numeric: true })
+    return cmp !== 0 ? cmp : a.item.proprietarioNome.localeCompare(b.item.proprietarioNome, "pt-BR")
+  })
+
+  const ordenadas = linhas.map((l) => l.item)
+  const resumo = ordenadas.reduce((acc, l) => {
+    acc.imoveis += l.qtdImoveis
+    if (l.presente) acc.presentes += l.qtdImoveis
+    if (l.status === "completo") acc.votouGeral += l.qtdImoveis
+    else if (l.status === "parcial") acc.votouParcial += l.qtdImoveis
+    else acc.naoVotou += l.qtdImoveis
+    return acc
+  }, { ...resumoVazio })
+
+  return { linhas: ordenadas, resumo }
+}
+
 export async function getParticipantesByAssembleia(
   assembleiaId: string
 ): Promise<ParticipanteRelatorio[]> {

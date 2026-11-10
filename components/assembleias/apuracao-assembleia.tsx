@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, Loader2, ArrowLeft, ChevronDown } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -429,6 +429,20 @@ export function ApuracaoAssembleia({
                       >
                         <FileSpreadsheet className="h-4 w-4" />
                         Apuração (Excel)
+                      </DropdownMenuItem>
+                      {/* Extrato de participação (pedido do Carlos): versão
+                          baixável da tabela "Participação (controle interno)",
+                          com data/hora do voto por imóvel e contadores por imóvel
+                          — ótimo pra auditar. */}
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const a = document.createElement("a")
+                          a.href = `/api/relatorios/participacao/${assembleia.id}/pdf`
+                          a.click()
+                        }}
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                        Extrato de participação (PDF)
                       </DropdownMenuItem>
                     </>
                   )}
