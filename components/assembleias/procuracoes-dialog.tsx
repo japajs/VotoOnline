@@ -289,9 +289,13 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
                 {procuracoes.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm"
                   >
-                    <span className="min-w-0 truncate">
+                    {/* flex-1 + min-w-0: sem isso a span (com nomes longos, ex.
+                        "FULANO DA SILVA SOUSA → BELTRANO FRANCISCO-C0501") não
+                        encolhia/truncava e empurrava o botão "Anular" pra fora da
+                        borda direita do diálogo, cortando o texto (bug do Carlos). */}
+                    <span className="min-w-0 flex-1 truncate">
                       <span className="font-medium">{p.outorgante_nome}</span>
                       {" → "}
                       <span className="font-medium">{p.outorgado_nome}</span>
