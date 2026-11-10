@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, type Ref } from "react"
 import { QrCode, Printer, Copy } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -18,6 +18,12 @@ interface Props {
   assembleiaId: string
   assembleiaTitulo: string
   condominioNome?: string | null
+  /** Deixa o gatilho ser disparado de fora (ex.: item do menu "Entrada ▾" da
+   * apuração), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe extra do botão-gatilho — passe "hidden" pra escondê-lo quando o
+   * diálogo for aberto só pelo menu. Padrão: visível (uso standalone). */
+  triggerClassName?: string
 }
 
 // Escapa texto antes de injetar no HTML do cartaz de impressão — um título
@@ -39,7 +45,13 @@ function escapeHtml(s: string): string {
 // possível, inclusive impresso pras reuniões presenciais). O condômino que
 // escaneia cai direto na tela de identificação (unidade + CPF) — mesmo link
 // público de sempre, sem risco novo.
-export function QrEntradaDialog({ assembleiaId, assembleiaTitulo, condominioNome }: Props) {
+export function QrEntradaDialog({
+  assembleiaId,
+  assembleiaTitulo,
+  condominioNome,
+  triggerRef,
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = useState(false)
   const url = useEntradaUrl(assembleiaId)
   const qrRef = useRef<HTMLDivElement>(null)
@@ -104,7 +116,7 @@ export function QrEntradaDialog({ assembleiaId, assembleiaTitulo, condominioNome
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
+      <DialogTrigger render={<Button ref={triggerRef} variant="outline" size="sm" className={`gap-1.5 ${triggerClassName ?? ""}`} />}>
         <QrCode className="h-3.5 w-3.5" />
         QR de entrada
       </DialogTrigger>

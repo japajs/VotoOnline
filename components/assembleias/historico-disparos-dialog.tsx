@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type Ref } from "react"
 import { History, Loader2, Search, CheckCircle2, XCircle, Download } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -21,6 +21,12 @@ import type { DisparoHistorico } from "@/services/relatorios"
 interface Props {
   assembleiaId: string
   condominioId: string
+  /** Deixa o gatilho ser disparado de fora (ex.: item do menu "E-mails ▾" da
+   * apuração), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe extra do botão-gatilho — passe "hidden" pra escondê-lo quando o
+   * diálogo for aberto só pelo menu. Padrão: visível (uso standalone). */
+  triggerClassName?: string
 }
 
 const TIPO_LABEL: Record<string, string> = {
@@ -65,7 +71,12 @@ function statusEntrega(d: DisparoHistorico): { label: string; cls: string } {
 // append-only (uma linha por disparo): ao buscar um imóvel, aparecem todas as
 // remessas feitas a ele, com data e status de cada uma. Exporta um comprovante
 // em PDF, respeitando o filtro de período.
-export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
+export function HistoricoDisparosDialog({
+  assembleiaId,
+  condominioId,
+  triggerRef,
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [disparos, setDisparos] = useState<DisparoHistorico[]>([])
@@ -131,7 +142,7 @@ export function HistoricoDisparosDialog({ assembleiaId, condominioId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
+      <DialogTrigger render={<Button ref={triggerRef} variant="outline" size="sm" className={`gap-1.5 ${triggerClassName ?? ""}`} />}>
         <History className="h-3.5 w-3.5" />
         Histórico de disparos
       </DialogTrigger>

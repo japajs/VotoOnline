@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2 } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, Mail, QrCode, History } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -159,6 +159,9 @@ export function ApuracaoAssembleia({
   const editarAssembleiaRef = useRef<HTMLButtonElement>(null)
   const adicionarPautaRef = useRef<HTMLButtonElement>(null)
   const procuracoesRef = useRef<HTMLButtonElement>(null)
+  // 2ª leva: gatilhos ocultos dos menus "Entrada ▾" (QR) e "E-mails ▾" (Histórico).
+  const qrEntradaRef = useRef<HTMLButtonElement>(null)
+  const historicoRef = useRef<HTMLButtonElement>(null)
 
   // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
   // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
@@ -327,18 +330,6 @@ export function ApuracaoAssembleia({
                   </DropdownMenu>
                 </>
               )}
-              {canExport && assembleia.status === "aberta" && pendentes > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleNotificarNaoVotaram}
-                  disabled={isPendingLembrete}
-                  className="gap-1.5"
-                >
-                  <BellRing className="h-3.5 w-3.5" />
-                  Lembrar quem não votou ({pendentes})
-                </Button>
-              )}
               {canExport && assembleia.status === "aberta" && (
                 <RegistrarVotoManualDialog
                   assembleiaId={assembleia.id}
@@ -347,32 +338,51 @@ export function ApuracaoAssembleia({
                   pautas={assembleia.pautas ?? []}
                 />
               )}
-              {canExport && (assembleia.status === "aberta" || assembleia.status === "pausada") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const url = `${window.location.origin}/entrar/${assembleia.id}`
-                    if (navigator.clipboard) {
-                      navigator.clipboard.writeText(url).then(
-                        () => toast.success("Link de entrada copiado — cole no grupo do WhatsApp."),
-                        () => toast.message(url)
-                      )
-                    } else {
-                      toast.message(url)
-                    }
-                  }}
-                  className="gap-1.5"
-                >
-                  <DoorOpen className="h-3.5 w-3.5" />
-                  Link de entrada
-                </Button>
-              )}
-              {/* QR do link de entrada (pedido do Carlos): projetar no telão,
-                  copiar ou imprimir cartaz pra colar na entrada. Liberado
-                  também em rascunho pra a mesa preparar/imprimir antes. */}
+              {/* Grupo "Entrada ▾" (2ª leva): o link de entrada (WhatsApp) + o QR
+                  da entrada num só menu. A "Presença" (chamada) segue à mão, de
+                  propósito. Liberado até rascunho (QR) pra a mesa preparar antes. */}
               {canExport && assembleia.status !== "encerrada" && (
-                <QrEntradaDialog assembleiaId={assembleia.id} assembleiaTitulo={assembleia.titulo} />
+                <>
+                  <QrEntradaDialog
+                    assembleiaId={assembleia.id}
+                    assembleiaTitulo={assembleia.titulo}
+                    triggerRef={qrEntradaRef}
+                    triggerClassName="hidden"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={<Button variant="outline" size="sm" className="gap-1.5" />}
+                    >
+                      <DoorOpen className="h-3.5 w-3.5" />
+                      Entrada
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {(assembleia.status === "aberta" || assembleia.status === "pausada") && (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const url = `${window.location.origin}/entrar/${assembleia.id}`
+                            if (navigator.clipboard) {
+                              navigator.clipboard.writeText(url).then(
+                                () => toast.success("Link de entrada copiado — cole no grupo do WhatsApp."),
+                                () => toast.message(url)
+                              )
+                            } else {
+                              toast.message(url)
+                            }
+                          }}
+                        >
+                          <DoorOpen className="h-4 w-4" />
+                          Copiar link de entrada
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => abrirPeloTrigger(qrEntradaRef)}>
+                        <QrCode className="h-4 w-4" />
+                        QR de entrada
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               )}
               {canExport && assembleia.status !== "rascunho" && (
                 <PresencaDialog
@@ -421,10 +431,40 @@ export function ApuracaoAssembleia({
                   {assembleia.status !== "encerrada" && (
                     <DispararAssembleiaDialog assembleia={assembleia} proprietarios={proprietarios} />
                   )}
-                  {/* Histórico de disparos de e-mail (pedido do Carlos: rastrear
-                      os envios desde a abertura). Disponível também encerrada,
-                      pra revisar depois. */}
-                  <HistoricoDisparosDialog assembleiaId={assembleia.id} condominioId={condominioId} />
+                  {/* Grupo "E-mails ▾" (2ª leva): Lembrar quem não votou +
+                      Histórico de disparos. O "Disparar" segue à mão, ao lado.
+                      Histórico fica montado porém oculto e abre pelo item do
+                      menu; disponível também encerrada, pra revisar depois. */}
+                  <HistoricoDisparosDialog
+                    assembleiaId={assembleia.id}
+                    condominioId={condominioId}
+                    triggerRef={historicoRef}
+                    triggerClassName="hidden"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={<Button variant="outline" size="sm" className="gap-1.5" />}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      E-mails
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {assembleia.status === "aberta" && pendentes > 0 && (
+                        <DropdownMenuItem
+                          onClick={handleNotificarNaoVotaram}
+                          disabled={isPendingLembrete}
+                        >
+                          <BellRing className="h-4 w-4" />
+                          Lembrar quem não votou ({pendentes})
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => abrirPeloTrigger(historicoRef)}>
+                        <History className="h-4 w-4" />
+                        Histórico de disparos
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   {/* PDF e Excel da apuração foram pro menu "Relatórios"
                       (abaixo), junto do Imprimir — POC do redesenho em menus
                       suspensos (pedido do Carlos: agrupar pra reduzir a poluição
