@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -109,6 +109,16 @@ function isoParaDatetimeLocal(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// Abre um diálogo a partir de um item do menu "Assembleia ▾": dispara o clique
+// no botão-gatilho do próprio diálogo (que fica montado porém oculto —
+// triggerClassName="hidden"). Assim agrupamos os botões frios no menu sem
+// refatorar o estado de abertura de cada diálogo. O setTimeout(…,0) deixa o
+// menu fechar e restaurar o foco ANTES do diálogo tomar o foco (mesmo padrão
+// do menu "⋯" da lista de proprietários).
+function abrirPeloTrigger(ref: { current: HTMLButtonElement | null }) {
+  setTimeout(() => ref.current?.click(), 0)
+}
+
 export function ApuracaoAssembleia({
   assembleia,
   condominioId,
@@ -141,6 +151,14 @@ export function ApuracaoAssembleia({
   const [votacaoPorPauta, setVotacaoPorPautaState] = useState(assembleia.votacao_por_pauta ?? false)
   const [isPendingVpp, startVppTransition] = useTransition()
   const emAndamento = assembleia.status === "aberta" || assembleia.status === "pausada"
+
+  // Gatilhos ocultos dos diálogos agrupados no menu "Assembleia ▾" (frios):
+  // Editar assembleia, Adicionar pauta e Procurações saíram da fileira de
+  // botões e são abertos pelos itens do menu via abrirPeloTrigger. As ações
+  // quentes ao vivo (Disparar, Presença, Registrar voto manual) seguem à mão.
+  const editarAssembleiaRef = useRef<HTMLButtonElement>(null)
+  const adicionarPautaRef = useRef<HTMLButtonElement>(null)
+  const procuracoesRef = useRef<HTMLButtonElement>(null)
 
   // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
   // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
@@ -248,15 +266,66 @@ export function ApuracaoAssembleia({
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Voltar à gestão
               </Link>
+              {/* Grupo "Assembleia ▾" (1ª leva do redesenho pedido pelo Carlos:
+                  agrupar os botões FRIOS pra achar rápido no meio da assembleia).
+                  Editar assembleia + Adicionar pauta + Procurações saíram da
+                  fileira; os diálogos ficam montados porém com gatilho OCULTO
+                  (triggerClassName="hidden") e são abertos pelos itens do menu.
+                  As ações quentes (Disparar, Presença, Registrar voto manual)
+                  seguem à mão, de propósito. */}
               {canExport && (
-                <EditarAssembleiaDialog
-                  assembleia={assembleia}
-                  condominioId={condominioId}
-                  temVotos={temVotos}
-                />
-              )}
-              {canExport && assembleia.status === "aberta" && (
-                <AdicionarPautaDialog assembleiaId={assembleia.id} condominioId={condominioId} />
+                <>
+                  <EditarAssembleiaDialog
+                    assembleia={assembleia}
+                    condominioId={condominioId}
+                    temVotos={temVotos}
+                    triggerRef={editarAssembleiaRef}
+                    triggerClassName="hidden"
+                  />
+                  {assembleia.status === "aberta" && (
+                    <AdicionarPautaDialog
+                      assembleiaId={assembleia.id}
+                      condominioId={condominioId}
+                      triggerRef={adicionarPautaRef}
+                      triggerClassName="hidden"
+                    />
+                  )}
+                  {assembleia.status === "aberta" && (
+                    <ProcuracoesDialog
+                      assembleiaId={assembleia.id}
+                      condominioId={condominioId}
+                      triggerRef={procuracoesRef}
+                      triggerClassName="hidden"
+                    />
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={<Button variant="outline" size="sm" className="gap-1.5" />}
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Assembleia
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={() => abrirPeloTrigger(editarAssembleiaRef)}>
+                        <Pencil className="h-4 w-4" />
+                        Editar assembleia
+                      </DropdownMenuItem>
+                      {assembleia.status === "aberta" && (
+                        <DropdownMenuItem onClick={() => abrirPeloTrigger(adicionarPautaRef)}>
+                          <Plus className="h-4 w-4" />
+                          Adicionar pauta
+                        </DropdownMenuItem>
+                      )}
+                      {assembleia.status === "aberta" && (
+                        <DropdownMenuItem onClick={() => abrirPeloTrigger(procuracoesRef)}>
+                          <FileSignature className="h-4 w-4" />
+                          Procurações
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               )}
               {canExport && assembleia.status === "aberta" && pendentes > 0 && (
                 <Button
@@ -342,9 +411,6 @@ export function ApuracaoAssembleia({
                   <Tv className="h-3.5 w-3.5" />
                   Telão
                 </Button>
-              )}
-              {canExport && assembleia.status === "aberta" && (
-                <ProcuracoesDialog assembleiaId={assembleia.id} condominioId={condominioId} />
               )}
               {canExport && (
                 <>

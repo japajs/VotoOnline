@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type Ref } from "react"
 import { Plus, X, ChevronUp, ChevronDown, Loader2, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -27,11 +27,22 @@ const MAX_OPCOES_NOVA_PAUTA = 8
 interface Props {
   assembleiaId: string
   condominioId: string
+  /** Deixa o gatilho ser disparado de fora (ex.: item do menu "Assembleia ▾"
+   * da apuração), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do botão-gatilho — passe "hidden" pra escondê-lo quando o diálogo
+   * for aberto só pelo menu. Padrão: visível (uso standalone). */
+  triggerClassName?: string
 }
 
 type Etapa = "form" | "confirmarNotificacao"
 
-export function AdicionarPautaDialog({ assembleiaId, condominioId }: Props) {
+export function AdicionarPautaDialog({
+  assembleiaId,
+  condominioId,
+  triggerRef,
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [etapa, setEtapa] = useState<Etapa>("form")
   const [titulo, setTitulo] = useState("")
@@ -124,7 +135,7 @@ export function AdicionarPautaDialog({ assembleiaId, condominioId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+      <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} size="sm" variant="outline" />}>
         <Plus className="h-3.5 w-3.5" />
         Adicionar pauta
       </DialogTrigger>
