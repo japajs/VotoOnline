@@ -20,6 +20,8 @@ import {
   Pencil,
   UserPlus,
   Send,
+  ChevronDown,
+  Check,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -29,6 +31,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { APP_NAME } from "@/lib/constants"
 import {
@@ -592,8 +595,8 @@ export function ProprietariosList({
           localizar/organizar registros, não faz parte da tabela em si. */}
       <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center">
         <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/80 sm:pr-1">
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          Buscar e ordenar
+          <Search className="h-3.5 w-3.5" />
+          Buscar
         </div>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -605,37 +608,6 @@ export function ProprietariosList({
             aria-label="Buscar proprietário"
           />
         </div>
-        <select
-          value={ordenacao}
-          onChange={(e) => setOrdenacao(e.target.value as Ordenacao)}
-          aria-label="Ordenar por"
-          className="h-12 shrink-0 rounded-lg border border-border/60 bg-background px-3 text-sm text-foreground sm:w-44"
-        >
-          <option value="nome">Ordenar por Nome</option>
-          <option value="unidade">Ordenar por Unidade</option>
-        </select>
-        {/* Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar a
-            tela sem expor dados pessoais. Clicar de novo volta ao normal. */}
-        <button
-          type="button"
-          onClick={() => setModoCompartilhar((v) => !v)}
-          aria-pressed={modoCompartilhar}
-          title={
-            modoCompartilhar
-              ? "Mostrar E-mail, CPF e Celular de novo"
-              : "Ocultar E-mail, CPF e Celular para compartilhar a tela (LGPD)"
-          }
-          className={`flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors ${
-            modoCompartilhar
-              ? "border-amber-400/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              : "border-border/60 bg-background text-muted-foreground hover:bg-accent/40"
-          }`}
-        >
-          {modoCompartilhar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          <span className="hidden sm:inline">
-            {modoCompartilhar ? "Mostrar dados" : "Modo compartilhar"}
-          </span>
-        </button>
         {/* Limpar busca + filtros de uma vez (pedido do Carlos) — só aparece
             quando há algo a limpar; volta a lista a 100% dos imóveis. */}
         {temFiltroAtivo && (
@@ -649,20 +621,46 @@ export function ProprietariosList({
             <span className="hidden sm:inline">Limpar</span>
           </button>
         )}
-        {/* Exportar XLSX do que está EXIBIDO (respeita busca + filtro) — pedido
-            do Carlos. Fica aqui na barra porque é onde vive o filtro. */}
-        {podeEditar && (
-          <button
-            type="button"
-            onClick={exportarXlsx}
-            disabled={exportando}
-            title="Exportar em XLSX o que está sendo exibido (respeita a busca e o filtro)"
-            className="flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/40 disabled:opacity-50"
+        {/* "Opções ▾" (redesenho em menus, pedido do Carlos): agrupa os controles
+            FRIOS da barra — Ordenar, Modo compartilhar (LGPD) e Exportar XLSX —
+            pra reduzir a poluição visual. Busca, Limpar e os filtros (quentes na
+            chamada) seguem à mão. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={<Button variant="outline" className="h-12 shrink-0 gap-1.5 px-3" />}
           >
-            {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            <span className="hidden sm:inline">Exportar XLSX</span>
-          </button>
-        )}
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Opções</span>
+            <ChevronDown className="h-4 w-4 opacity-60" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setOrdenacao("nome")}>
+              <Check className={`h-4 w-4 ${ordenacao === "nome" ? "" : "opacity-0"}`} />
+              Ordenar por nome
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setOrdenacao("unidade")}>
+              <Check className={`h-4 w-4 ${ordenacao === "unidade" ? "" : "opacity-0"}`} />
+              Ordenar por unidade
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {/* Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar
+                sem expor dados. O estado também aparece no aviso abaixo da barra. */}
+            <DropdownMenuItem onClick={() => setModoCompartilhar((v) => !v)}>
+              {modoCompartilhar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {modoCompartilhar ? "Mostrar dados (sair do compartilhar)" : "Modo compartilhar (LGPD)"}
+            </DropdownMenuItem>
+            {podeEditar && (
+              <DropdownMenuItem onClick={exportarXlsx} disabled={exportando}>
+                {exportando ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Exportar XLSX
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Aviso discreto quando o modo compartilhar está ligado — fica visível
