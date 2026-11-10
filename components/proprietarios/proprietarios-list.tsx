@@ -991,6 +991,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
     if (!assembleiaAbertaId) return
     startDisparo(async () => {
       const res = await enviarAssembleiaAction(assembleiaAbertaId, [proprietario.id])
+      // Fecha o diálogo assim que o envio resolve (o botão fica desabilitado
+      // enquanto dispara), pra não deixar dúvida se saiu — igual ao "Mover para
+      // cá". O resultado (sucesso/erro) vem pelo toast. Fecha em qualquer caso.
+      setShowDisparar(false)
       if (res.error) toast.error(res.error)
       else if (res.sent > 0) toast.success(`E-mail enviado para ${proprietario.nome}.`)
       else toast.error(`Não foi possível enviar o e-mail para ${proprietario.nome}.`)
@@ -1467,8 +1471,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
 
       {/* Disparar e-mail só pra esta pessoa (item do menu "⋯"). Confirma porque
           é envio externo que custa e conta no limite diário. O envio roda numa
-          transição e o resultado vem por toast — o diálogo fecha ao confirmar,
-          igual ao "Mover para cá" acima. */}
+          transição e o resultado vem por toast; o handleDisparar fecha o diálogo
+          quando o envio resolve, igual ao "Mover para cá" acima (o AlertDialogAction
+          sozinho NÃO fecha — só o Cancel é um Close). */}
       <AlertDialog open={showDisparar} onOpenChange={setShowDisparar}>
         <AlertDialogContent>
           <AlertDialogHeader>
