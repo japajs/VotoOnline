@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, Mail, QrCode, History } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, Mail, QrCode, History, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
@@ -162,6 +163,8 @@ export function ApuracaoAssembleia({
   // 2ª leva: gatilhos ocultos dos menus "Entrada ▾" (QR) e "E-mails ▾" (Histórico).
   const qrEntradaRef = useRef<HTMLButtonElement>(null)
   const historicoRef = useRef<HTMLButtonElement>(null)
+  // Mesa dobrada no "Relatórios ▾" (só encerrada): gatilho oculto.
+  const mesaRef = useRef<HTMLButtonElement>(null)
 
   // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
   // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
@@ -472,31 +475,18 @@ export function ApuracaoAssembleia({
                   {/* Auditoria de assembleias — Fase 3: ata só faz sentido
                       depois que a assembleia encerra (é o documento final,
                       não um relatório parcial). */}
+                  {/* Mesa (presidente/secretário) que assina a ata — gatilho
+                      OCULTO, aberto pelo item do menu "Relatórios ▾" (junto da
+                      Ata, onde faz sentido na hora de gerar o documento). */}
                   {assembleia.status === "encerrada" && (
-                    <>
-                      {/* Mesa (presidente/secretário) que assina a ata — pedido
-                          do Carlos. Fica junto da Ata pra preencher na hora de
-                          gerar o documento. */}
-                      <MesaAssembleiaDialog
-                        assembleiaId={assembleia.id}
-                        condominioId={condominioId}
-                        presidenteInicial={assembleia.mesa_presidente ?? null}
-                        secretarioInicial={assembleia.mesa_secretario ?? null}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const a = document.createElement("a")
-                          a.href = `/api/relatorios/apuracao/${assembleia.id}/ata`
-                          a.click()
-                        }}
-                        className="gap-1.5"
-                      >
-                        <FileText className="h-3.5 w-3.5" />
-                        Ata
-                      </Button>
-                    </>
+                    <MesaAssembleiaDialog
+                      assembleiaId={assembleia.id}
+                      condominioId={condominioId}
+                      presidenteInicial={assembleia.mesa_presidente ?? null}
+                      secretarioInicial={assembleia.mesa_secretario ?? null}
+                      triggerRef={mesaRef}
+                      triggerClassName="hidden"
+                    />
                   )}
                 </>
               )}
@@ -550,6 +540,28 @@ export function ApuracaoAssembleia({
                         <ClipboardList className="h-4 w-4" />
                         Extrato de participação (PDF)
                       </DropdownMenuItem>
+                      {/* Mesa + Ata (só encerrada): documentos de fechamento,
+                          dobrados aqui pra tirar mais 2 botões soltos da fileira.
+                          Mesa abre o diálogo pelo gatilho oculto; Ata baixa o PDF. */}
+                      {assembleia.status === "encerrada" && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => abrirPeloTrigger(mesaRef)}>
+                            <Users className="h-4 w-4" />
+                            Mesa (presidente/secretário)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const a = document.createElement("a")
+                              a.href = `/api/relatorios/apuracao/${assembleia.id}/ata`
+                              a.click()
+                            }}
+                          >
+                            <FileText className="h-4 w-4" />
+                            Ata (PDF)
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </>
                   )}
                   <DropdownMenuItem onClick={() => window.print()}>
