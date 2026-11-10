@@ -83,7 +83,11 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
     await Promise.all([
       getHistoricoParticipacao(assembleiaId, pautas.length).catch(() => []),
       getAllProprietarios(condominioId).catch(() => []),
-      getDadosParticipantes(assembleia).catch((): DadosParticipantes => ({})),
+      // Só carrega os dados da chamada quando a assembleia está em andamento: a
+      // ProprietariosList só mostra voto/presença com assembleiaAbertaId (abaixo),
+      // que fica undefined fora de aberta/pausada — então pra encerrada/rascunho
+      // esses dados seriam ignorados. Evita as queries à toa.
+      getDadosParticipantes(emAndamento ? assembleia : null).catch((): DadosParticipantes => ({})),
       getProprietariosQueJaVotaram(condominioId).catch(() => new Set<string>()),
     ])
 
@@ -107,8 +111,9 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
       {/* Modo exibir (pedido do Carlos: fundir gestão + apuração pra não trocar
           de tela ao vivo) — aba "Apuração" (resultados) e aba "Participantes"
           (a chamada: mesma lista da gestão, com presença/voto por proprietário).
-          Na assembleia encerrada a chamada fica só leitura (sem assembleiaAberta
-          → sem marcar presença/disparar), mas mostra o estado final pra auditar. */}
+          A aba Participantes é plena com a assembleia em andamento (aberta/pausada).
+          Fora disso (encerrada/rascunho) ela vira a lista simples, sem os badges
+          de voto/presença — a ProprietariosList os gateia por assembleiaAbertaId. */}
       <ApuracaoModoExibir
         apuracao={
           <div className="flex flex-col gap-8">
