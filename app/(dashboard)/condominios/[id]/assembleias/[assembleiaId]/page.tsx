@@ -4,11 +4,15 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { getAssembleiaById } from "@/services/assembleias"
 import { getCondominioById } from "@/services/condominios"
-import { getApuracaoAssembleia } from "@/services/assembleia-votos"
+import { getApuracaoAssembleia, getProprietariosQueJaVotaram } from "@/services/assembleia-votos"
 import { getHistoricoParticipacao } from "@/services/relatorios"
 import { getAllProprietarios } from "@/services/proprietarios"
+import { getDadosParticipantes, type DadosParticipantes } from "@/services/participantes"
 import { ApuracaoAssembleia } from "@/components/assembleias/apuracao-assembleia"
+import { ApuracaoModoExibir } from "@/components/assembleias/apuracao-modo-exibir"
 import { HistoricoParticipacao } from "@/components/assembleias/historico-participacao"
+import { ProprietariosList } from "@/components/proprietarios/proprietarios-list"
+import { isEmAndamento } from "@/lib/assembleia-status"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 
@@ -71,12 +75,17 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
     quorum_aplicavel: null,
   }))
 
-  // Participação (ordenada por imóvel) + a lista de proprietários pro botão
-  // "Disparar" na própria tela de apuração (pedido do Carlos). Em paralelo.
-  const [historicoParticipacao, proprietarios] = await Promise.all([
-    getHistoricoParticipacao(assembleiaId, pautas.length).catch(() => []),
-    getAllProprietarios(condominioId).catch(() => []),
-  ])
+  // Participação (ordenada por imóvel), a lista de proprietários (botão
+  // "Disparar" + aba "Participantes" do Modo exibir) e os dados da chamada
+  // (presença/votos/procurações) pra essa aba. Em paralelo.
+  const emAndamento = isEmAndamento(assembleia.status)
+  const [historicoParticipacao, proprietarios, dados, proprietariosQueJaVotaram] =
+    await Promise.all([
+      getHistoricoParticipacao(assembleiaId, pautas.length).catch(() => []),
+      getAllProprietarios(condominioId).catch(() => []),
+      getDadosParticipantes(assembleia).catch((): DadosParticipantes => ({})),
+      getProprietariosQueJaVotaram(condominioId).catch(() => new Set<string>()),
+    ])
 
   return (
     <div className="flex flex-col gap-8 p-6 pt-8">
@@ -95,16 +104,48 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{assembleia.titulo}</h1>
       </div>
 
-      <ApuracaoAssembleia
-        assembleia={assembleia}
-        condominioId={condominioId}
-        apuracao={apuracao}
-        proprietarios={proprietarios}
-        canExport={session?.perfil !== "visualizador"}
-        criterioPeso={condominio.criterio_peso}
+      {/* Modo exibir (pedido do Carlos: fundir gestão + apuração pra não trocar
+          de tela ao vivo) — aba "Apuração" (resultados) e aba "Participantes"
+          (a chamada: mesma lista da gestão, com presença/voto por proprietário).
+          Na assembleia encerrada a chamada fica só leitura (sem assembleiaAberta
+          → sem marcar presença/disparar), mas mostra o estado final pra auditar. */}
+      <ApuracaoModoExibir
+        apuracao={
+          <div className="flex flex-col gap-8">
+            <ApuracaoAssembleia
+              assembleia={assembleia}
+              condominioId={condominioId}
+              apuracao={apuracao}
+              proprietarios={proprietarios}
+              canExport={session?.perfil !== "visualizador"}
+              criterioPeso={condominio.criterio_peso}
+            />
+            <HistoricoParticipacao historico={historicoParticipacao} />
+          </div>
+        }
+        participantes={
+          <ProprietariosList
+            proprietarios={proprietarios}
+            condominioId={condominioId}
+            condominioNome={condominio.nome}
+            proprietariosQueJaVotaram={proprietariosQueJaVotaram}
+            votouNaAberta={dados.votou}
+            presentesNaAberta={dados.presentes}
+            pautasVotadasNaAberta={dados.pautasVotadas}
+            totalPautasVotaveis={dados.totalPautasVotaveis}
+            outorgantesNaAberta={dados.outorgantes}
+            outorgantesComRepVotouNaAberta={dados.outorgantesComRepVotou}
+            participantesNaAberta={dados.participantes}
+            emailProblemaNaAberta={dados.emailProblema}
+            assembleiaAbertaId={emAndamento ? assembleia.id : undefined}
+            assembleiaAbertaTitulo={emAndamento ? assembleia.titulo : undefined}
+            pautasDaAberta={emAndamento ? assembleia.pautas : undefined}
+            isAdmin={session?.perfil === "administrador"}
+            podeEditar={session?.perfil !== "visualizador"}
+            criterioPeso={condominio.criterio_peso}
+          />
+        }
       />
-
-      <HistoricoParticipacao historico={historicoParticipacao} />
     </div>
   )
 }
