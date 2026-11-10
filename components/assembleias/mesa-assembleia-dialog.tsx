@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type Ref } from "react"
 import { Users, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -22,6 +22,12 @@ interface Props {
   condominioId: string
   presidenteInicial: string | null
   secretarioInicial: string | null
+  /** Deixa o gatilho ser disparado de fora (ex.: item do menu "Relatórios ▾" da
+   * apuração), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe extra do botão-gatilho — passe "hidden" pra escondê-lo quando o
+   * diálogo for aberto só pelo menu. Padrão: visível (uso standalone). */
+  triggerClassName?: string
 }
 
 // Mesa da assembleia (pedido do Carlos): presidente e secretário que assinam a
@@ -32,6 +38,8 @@ export function MesaAssembleiaDialog({
   condominioId,
   presidenteInicial,
   secretarioInicial,
+  triggerRef,
+  triggerClassName,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [presidente, setPresidente] = useState(presidenteInicial ?? "")
@@ -62,7 +70,7 @@ export function MesaAssembleiaDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
+      <DialogTrigger render={<Button ref={triggerRef} variant="outline" size="sm" className={`gap-1.5 ${triggerClassName ?? ""}`} />}>
         <Users className="h-3.5 w-3.5" />
         Mesa
       </DialogTrigger>
