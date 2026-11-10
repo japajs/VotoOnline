@@ -1065,13 +1065,15 @@ const ProprietarioRow = memo(function ProprietarioRow({
               "sumir"), mas DESABILITADA enquanto a pessoa não votou — não há voto
               pra anular. Só ativa pra quem já votou. */}
           {mostrarVoto && (
-            <DropdownMenuItem
-              onClick={() => setShowAnular(true)}
-              disabled={!votou}
-              title={votou ? undefined : "Só é possível anular depois que a pessoa votar"}
-            >
+            <DropdownMenuItem onClick={() => setShowAnular(true)} disabled={!votou}>
               <Undo2 className="h-4 w-4" />
               Anular voto
+              {/* Dica VISÍVEL (não no hover — item desabilitado tem
+                  pointer-events-none, então o title não apareceria): explica por
+                  que está cinza e quando acende. Só enquanto a pessoa não votou. */}
+              {!votou && (
+                <span className="ml-auto pl-3 text-[11px] text-muted-foreground">após votar</span>
+              )}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem variant="destructive" onClick={() => setShowExcluir(true)}>
