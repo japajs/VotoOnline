@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type Ref } from "react"
 import { UserPlus, Loader2, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -33,6 +33,10 @@ interface Props {
   // Ações — já sabe quem é, então pula a busca e vai direto pro voto dessa
   // pessoa. O gatilho vira um ícone compacto. Ausente = modo lista (busca).
   proprietarioDireto?: { id: string; nome: string }
+  // Gatilho externo (opcional, só no modo direto): um item do menu "⋯" da linha
+  // abre este diálogo clicando no botão-gatilho inline via este ref (ver
+  // `abrirPeloTrigger` em proprietarios-list), sem duplicar o diálogo.
+  triggerRef?: Ref<HTMLButtonElement>
 }
 
 type Etapa = "escolher" | "votar"
@@ -57,6 +61,7 @@ export function RegistrarVotoManualDialog({
   condominioId,
   pautas,
   proprietarioDireto,
+  triggerRef,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [etapa, setEtapa] = useState<Etapa>("escolher")
@@ -176,6 +181,7 @@ export function RegistrarVotoManualDialog({
         <DialogTrigger
           render={
             <Button
+              ref={triggerRef}
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"

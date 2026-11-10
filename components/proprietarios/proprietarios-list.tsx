@@ -17,6 +17,9 @@ import {
   Download,
   Undo2,
   MoreVertical,
+  Pencil,
+  UserPlus,
+  Send,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -39,6 +42,7 @@ import {
   getEstadoVotacaoLiveAction,
   setParticipanteNomeAction,
 } from "@/app/actions/presenca"
+import { enviarAssembleiaAction } from "@/app/actions/assembleia-votos"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
   AlertDialog,
@@ -122,6 +126,16 @@ function horaBR(iso: string): string {
 function formatPeso(peso: number, criterioPeso: CriterioPeso): string {
   if (criterioPeso === "fracao_ideal") return `${(peso * 100).toFixed(4)}%`
   return `${peso} ${peso === 1 ? "voto" : "votos"}`
+}
+
+// Abre um diálogo controlado pelo seu gatilho inline a partir de um item do
+// menu "⋯": dispara o clique no botão-gatilho já montado na linha (Editar / Voto
+// manual). Assim o atalho inline e o item de menu apontam pro MESMO diálogo, sem
+// refatorar o estado de abertura desses componentes. O setTimeout(…,0) deixa o
+// menu fechar e restaurar o foco ANTES do diálogo tomar o foco — sem isso os
+// dois disputam o foco e o diálogo pode abrir "sem foco" pro teclado.
+function abrirPeloTrigger(ref: { current: HTMLButtonElement | null }) {
+  setTimeout(() => ref.current?.click(), 0)
 }
 
 type Ordenacao = "nome" | "unidade"
@@ -898,6 +912,16 @@ const ProprietarioRow = memo(function ProprietarioRow({
   // Imóvel digitado no +Add já existe em outro cadastro → confirma mover.
   const [moverImovelDe, setMoverImovelDe] = useState<string | null>(null)
   const [isPendingAdd, startAddTransition] = useTransition()
+  // Disparar e-mail pra UM proprietário (pedido do Carlos: "fulano não recebeu,
+  // reenvia só pra ele" na hora da assembleia). Confirma antes (envio externo
+  // que custa e conta no limite diário de e-mail) e reaproveita
+  // enviarAssembleiaAction — mesmo link e mesmo log de disparos do envio em massa.
+  const [showDisparar, setShowDisparar] = useState(false)
+  const [isDisparando, startDisparo] = useTransition()
+  // Gatilhos inline (Editar / Voto manual) que os itens do menu "⋯" acionam via
+  // abrirPeloTrigger — o atalho e o item de menu abrem o MESMO diálogo.
+  const editarTriggerRef = useRef<HTMLButtonElement>(null)
+  const votoTriggerRef = useRef<HTMLButtonElement>(null)
   // Edição inline de "quem participou" (a gravação é otimista no pai).
   const [editandoPart, setEditandoPart] = useState(false)
   const [partInput, setPartInput] = useState(participante)
@@ -959,6 +983,20 @@ const ProprietarioRow = memo(function ProprietarioRow({
     !outorgante &&
     !(votou && !parcial)
 
+  // Disparar e-mail pra esta pessoa. Só faz sentido com assembleia aberta (há o
+  // que disparar) e e-mail cadastrado — o item de menu só aparece nesse caso.
+  const podeDisparar = !!assembleiaAbertaId && !!proprietario.email
+
+  function handleDisparar() {
+    if (!assembleiaAbertaId) return
+    startDisparo(async () => {
+      const res = await enviarAssembleiaAction(assembleiaAbertaId, [proprietario.id])
+      if (res.error) toast.error(res.error)
+      else if (res.sent > 0) toast.success(`E-mail enviado para ${proprietario.nome}.`)
+      else toast.error(`Não foi possível enviar o e-mail para ${proprietario.nome}.`)
+    })
+  }
+
   const acoes = (
     <>
       {podeVotoManual && (
@@ -968,6 +1006,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
           condominioId={condominioId}
           pautas={pautasDaAberta!}
           proprietarioDireto={{ id: proprietario.id, nome: proprietario.nome }}
+          triggerRef={votoTriggerRef}
         />
       )}
       <EditarProprietarioDialog
@@ -977,12 +1016,13 @@ const ProprietarioRow = memo(function ProprietarioRow({
         jaVotou={jaVotou}
         isAdmin={isAdmin}
         criterioPeso={criterioPeso}
+        triggerRef={editarTriggerRef}
       />
-      {/* Ações secundárias/destrutivas num menu "⋯" (pedido do Carlos: a coluna
-          AÇÕES encavalava quando o 4º botão — anular — aparecia junto de voto
-          manual, editar e excluir). As frequentes (voto manual, editar) ficam
-          à mão; anular e excluir vão pro menu — nunca mais que 3 controles na
-          linha. Primeira etapa do redesenho em menus suspensos. */}
+      {/* Menu "⋯" COMPLETO (pedido do Carlos: ter todas as ações num lugar só).
+          Os itens Editar e Voto manual acionam os MESMOS diálogos dos atalhos
+          inline (via abrirPeloTrigger/triggerRef), que continuam à mão ao lado.
+          Os controles inline nunca passam de 3 (voto manual, editar, ⋯), então a
+          coluna AÇÕES não encavala — o que motivou o redesenho em menus. */}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -998,6 +1038,26 @@ const ProprietarioRow = memo(function ProprietarioRow({
           <span className="sr-only">Mais ações</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {/* Registrar voto manual — mesmas condições do atalho inline
+              (presente, ainda não votou geral, não inadimplente/outorgante). */}
+          {podeVotoManual && (
+            <DropdownMenuItem onClick={() => abrirPeloTrigger(votoTriggerRef)}>
+              <UserPlus className="h-4 w-4" />
+              Registrar voto manual
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => abrirPeloTrigger(editarTriggerRef)}>
+            <Pencil className="h-4 w-4" />
+            Editar proprietário
+          </DropdownMenuItem>
+          {/* Disparar e-mail só pra esta pessoa — confirma antes (ver o diálogo
+              lá embaixo). Aparece com assembleia aberta e e-mail cadastrado. */}
+          {podeDisparar && (
+            <DropdownMenuItem onClick={() => setShowDisparar(true)}>
+              <Send className="h-4 w-4" />
+              Disparar e-mail
+            </DropdownMenuItem>
+          )}
           {/* Anular voto (pedido do Carlos): só pra quem votou na assembleia
               aberta. Zera o voto (some da apuração) — corrige voto errado,
               limpa "fantasma" e destrava a exclusão de quem votou. Pede senha. */}
@@ -1391,6 +1451,36 @@ const ProprietarioRow = memo(function ProprietarioRow({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => handleAddUnidade(true)} disabled={isPendingAdd}>
               Mover para cá
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disparar e-mail só pra esta pessoa (item do menu "⋯"). Confirma porque
+          é envio externo que custa e conta no limite diário. O envio roda numa
+          transição e o resultado vem por toast — o diálogo fecha ao confirmar,
+          igual ao "Mover para cá" acima. */}
+      <AlertDialog open={showDisparar} onOpenChange={setShowDisparar}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disparar e-mail</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enviar o e-mail da assembleia
+              {assembleiaAbertaTitulo ? (
+                <>
+                  {" "}
+                  <strong className="text-foreground">{assembleiaAbertaTitulo}</strong>
+                </>
+              ) : null}{" "}
+              para <strong className="text-foreground">{proprietario.nome}</strong>
+              {proprietario.email ? ` (${proprietario.email})` : ""}? Ele recebe o link de votação
+              de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDisparando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDisparar()} disabled={isDisparando}>
+              Disparar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type Ref } from "react"
 import { Pencil, History, AlertTriangle, Lock, ArrowRightLeft, Link2, Users, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -40,6 +40,11 @@ interface Props {
   // — ver nota no JSX da seção "Transferência de unidade" sobre o catch-22
   // que isso resolveu) e o formato do peso exibido em outras seções.
   criterioPeso: CriterioPeso
+  // Gatilho externo (opcional): um item do menu "⋯" da lista de proprietários
+  // abre este diálogo clicando no botão-gatilho inline via este ref (ver
+  // `abrirPeloTrigger` em proprietarios-list). Mantém o atalho inline e o item
+  // de menu apontando pro MESMO diálogo, sem mexer no estado de abertura.
+  triggerRef?: Ref<HTMLButtonElement>
 }
 
 function formatDate(iso: string): string {
@@ -96,6 +101,7 @@ export function EditarProprietarioDialog({
   jaVotou,
   isAdmin,
   criterioPeso,
+  triggerRef,
 }: Props) {
   const [open, setOpen] = useState(false)
 
@@ -344,6 +350,7 @@ export function EditarProprietarioDialog({
       <DialogTrigger
         render={
           <Button
+            ref={triggerRef}
             variant="ghost"
             size="sm"
             className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
