@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState, useTransition } from "react"
+import { useMemo, useRef, useState, useTransition, type Ref } from "react"
 import { FileSignature, Loader2, Undo2, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -29,6 +29,12 @@ import type { ProprietarioSemVoto } from "@/services/assembleia-votos"
 interface Props {
   assembleiaId: string
   condominioId: string
+  /** Deixa o gatilho ser disparado de fora (ex.: item do menu "Assembleia ▾"
+   * da apuração), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do botão-gatilho — passe "hidden" pra escondê-lo quando o diálogo
+   * for aberto só pelo menu. Padrão: visível (uso standalone). */
+  triggerClassName?: string
 }
 
 // Função pura de módulo (não fecha sobre nenhum estado do componente) —
@@ -165,7 +171,12 @@ function SeletorProprietario({
 // recebe/vota) — nunca uma pessoa externa, de propósito (ver
 // services/procuracoes.ts). Só disponível enquanto a assembleia está
 // aberta e nenhum dos dois lados já votou.
-export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
+export function ProcuracoesDialog({
+  assembleiaId,
+  condominioId,
+  triggerRef,
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [procuracoes, setProcuracoes] = useState<ProcuracaoComNomes[]>([])
@@ -264,7 +275,7 @@ export function ProcuracoesDialog({ assembleiaId, condominioId }: Props) {
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+      <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} variant="outline" size="sm" />}>
         <FileSignature className="h-3.5 w-3.5" />
         Procurações{procuracoes.length > 0 ? ` (${procuracoes.length})` : ""}
       </DialogTrigger>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type Ref } from "react"
 import { Pencil, Loader2, Lock } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -25,6 +25,12 @@ interface Props {
    * de pautas (título/descrição/datas continuam editáveis). Recalculado no
    * servidor de qualquer forma; isto só controla o que a tela mostra. */
   temVotos: boolean
+  /** Deixa o gatilho ser disparado de fora (ex.: item do menu "Assembleia ▾"
+   * da apuração), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do botão-gatilho — passe "hidden" pra escondê-lo quando o diálogo
+   * for aberto só pelo menu. Padrão: visível (uso standalone). */
+  triggerClassName?: string
 }
 
 // "YYYY-MM-DDTHH:mm" em horário local, formato que o input datetime-local
@@ -57,7 +63,13 @@ function pautasParaFormState(assembleia: Assembleia): PautaFormState[] {
   }))
 }
 
-export function EditarAssembleiaDialog({ assembleia, condominioId, temVotos }: Props) {
+export function EditarAssembleiaDialog({
+  assembleia,
+  condominioId,
+  temVotos,
+  triggerRef,
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -128,7 +140,7 @@ export function EditarAssembleiaDialog({ assembleia, condominioId, temVotos }: P
   if (encerrada) {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger render={<Button size="sm" variant="ghost" />}>
+        <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} size="sm" variant="ghost" />}>
           <Pencil className="h-3.5 w-3.5" />
           Editar Assembleia
         </DialogTrigger>
