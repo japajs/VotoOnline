@@ -1058,11 +1058,18 @@ const ProprietarioRow = memo(function ProprietarioRow({
               Disparar e-mail
             </DropdownMenuItem>
           )}
-          {/* Anular voto (pedido do Carlos): só pra quem votou na assembleia
-              aberta. Zera o voto (some da apuração) — corrige voto errado,
-              limpa "fantasma" e destrava a exclusão de quem votou. Pede senha. */}
-          {mostrarVoto && votou && (
-            <DropdownMenuItem onClick={() => setShowAnular(true)}>
+          {/* Anular voto (pedido do Carlos): zera o voto desta pessoa na
+              assembleia aberta (some da apuração) — corrige voto errado, limpa
+              "fantasma" e destrava a exclusão de quem votou. Pede senha. Fica
+              SEMPRE visível quando há assembleia aberta (o Carlos estranhou ela
+              "sumir"), mas DESABILITADA enquanto a pessoa não votou — não há voto
+              pra anular. Só ativa pra quem já votou. */}
+          {mostrarVoto && (
+            <DropdownMenuItem
+              onClick={() => setShowAnular(true)}
+              disabled={!votou}
+              title={votou ? undefined : "Só é possível anular depois que a pessoa votar"}
+            >
               <Undo2 className="h-4 w-4" />
               Anular voto
             </DropdownMenuItem>
