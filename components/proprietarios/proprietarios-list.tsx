@@ -720,11 +720,10 @@ export function ProprietariosList({
         </p>
       )}
 
-      {/* Filtro por voto na assembleia aberta (pedido do Carlos): ver quem já
-          votou direto aqui, sem ir à apuração, pra cobrar quem falta. Texto em
-          cima e chips numa linha própria de largura total: com 5 filtros, lado
-          a lado o último ("Não votaram") quebrava sozinho pra baixo e ficava
-          órfão; empilhado, os chips quebram alinhados à esquerda. */}
+      {/* Painel de votação da assembleia aberta (pedido do Carlos): acompanhar e
+          cobrar quem falta sem ir à apuração. Traz a explicação, o "Registrar
+          voto manual" à mão e o menu "Filtros ▾" (leva 1 do redesenho — antes
+          era uma fileira de chips de filtro). */}
       {temAssembleiaAberta && (
         <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
           {/* Cabeçalho do painel de votação: explicação à esquerda e, à direita,
@@ -786,9 +785,19 @@ export function ProprietariosList({
 
       {proprietariosExibidos.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-10 text-center">
-          <Search className="h-8 w-8 text-muted-foreground/40" />
+          {busca.trim() ? (
+            <Search className="h-8 w-8 text-muted-foreground/40" />
+          ) : (
+            <ListFilter className="h-8 w-8 text-muted-foreground/40" />
+          )}
+          {/* Mensagem ciente do contexto: busca vazia + lista vazia = é o filtro
+              (ex.: "Votou parcial (0)") que não tem ninguém — não "busca sem
+              resultado" com aspas vazias. O menu Filtros mostra sempre os 8,
+              então dá pra cair num filtro de contagem 0. */}
           <p className="text-sm text-muted-foreground">
-            Nenhum proprietário encontrado para &quot;{busca}&quot;.
+            {busca.trim()
+              ? `Nenhum proprietário encontrado para "${busca}".`
+              : "Nenhum imóvel neste filtro."}
           </p>
         </div>
       ) : modoCompartilhar ? (

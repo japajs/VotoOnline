@@ -526,10 +526,10 @@ export function ApuracaoAssembleia({
                         <FileSpreadsheet className="h-4 w-4" />
                         Boletim de votos (Excel)
                       </DropdownMenuItem>
-                      {/* Extrato de participação (pedido do Carlos): versão
-                          baixável da tabela "Participação (controle interno)",
-                          com data/hora do voto por imóvel e contadores por imóvel
-                          — ótimo pra auditar. */}
+                      {/* "Extrato de votos" (pedido do Carlos): versão baixável
+                          da tabela "Participação (controle interno)", com data/
+                          hora do voto por imóvel e contadores por imóvel — ótimo
+                          pra auditar. */}
                       <DropdownMenuItem
                         onClick={() => {
                           const a = document.createElement("a")
