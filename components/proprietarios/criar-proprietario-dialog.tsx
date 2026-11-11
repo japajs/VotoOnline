@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type Ref } from "react"
 import { Plus, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -18,9 +18,19 @@ import { createProprietarioAction } from "@/app/actions/proprietarios"
 
 interface CriarProprietarioDialogProps {
   condominioId: string
+  /** Deixa o diálogo ser aberto de fora (ex.: item "Incluir proprietário" do
+   * menu "Cadastro ▾"), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do botão-gatilho — passe "hidden" pra escondê-lo quando o diálogo
+   * for aberto só pelo menu. Padrão: visível (uso no cabeçalho). */
+  triggerClassName?: string
 }
 
-export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialogProps) {
+export function CriarProprietarioDialog({
+  condominioId,
+  triggerRef,
+  triggerClassName,
+}: CriarProprietarioDialogProps) {
   const [open, setOpen] = useState(false)
   const [nome, setNome] = useState("")
   const [email, setEmail] = useState("")
@@ -103,7 +113,7 @@ export function CriarProprietarioDialog({ condominioId }: CriarProprietarioDialo
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+      <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} size="sm" variant="outline" />}>
         <Plus className="h-4 w-4" />
         Novo proprietário / procurador
       </DialogTrigger>
