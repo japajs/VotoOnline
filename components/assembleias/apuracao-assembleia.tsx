@@ -154,13 +154,16 @@ export function ApuracaoAssembleia({
   const emAndamento = assembleia.status === "aberta" || assembleia.status === "pausada"
 
   // Gatilhos ocultos dos diálogos agrupados no menu "Assembleia ▾" (frios):
-  // Editar assembleia, Adicionar pauta e Procurações saíram da fileira de
-  // botões e são abertos pelos itens do menu via abrirPeloTrigger. As ações
-  // quentes ao vivo (Disparar, Presença, Registrar voto manual) seguem à mão.
+  // Editar assembleia, Incluir pauta e Procurações saíram da fileira de botões
+  // e são abertos pelos itens do menu via abrirPeloTrigger. Presença segue à
+  // mão (ação quente ao vivo); Disparar e Registrar voto manual foram pro menu
+  // "Operacionais ▾" (4ª leva).
   const editarAssembleiaRef = useRef<HTMLButtonElement>(null)
   const adicionarPautaRef = useRef<HTMLButtonElement>(null)
   const procuracoesRef = useRef<HTMLButtonElement>(null)
-  // 2ª leva: gatilhos ocultos dos menus "Entrada ▾" (QR) e "E-mails ▾" (Histórico).
+  // Gatilho oculto do menu "Entrada ▾" (QR). O historicoRef alimenta o item
+  // "Histórico de e-mail" do "Relatórios ▾" (o antigo "E-mails ▾" foi dissolvido
+  // na 4ª leva; ver o bloco do Operacionais ▾).
   const qrEntradaRef = useRef<HTMLButtonElement>(null)
   const historicoRef = useRef<HTMLButtonElement>(null)
   // Mesa dobrada no "Relatórios ▾" (só encerrada): gatilho oculto.
