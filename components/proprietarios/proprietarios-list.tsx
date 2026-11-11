@@ -7,7 +7,6 @@ import {
   Plus,
   X,
   Search,
-  SlidersHorizontal,
   CheckCircle2,
   Circle,
   Loader2,
@@ -34,6 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { CriarProprietarioDialog } from "@/components/proprietarios/criar-proprietario-dialog"
 import { APP_NAME } from "@/lib/constants"
 import {
   deleteProprietarioAction,
@@ -195,6 +195,10 @@ export function ProprietariosList({
   // servidor enquanto a gravação não confirmou. É um Set (não um id único) pra
   // aguentar toques rápidos em pessoas diferentes sem piscar nenhuma delas.
   const marcandoIdsRef = useRef<Set<string>>(new Set())
+  // Gatilho oculto do "Incluir proprietário" (menu Cadastro ▾) — reaproveita o
+  // mesmo CriarProprietarioDialog do botão do cabeçalho, aberto pelo item de
+  // menu via abrirPeloTrigger (o botão do cabeçalho segue à mão, como atalho).
+  const criarTriggerRef = useRef<HTMLButtonElement>(null)
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
 
   // Nome de quem participou pelo imóvel (co-dono presente que não é o dono do
@@ -649,19 +653,34 @@ export function ProprietariosList({
             <span className="hidden sm:inline">Limpar</span>
           </button>
         )}
-        {/* "Opções ▾" (redesenho em menus, pedido do Carlos): agrupa os controles
-            FRIOS da barra — Ordenar, Modo compartilhar (LGPD) e Exportar XLSX —
-            pra reduzir a poluição visual. Busca, Limpar e os filtros (quentes na
-            chamada) seguem à mão. */}
+        {/* "Cadastro ▾" (leva 2 do redesenho, pedido do Carlos — era "Opções"):
+            agrupa a gestão do cadastro — Incluir proprietário + Ordenar, e, POR
+            ORA, Modo compartilhar e Exportar (migram pra Operacionais/Relatórios
+            nas próximas levas). Busca, Limpar, Filtros e o "Novo proprietário" do
+            cabeçalho (atalho) seguem à mão. */}
+        {podeEditar && (
+          <CriarProprietarioDialog
+            condominioId={condominioId}
+            triggerRef={criarTriggerRef}
+            triggerClassName="hidden"
+          />
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<Button variant="outline" className="h-12 shrink-0 gap-1.5 px-3" />}
           >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span className="hidden sm:inline">Opções</span>
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Cadastro</span>
             <ChevronDown className="h-4 w-4 opacity-60" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {podeEditar && (
+              <DropdownMenuItem onClick={() => abrirPeloTrigger(criarTriggerRef)}>
+                <UserPlus className="h-4 w-4" />
+                Incluir proprietário
+              </DropdownMenuItem>
+            )}
+            {podeEditar && <DropdownMenuSeparator />}
             <DropdownMenuItem onClick={() => setOrdenacao("nome")}>
               <Check className={`h-4 w-4 ${ordenacao === "nome" ? "" : "opacity-0"}`} />
               Ordenar por nome
