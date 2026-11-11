@@ -5,15 +5,8 @@ import { ArrowLeft } from "lucide-react"
 import { getCondominioById } from "@/services/condominios"
 import { getAllProprietarios } from "@/services/proprietarios"
 import { getAllAssembleias } from "@/services/assembleias"
-import {
-  getProprietariosQueJaVotaram,
-  getProprietarioIdsVotaram,
-  getProprietarioIdsPresentes,
-  getPautasVotadasPorProprietario,
-  getEmailProblemaPorProprietario,
-} from "@/services/assembleia-votos"
-import { getProcuracoesByAssembleia } from "@/services/procuracoes"
-import { getParticipantesNaAberta } from "@/services/presenca"
+import { getProprietariosQueJaVotaram } from "@/services/assembleia-votos"
+import { getDadosParticipantes } from "@/services/participantes"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { getSession, requireAcessoCondominio } from "@/lib/auth"
 import { CriarProprietarioDialog } from "@/components/proprietarios/criar-proprietario-dialog"
@@ -58,59 +51,14 @@ export default async function CondominioDetailPage({ params }: Props) {
     getSession(),
   ])
 
-  // Marcar quem já votou NA ASSEMBLEIA ABERTA agora (não "em qualquer") direto
-  // na lista de proprietários, pra filtrar/cobrar sem precisar ir à apuração.
+  // Dados da chamada (presença, quem votou, voto total vs. parcial,
+  // procurações, e-mail com problema) da assembleia EM ANDAMENTO agora — pra
+  // marcar/filtrar na lista de proprietários sem precisar ir à apuração. É a
+  // MESMA fonte que a aba "Participantes" do Modo exibir consome
+  // (services/participantes.ts): uma conta só, pra as duas telas nunca
+  // divergirem pro mesmo imóvel. Sem assembleia em andamento, vem tudo vazio.
   const assembleiaAberta = assembleias.find((a) => isEmAndamento(a.status))
-  const [
-    votouNaAberta,
-    presentesNaAberta,
-    pautasVotadasNaAberta,
-    procuracoesNaAberta,
-    participantesNaAberta,
-    emailProblemaNaAberta,
-  ] = assembleiaAberta
-    ? await Promise.all([
-        getProprietarioIdsVotaram(assembleiaAberta.id).catch(() => new Set<string>()),
-        getProprietarioIdsPresentes(assembleiaAberta.id).catch(() => new Set<string>()),
-        getPautasVotadasPorProprietario(assembleiaAberta.id).catch(() => new Map<string, number>()),
-        // Procurações (bruto): quem outorgou não pode ser marcado presente (quem
-        // participa é o procurador) — e, pro funil, o imóvel conta como presente
-        // só quando o representante vota (ver outorgantesComRepVotou abaixo).
-        getProcuracoesByAssembleia(assembleiaAberta.id).catch(() => []),
-        // Nome de quem participou pelo imóvel quando não é o dono (co-dono).
-        getParticipantesNaAberta(assembleiaAberta.id).catch(() => new Map<string, string>()),
-        // E-mail que voltou (bounce) ou foi marcado como spam — pra avisar "use
-        // WhatsApp" na linha (pedido do Carlos após os bounces de Caldas Novas).
-        getEmailProblemaPorProprietario(assembleiaAberta.id).catch(
-          () => new Map<string, "bounce" | "spam">()
-        ),
-      ])
-    : [undefined, undefined, undefined, undefined, undefined, undefined]
-
-  // Quem outorgou procuração (presença desabilitada) e, destes, quais o
-  // REPRESENTANTE já votou — pedido do Carlos: procuração conta como PRESENTE
-  // quando o representante vota e AUSENTE enquanto não vota, pra Presentes +
-  // Ausentes fecharem no total.
-  const outorgantesNaAberta = procuracoesNaAberta
-    ? new Set(procuracoesNaAberta.map((p) => p.outorgante_id))
-    : undefined
-  const outorgantesComRepVotouNaAberta = procuracoesNaAberta
-    ? new Map<string, number>(
-        procuracoesNaAberta
-          .filter((p) => votouNaAberta?.has(p.outorgado_id))
-          .map((p) => [p.outorgante_id, pautasVotadasNaAberta?.get(p.outorgado_id) ?? 0])
-      )
-    : undefined
-
-  // Denominador do "voto total" (vs. parcial): no modo pauta-por-pauta só
-  // contam as pautas já abertas pela mesa — as demais ninguém poderia ter
-  // votado ainda, então quem votou em tudo que estava disponível aparece como
-  // "Votou" (total), não "Parcial". No modo normal, todas as pautas valem.
-  const totalPautasVotaveis = assembleiaAberta
-    ? assembleiaAberta.votacao_por_pauta
-      ? (assembleiaAberta.pautas ?? []).filter((p) => p.votacao_aberta_em != null).length
-      : (assembleiaAberta.pautas ?? []).length
-    : undefined
+  const dados = await getDadosParticipantes(assembleiaAberta ?? null)
 
   // Escala das frações ideais cadastradas (ver FracaoEscalaAviso).
   const fracoesCadastradas = proprietarios
@@ -193,14 +141,14 @@ export default async function CondominioDetailPage({ params }: Props) {
           condominioId={id}
           condominioNome={condominio.nome}
           proprietariosQueJaVotaram={proprietariosQueJaVotaram}
-          votouNaAberta={votouNaAberta}
-          presentesNaAberta={presentesNaAberta}
-          pautasVotadasNaAberta={pautasVotadasNaAberta}
-          outorgantesNaAberta={outorgantesNaAberta}
-          outorgantesComRepVotouNaAberta={outorgantesComRepVotouNaAberta}
-          participantesNaAberta={participantesNaAberta}
-          emailProblemaNaAberta={emailProblemaNaAberta}
-          totalPautasVotaveis={totalPautasVotaveis}
+          votouNaAberta={dados.votou}
+          presentesNaAberta={dados.presentes}
+          pautasVotadasNaAberta={dados.pautasVotadas}
+          outorgantesNaAberta={dados.outorgantes}
+          outorgantesComRepVotouNaAberta={dados.outorgantesComRepVotou}
+          participantesNaAberta={dados.participantes}
+          emailProblemaNaAberta={dados.emailProblema}
+          totalPautasVotaveis={dados.totalPautasVotaveis}
           assembleiaAbertaId={assembleiaAberta?.id}
           assembleiaAbertaTitulo={assembleiaAberta?.titulo}
           pautasDaAberta={assembleiaAberta?.pautas}
