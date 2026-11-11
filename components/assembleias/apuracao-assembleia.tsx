@@ -514,7 +514,7 @@ export function ApuracaoAssembleia({
                         }}
                       >
                         <FileText className="h-4 w-4" />
-                        Apuração (PDF)
+                        Boletim de votos (PDF)
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
@@ -524,7 +524,7 @@ export function ApuracaoAssembleia({
                         }}
                       >
                         <FileSpreadsheet className="h-4 w-4" />
-                        Apuração (Excel)
+                        Boletim de votos (Excel)
                       </DropdownMenuItem>
                       {/* Extrato de participação (pedido do Carlos): versão
                           baixável da tabela "Participação (controle interno)",
@@ -538,7 +538,7 @@ export function ApuracaoAssembleia({
                         }}
                       >
                         <ClipboardList className="h-4 w-4" />
-                        Extrato de participação (PDF)
+                        Extrato de votos (PDF)
                       </DropdownMenuItem>
                       {/* Mesa + Ata (só encerrada): documentos de fechamento,
                           dobrados aqui pra tirar mais 2 botões soltos da fileira.
