@@ -22,6 +22,7 @@ import {
   Send,
   ChevronDown,
   Check,
+  ListFilter,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -561,6 +562,33 @@ export function ProprietariosList({
     return { label: "ausente", cor: "text-muted-foreground/70" }
   }
 
+  // Leva 1 do redesenho (menu "Controles (filtros)", pedido do Carlos): a
+  // fileira de chips de filtro vira um menu "Filtros ▾" pra reduzir a barra.
+  // Mesma ordem do funil (Total → Presentes/Ausentes → Votou geral/parcial/Não
+  // votaram) + Procuração e Inadimplentes. Diferente dos chips antigos, o menu
+  // mostra SEMPRE os 8 (mesmo com contagem 0): mais previsível, e o filtro ativo
+  // nunca fica num limbo por o chip ter sumido. O botão do menu mostra o filtro
+  // ativo + contagem, pra a mesa ver de relance o que está filtrado.
+  const filtrosMenu: [FiltroVoto, string, number][] = [
+    ["todos", "Todos os imóveis", totalImoveis],
+    ["presentes", "Presentes", nPresentes],
+    ["ausentes", "Ausentes", nAusentes],
+    ["votaram", "Votou geral", nVotaram],
+    ["parcial", "Votou parcial", nParcial],
+    ["nao", "Não votaram", nNao],
+    ["procuracao", "Procuração", nProcuracao],
+    ["inadimplentes", "Inadimplentes", nInadimplentes],
+  ]
+  const filtroMenuAtivo = filtrosMenu.find(([v]) => v === filtroVoto)
+  const filtroAtivoLabel =
+    filtroVoto === "todos"
+      ? "Filtros"
+      : filtroMenuAtivo
+        ? `${filtroMenuAtivo[1]} (${filtroMenuAtivo[2]})`
+        : filtroVoto === "tentando"
+          ? "Tentando entrar"
+          : "Filtros"
+
   return (
     <div className="space-y-3">
       {/* Alerta "tentando entrar" NA PRÓPRIA tela de cadastro (pedido do Carlos):
@@ -702,38 +730,37 @@ export function ProprietariosList({
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-1">
-            {(() => {
-              // Funil do Carlos: Total → Presentes (+ Ausentes) → dos presentes,
-              // {votou geral | parcial | não votaram}. Procuração e Inadimplentes
-              // são baldes extras (só aparecem quando há alguém).
-              const chips: [FiltroVoto, string, number][] = [
-                ["todos", "Imóveis", totalImoveis],
-                ["presentes", "Presentes", nPresentes],
-                ["ausentes", "Ausentes", nAusentes],
-                ["votaram", "Votou geral", nVotaram],
-              ]
-              // Os condiconais só aparecem quando há alguém na situação — evita
-              // poluir a barra quando ninguém se encaixa.
-              if (nParcial > 0) chips.push(["parcial", "Votou parcial", nParcial])
-              chips.push(["nao", "Não votaram", nNao])
-              if (nProcuracao > 0) chips.push(["procuracao", "Procuração", nProcuracao])
-              if (nInadimplentes > 0) chips.push(["inadimplentes", "Inadimplentes", nInadimplentes])
-              return chips
-            })().map(([val, label, count]) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setFiltroVoto(val)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  filtroVoto === val
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/60 text-muted-foreground hover:bg-accent/40"
-                }`}
+          {/* Menu "Filtros ▾" (leva 1 do redesenho — "Controles (filtros)"):
+              substitui a fileira de chips. O botão mostra o filtro ativo +
+              contagem; cada item traz o total ao lado, com um ✓ no ativo. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Filtrar:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-8 gap-1.5 ${
+                      filtroVoto !== "todos" ? "border-primary/40 bg-primary/10 text-primary" : ""
+                    }`}
+                  />
+                }
               >
-                {label} ({count})
-              </button>
-            ))}
+                <ListFilter className="h-3.5 w-3.5" />
+                {filtroAtivoLabel}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-56">
+                {filtrosMenu.map(([val, label, count]) => (
+                  <DropdownMenuItem key={val} onClick={() => setFiltroVoto(val)}>
+                    <Check className={`h-4 w-4 ${filtroVoto === val ? "" : "opacity-0"}`} />
+                    <span className="flex-1">{label}</span>
+                    <span className="tabular-nums text-xs text-muted-foreground">{count}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       )}
