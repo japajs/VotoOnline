@@ -33,10 +33,14 @@ interface Props {
   // Ações — já sabe quem é, então pula a busca e vai direto pro voto dessa
   // pessoa. O gatilho vira um ícone compacto. Ausente = modo lista (busca).
   proprietarioDireto?: { id: string; nome: string }
-  // Gatilho externo (opcional, só no modo direto): um item do menu "⋯" da linha
-  // abre este diálogo clicando no botão-gatilho inline via este ref (ver
-  // `abrirPeloTrigger` em proprietarios-list), sem duplicar o diálogo.
+  // Gatilho externo (opcional): um item de menu abre este diálogo clicando no
+  // botão-gatilho inline via este ref (ver `abrirPeloTrigger`), sem duplicar o
+  // diálogo. No modo direto é o "⋯" da linha; no modo lista é o "Operacionais ▾"
+  // da apuração (gatilho oculto com triggerClassName="hidden").
   triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do gatilho modo-lista — passe "hidden" pra escondê-lo quando o
+   * diálogo for aberto só pelo menu. Ignorado no modo direto (ícone da linha). */
+  triggerClassName?: string
 }
 
 type Etapa = "escolher" | "votar"
@@ -62,6 +66,7 @@ export function RegistrarVotoManualDialog({
   pautas,
   proprietarioDireto,
   triggerRef,
+  triggerClassName,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [etapa, setEtapa] = useState<Etapa>("escolher")
@@ -192,7 +197,7 @@ export function RegistrarVotoManualDialog({
           <span className="sr-only">Registrar voto manual de {proprietarioDireto.nome}</span>
         </DialogTrigger>
       ) : (
-        <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} variant="outline" size="sm" />}>
           <UserPlus className="h-3.5 w-3.5" />
           Registrar voto manual
         </DialogTrigger>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState, useTransition } from "react"
+import { useMemo, useRef, useState, useTransition, type Ref } from "react"
 import { Send, Loader2, CheckCircle2, AlertCircle, Paperclip, X, FileText, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -28,6 +28,12 @@ type Step = "compose" | "sending" | "done"
 interface DispararAssembleiaDialogProps {
   assembleia: Assembleia
   proprietarios: Proprietario[]
+  /** Gatilho externo: um item do menu "Operacionais ▾" da apuração abre este
+   * diálogo via `abrirPeloTrigger` (ver apuracao-assembleia). */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do gatilho — passe "hidden" pra escondê-lo quando o diálogo for
+   * aberto só pelo menu. Padrão: visível. */
+  triggerClassName?: string
 }
 
 const ANEXO_TAMANHO_MAXIMO_MB = 8
@@ -41,7 +47,7 @@ function fileParaBase64(file: File): Promise<string> {
   })
 }
 
-export function DispararAssembleiaDialog({ assembleia, proprietarios }: DispararAssembleiaDialogProps) {
+export function DispararAssembleiaDialog({ assembleia, proprietarios, triggerRef, triggerClassName }: DispararAssembleiaDialogProps) {
   const [open, setOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [step, setStep] = useState<Step>("compose")
@@ -180,7 +186,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios }: Disparar
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button size="sm" variant="ghost" />}>
+      <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} size="sm" variant="ghost" />}>
         <Send className="h-3.5 w-3.5" />
         Disparar
       </DialogTrigger>
