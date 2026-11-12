@@ -1192,7 +1192,7 @@ export async function getSendsNaoVotaram(
   const db = createServerClient()
   let query = db
     .from("assembleia_sends")
-    .select("id, token, proprietarios(nome, email, unidades(numero, bloco, fracao_ideal))")
+    .select("id, token, proprietario_id, proprietarios(nome, email, unidades(numero, bloco, fracao_ideal))")
     .eq("assembleia_id", assembleiaId)
     .is("votado_em", null)
 
@@ -1205,9 +1205,18 @@ export async function getSendsNaoVotaram(
 
   if (error) throw new Error(error.message)
 
+  // Procuração: quem OUTORGOU procuração NÃO vota (quem vota é o representante,
+  // que carrega o peso do imóvel). O send do outorgante fica eternamente
+  // votado_em=null, então sem esta exclusão ele receberia lembrete "vote" pra
+  // sempre — mesmo com o imóvel JÁ VOTADO pelo representante (bug relatado pelo
+  // Carlos). Tira os outorgantes da lista de "não votou".
+  const procuracoes = await getProcuracoesByAssembleia(assembleiaId)
+  const outorgantes = new Set(procuracoes.map((p) => p.outorgante_id))
+
   type Row = {
     id: string
     token: string
+    proprietario_id: string
     proprietarios: {
       nome: string
       email: string | null
@@ -1215,13 +1224,15 @@ export async function getSendsNaoVotaram(
     } | null
   }
 
-  return ((data ?? []) as unknown as Row[]).map((r) => ({
-    id: r.id,
-    token: r.token,
-    proprietarioNome: r.proprietarios?.nome ?? "Proprietário",
-    proprietarioEmail: r.proprietarios?.email ?? null,
-    unidades: r.proprietarios?.unidades ?? [],
-  }))
+  return ((data ?? []) as unknown as Row[])
+    .filter((r) => !outorgantes.has(r.proprietario_id))
+    .map((r) => ({
+      id: r.id,
+      token: r.token,
+      proprietarioNome: r.proprietarios?.nome ?? "Proprietário",
+      proprietarioEmail: r.proprietarios?.email ?? null,
+      unidades: r.proprietarios?.unidades ?? [],
+    }))
 }
 
 export interface ParticipacaoParcial {

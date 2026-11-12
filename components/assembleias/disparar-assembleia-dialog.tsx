@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import {
   enviarAssembleiaAction,
   getProprietarioIdsVotaramAction,
+  getOutorganteIdsAction,
   type EnviarAssembleiaResult,
 } from "@/app/actions/assembleia-votos"
 import { normalizarBusca, pluralImovel } from "@/lib/format"
@@ -58,11 +59,17 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios, triggerRef
   // Quem JÁ votou nesta assembleia + o filtro "só quem não votou" (pedido do
   // Carlos: mandar o lembrete só pra quem falta, sem remarcar quem já votou).
   const [votaramIds, setVotaramIds] = useState<Set<string>>(new Set())
+  // Quem OUTORGOU procuração: não vota (quem vota é o representante), então é
+  // excluído do "só quem não votou" — senão recebia convocação/lembrete pra
+  // votar mesmo com o imóvel já votado pelo representante (bug do Carlos).
+  const [outorgantesIds, setOutorgantesIds] = useState<Set<string>>(new Set())
   const [soNaoVotaram, setSoNaoVotaram] = useState(false)
   const anexoInputRef = useRef<HTMLInputElement>(null)
 
   const proprietariosFiltrados = useMemo(() => {
-    const base = soNaoVotaram ? proprietarios.filter((p) => !votaramIds.has(p.id)) : proprietarios
+    const base = soNaoVotaram
+      ? proprietarios.filter((p) => !votaramIds.has(p.id) && !outorgantesIds.has(p.id))
+      : proprietarios
     const termo = normalizarBusca(busca.trim())
     const filtrados = !termo
       ? base
@@ -85,7 +92,7 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios, triggerRef
       if (nb === null) return -1
       return na.localeCompare(nb, undefined, { numeric: true })
     })
-  }, [proprietarios, busca, soNaoVotaram, votaramIds])
+  }, [proprietarios, busca, soNaoVotaram, votaramIds, outorgantesIds])
 
   const allSelected =
     proprietariosFiltrados.length > 0 && proprietariosFiltrados.every((p) => selectedIds.has(p.id))
@@ -136,6 +143,10 @@ export function DispararAssembleiaDialog({ assembleia, proprietarios, triggerRef
           setVotaramIds(s)
           setSoNaoVotaram(s.size > 0)
         }
+      })
+      // Outorgantes de procuração: ficam fora do "só quem não votou" (não votam).
+      getOutorganteIdsAction(assembleia.id, assembleia.condominio_id).then((r) => {
+        if (r.success) setOutorgantesIds(new Set(r.ids))
       })
     } else {
       setTimeout(reset, 300)
