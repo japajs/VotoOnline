@@ -9,7 +9,7 @@ import { getHistoricoParticipacao } from "@/services/relatorios"
 import { getAllProprietarios } from "@/services/proprietarios"
 import { getDadosParticipantes, type DadosParticipantes } from "@/services/participantes"
 import { ApuracaoAssembleia } from "@/components/assembleias/apuracao-assembleia"
-import { ApuracaoModoExibir } from "@/components/assembleias/apuracao-modo-exibir"
+import { ApuracaoTela } from "@/components/assembleias/apuracao-tela"
 import { HistoricoParticipacao } from "@/components/assembleias/historico-participacao"
 import { ProprietariosList } from "@/components/proprietarios/proprietarios-list"
 import { isEmAndamento } from "@/lib/assembleia-status"
@@ -104,29 +104,30 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
 
       {/* Heading */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary/70">Apuração</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary/70">Assembleia</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{assembleia.titulo}</h1>
       </div>
 
-      {/* Modo exibir (pedido do Carlos: fundir gestão + apuração pra não trocar
-          de tela ao vivo) — aba "Apuração" (resultados) e aba "Participantes"
-          (a chamada: mesma lista da gestão, com presença/voto por proprietário).
-          A aba Participantes é plena com a assembleia em andamento (aberta/pausada).
-          Fora disso (encerrada/rascunho) ela vira a lista simples, sem os badges
-          de voto/presença — a ProprietariosList os gateia por assembleiaAbertaId. */}
-      <ApuracaoModoExibir
+      {/* Tela da assembleia FUNDIDA (letra B, validada pelo Carlos): UMA tela
+          principal — a LISTA (participantes/chamada) — com a barra de ações
+          sempre no topo; a APURAÇÃO (resultados) virou um item do "Relatórios ▾"
+          que alterna a visão, não mais uma aba. Encerrada abre direto nos
+          resultados; em andamento/rascunho abre na lista (operação ao vivo).
+          A lista é plena com a assembleia em andamento (aberta/pausada) — fora
+          disso vira a lista simples, sem os badges de voto/presença (a
+          ProprietariosList os gateia por assembleiaAbertaId). */}
+      <ApuracaoTela
+        apuracaoInicial={assembleia.status === "encerrada"}
         apuracao={
-          <div className="flex flex-col gap-8">
-            <ApuracaoAssembleia
-              assembleia={assembleia}
-              condominioId={condominioId}
-              apuracao={apuracao}
-              proprietarios={proprietarios}
-              canExport={session?.perfil !== "visualizador"}
-              criterioPeso={condominio.criterio_peso}
-            />
-            <HistoricoParticipacao historico={historicoParticipacao} />
-          </div>
+          <ApuracaoAssembleia
+            assembleia={assembleia}
+            condominioId={condominioId}
+            apuracao={apuracao}
+            proprietarios={proprietarios}
+            canExport={session?.perfil !== "visualizador"}
+            criterioPeso={condominio.criterio_peso}
+            historicoSlot={<HistoricoParticipacao historico={historicoParticipacao} />}
+          />
         }
         participantes={
           <ProprietariosList

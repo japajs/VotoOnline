@@ -1,8 +1,8 @@
 "use client"
 
-import { useRef, useState, useTransition } from "react"
+import { useRef, useState, useTransition, type ReactNode } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, QrCode, History, Users, Zap, UserPlus, Send, Eye, EyeOff, Undo2 } from "lucide-react"
+import { BarChart3, FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, QrCode, History, Users, Zap, UserPlus, Send, Eye, EyeOff, Undo2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -69,6 +69,10 @@ interface Props {
   // Critério do condomínio — define se o resultado ponderado é contado em
   // imóveis ou em fração ideal (ver formatPesoResultado).
   criterioPeso?: CriterioPeso
+  // Histórico de participação — faz parte da visão de RESULTADOS, então é
+  // renderado junto do corpo da apuração (gateado por `verApuracao`). Vem da
+  // página como slot pra não refazer a query aqui.
+  historicoSlot?: ReactNode
 }
 
 // Resultado ponderado: "N imóvel(is)" no critério por unidade; percentual da
@@ -129,6 +133,7 @@ export function ApuracaoAssembleia({
   proprietarios,
   canExport = false,
   criterioPeso = "unidade",
+  historicoSlot,
 }: Props) {
   const {
     total_enviados,
@@ -180,6 +185,12 @@ export function ApuracaoAssembleia({
   // context. Null quando esta apuração não está dentro do Modo exibir (não
   // acontece hoje, mas o item só aparece quando o context existe).
   const compartilharCtx = useModoCompartilhar()
+
+  // Fusão (letra B, validada pelo Carlos): o corpo de RESULTADOS só aparece
+  // quando a visão é a apuração; na visão LISTA ele fica oculto (mas montado).
+  // A troca é feita pelo item do "Relatórios ▾" abaixo. Sem context (não
+  // acontece nesta tela) mostra sempre, por segurança.
+  const verApuracao = compartilharCtx ? compartilharCtx.verApuracao : true
 
   // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
   // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
@@ -585,6 +596,24 @@ export function ApuracaoAssembleia({
                   <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {/* Fusão (letra B): a Apuração (resultados) deixou de ser aba
+                      e virou este item, que ALTERNA entre os resultados e a lista
+                      (a tela principal). Disponível a todos os perfis — ver o
+                      resultado não exige permissão de operação. Primeiro item,
+                      porque é a troca de visão mais usada ao vivo. */}
+                  {compartilharCtx && (
+                    <>
+                      <DropdownMenuItem onClick={compartilharCtx.toggleApuracao}>
+                        {verApuracao ? (
+                          <Users className="h-4 w-4" />
+                        ) : (
+                          <BarChart3 className="h-4 w-4" />
+                        )}
+                        {verApuracao ? "Ver lista (participantes)" : "Ver apuração (resultados)"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   {canExport && (
                     <>
                       <DropdownMenuItem
@@ -724,6 +753,11 @@ export function ApuracaoAssembleia({
         </div>
       </div>
 
+      {/* Corpo de RESULTADOS (fusão, letra B): some na visão LISTA, mas fica
+          MONTADO (`hidden`, não desmonta) pra não reiniciar estado. `print:block`
+          garante que o "Imprimir" (boletim da apuração) saia mesmo estando na
+          lista — a lista, por sua vez, tem `print:hidden` no wrapper da página. */}
+      <div className={cn("space-y-6", !verApuracao && "hidden", "print:block")}>
       {/* Instrução de onde ficam os controles de abrir/fechar cada pauta
           (pedido do Carlos: "não localizo a opção de bloquear/liberar pauta por
           pauta"). Só no modo ligado + assembleia em andamento + quem pode operar. */}
@@ -848,6 +882,10 @@ export function ApuracaoAssembleia({
           Nenhum voto registrado ainda.
         </p>
       )}
+
+      {/* Histórico de participação — parte da visão de resultados. */}
+      {historicoSlot}
+      </div>
     </div>
   )
 }
