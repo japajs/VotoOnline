@@ -43,6 +43,9 @@ export async function entrarAssembleiaAction(
   const numero = String(formData.get("numero") ?? "").trim()
   const bloco = String(formData.get("bloco") ?? "").trim() || null
   const cpf = String(formData.get("cpf") ?? "").trim()
+  // Nome opcional (ideia dos síndicos): alimenta "quem participou" sem a mesa
+  // digitar. Não entra na checagem de identidade — só é repassado pra gravar.
+  const nome = String(formData.get("nome") ?? "").trim() || null
 
   // Rota pública: limita tentativas pra não virar oráculo de força-bruta de
   // CPF (a mensagem de erro já é uniforme no serviço). Conta por IP + UNIDADE,
@@ -58,7 +61,7 @@ export async function entrarAssembleiaAction(
 
   if (!numero || !cpf) return { error: "Preencha a sua unidade e o CPF." }
 
-  const result = await registrarPresenca(assembleiaId, { numero, bloco, cpf })
+  const result = await registrarPresenca(assembleiaId, { numero, bloco, cpf, nome })
   if (!result.ok) {
     // Identidade confere mas falta a mesa confirmar → devolve "aguardando" +
     // os dados pra o form pollar e entrar sozinho quando confirmarem. Erro de

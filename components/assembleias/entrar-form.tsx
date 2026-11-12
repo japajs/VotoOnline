@@ -77,6 +77,25 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
 
   return (
     <form action={formAction} className="space-y-4">
+      {/* Nome de quem está participando (opcional — ideia dos síndicos): alimenta
+          o "quem participou" sem a mesa digitar. Opcional de propósito, nunca
+          trava a entrada. A identidade continua sendo unidade + CPF, abaixo. */}
+      <div className="space-y-1.5">
+        <Label htmlFor="nome">
+          Seu nome completo <span className="font-normal text-muted-foreground">(opcional)</span>
+        </Label>
+        <Input
+          id="nome"
+          name="nome"
+          placeholder="Como você quer aparecer na lista de presença"
+          autoComplete="name"
+          maxLength={120}
+        />
+        <p className="text-xs text-muted-foreground">
+          Ajuda a mesa a registrar quem participou por este imóvel.
+        </p>
+      </div>
+
       <div className="space-y-1.5">
         <Label htmlFor="numero">Unidade</Label>
         <Input id="numero" name="numero" placeholder="Ex.: B108, 0502, Casa 5" autoComplete="off" required />
