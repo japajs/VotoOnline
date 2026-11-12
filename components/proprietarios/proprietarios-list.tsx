@@ -704,7 +704,7 @@ export function ProprietariosList({
                 sem expor dados. O estado também aparece no aviso abaixo da barra. */}
             <DropdownMenuItem onClick={toggleCompartilhar}>
               {modoCompartilhar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {modoCompartilhar ? "Mostrar dados (sair do compartilhar)" : "Dados a compartilhar"}
+              {modoCompartilhar ? "Mostrar dados" : "Dados a compartilhar"}
             </DropdownMenuItem>
             {podeEditar && (
               <DropdownMenuItem onClick={exportarXlsx} disabled={exportando}>
