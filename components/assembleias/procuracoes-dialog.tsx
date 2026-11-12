@@ -42,7 +42,9 @@ interface Props {
 // a usam mais abaixo.
 function combina(p: ProprietarioSemVoto, termo: string): boolean {
   if (!termo) return true
-  return normalizarBusca(`${p.nome} ${p.email ?? ""}`).includes(termo)
+  // Inclui o imóvel na busca (pedido do Carlos: achar por número do imóvel, não
+  // só por nome — ex.: "B0105").
+  return normalizarBusca(`${p.nome} ${p.email ?? ""} ${p.imoveis ?? ""}`).includes(termo)
 }
 
 // Um <select> nativo não reage visualmente enquanto a pessoa digita numa
@@ -157,6 +159,10 @@ function SeletorProprietario({
                 selecionadoId === p.id && "bg-accent font-medium text-accent-foreground"
               )}
             >
+              {/* Imóvel na frente do nome (pedido do Carlos) — ajuda a achar/
+                  conferir a pessoa pelo imóvel. */}
+              {p.imoveis ? <span className="text-primary">{p.imoveis}</span> : null}
+              {p.imoveis ? " · " : null}
               {p.nome}
             </button>
           ))
@@ -307,6 +313,13 @@ export function ProcuracoesDialog({
                         encolhia/truncava e empurrava o botão "Anular" pra fora da
                         borda direita do diálogo, cortando o texto (bug do Carlos). */}
                     <span className="min-w-0 flex-1 truncate">
+                      {/* Imóvel do outorgante = objeto da procuração (pedido do
+                          Carlos: ver o imóvel na lista, não só os nomes). */}
+                      {p.outorgante_imoveis && p.outorgante_imoveis !== "—" && (
+                        <span className="mr-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                          {p.outorgante_imoveis}
+                        </span>
+                      )}
                       <span className="font-medium">{p.outorgante_nome}</span>
                       {" → "}
                       <span className="font-medium">{p.outorgado_nome}</span>

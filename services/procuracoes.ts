@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { getIdsInadimplentes } from "@/services/proprietarios"
+import { formatUnidade, normalizarChaveUnidade } from "@/lib/unidade-format"
 import type { Procuracao, ProcuracaoComNomes } from "@/types"
 
 function rowToProcuracao(row: {
@@ -42,7 +43,7 @@ export async function getProcuracoesByAssembleia(assembleiaId: string): Promise<
   const db = createServerClient()
   const { data, error } = await db
     .from("procuracoes")
-    .select("id, assembleia_id, outorgante_id, outorgado_id, created_at, outorgante:outorgante_id(nome), outorgado:outorgado_id(nome)")
+    .select("id, assembleia_id, outorgante_id, outorgado_id, created_at, outorgante:outorgante_id(nome, unidades(numero, bloco)), outorgado:outorgado_id(nome)")
     .eq("assembleia_id", assembleiaId)
     .order("created_at", { ascending: true })
 
@@ -54,7 +55,7 @@ export async function getProcuracoesByAssembleia(assembleiaId: string): Promise<
     outorgante_id: string
     outorgado_id: string
     created_at: string
-    outorgante: { nome: string } | null
+    outorgante: { nome: string; unidades: { numero: string; bloco: string | null }[] | null } | null
     outorgado: { nome: string } | null
   }
 
@@ -62,6 +63,14 @@ export async function getProcuracoesByAssembleia(assembleiaId: string): Promise<
     ...rowToProcuracao(r),
     outorgante_nome: r.outorgante?.nome ?? "—",
     outorgado_nome: r.outorgado?.nome ?? "—",
+    // Imóvel(is) do outorgante (objeto da procuração), em ordem de imóvel.
+    outorgante_imoveis:
+      [...(r.outorgante?.unidades ?? [])]
+        .sort((a, b) =>
+          normalizarChaveUnidade(a).localeCompare(normalizarChaveUnidade(b), undefined, { numeric: true })
+        )
+        .map((u) => formatUnidade(u))
+        .join(", ") || "—",
   }))
 }
 

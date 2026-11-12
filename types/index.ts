@@ -349,6 +349,10 @@ export interface Procuracao {
 export interface ProcuracaoComNomes extends Procuracao {
   outorgante_nome: string
   outorgado_nome: string
+  // Imóvel(is) do OUTORGANTE — é o objeto da procuração (o voto do imóvel dele
+  // é que passa pro representante). Formatado (ex.: "B0401" ou "B0401, C1003");
+  // "—" se não tiver imóvel. Pedido do Carlos: ver o imóvel na lista.
+  outorgante_imoveis: string
 }
 
 // ─── Apuração de Assembleia ────────────────────────────────────────────────
