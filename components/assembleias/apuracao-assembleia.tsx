@@ -542,9 +542,7 @@ export function ApuracaoAssembleia({
                               ) : (
                                 <Eye className="h-4 w-4" />
                               )}
-                              {compartilharCtx.value
-                                ? "Mostrar dados (sair do compartilhar)"
-                                : "Dados a compartilhar"}
+                              {compartilharCtx.value ? "Mostrar dados" : "Dados a compartilhar"}
                             </DropdownMenuItem>
                           </>
                         )}
