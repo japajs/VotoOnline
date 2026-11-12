@@ -13,6 +13,10 @@ export interface CadastroPDFProps {
   proprietarios: Proprietario[]
   emitidoPor: string
   emitidoEm: string
+  // Nome do filtro ativo na tela (pedido do Carlos: a lista obedece o filtro e
+  // imprime o nome dele no cabeçalho — ex.: "Não votaram", "Procuração"). Vazio
+  // ou "Todos os imóveis" = sem recorte.
+  filtroLabel?: string
 }
 
 const C = {
@@ -68,6 +72,7 @@ const s = StyleSheet.create({
   reportTitle: { fontSize: 14, fontFamily: "Helvetica-Bold", marginBottom: 2 },
   reportCondo: { fontSize: 9, color: C.muted, marginBottom: 4 },
   resumo: { fontSize: 8, color: C.muted, marginBottom: 14 },
+  filtro: { fontSize: 9, fontFamily: "Helvetica-Bold", color: C.primary, marginBottom: 2 },
   /* tabela */
   table: { borderWidth: 1, borderColor: C.border, borderRadius: 2 },
   tRowHeader: {
@@ -145,8 +150,17 @@ function Linha({ l, zebra }: { l: LinhaCadastro; zebra: boolean }) {
   )
 }
 
-export function CadastroPDF({ condominio, proprietarios, emitidoPor, emitidoEm }: CadastroPDFProps) {
+export function CadastroPDF({
+  condominio,
+  proprietarios,
+  emitidoPor,
+  emitidoEm,
+  filtroLabel,
+}: CadastroPDFProps) {
   const linhas = montarLinhas(proprietarios)
+  // "Todos os imóveis" (ou vazio) = lista inteira, sem recorte → não vira badge.
+  const temFiltro =
+    !!filtroLabel && filtroLabel.trim() !== "" && filtroLabel.trim() !== "Todos os imóveis"
 
   return (
     <Document
@@ -165,6 +179,7 @@ export function CadastroPDF({ condominio, proprietarios, emitidoPor, emitidoEm }
 
         <Text style={s.reportTitle}>Lista do cadastro</Text>
         <Text style={s.reportCondo}>{condominio.nome}</Text>
+        {temFiltro ? <Text style={s.filtro}>Filtro: {filtroLabel}</Text> : null}
         <Text style={s.resumo}>
           {linhas.length} {linhas.length === 1 ? "imóvel" : "imóveis"} · {proprietarios.length}{" "}
           {proprietarios.length === 1 ? "proprietário" : "proprietários"} · em ordem de imóvel ·
@@ -172,7 +187,9 @@ export function CadastroPDF({ condominio, proprietarios, emitidoPor, emitidoEm }
         </Text>
 
         {linhas.length === 0 ? (
-          <Text style={s.vazio}>Nenhum proprietário cadastrado.</Text>
+          <Text style={s.vazio}>
+            {temFiltro ? "Nenhum proprietário neste filtro." : "Nenhum proprietário cadastrado."}
+          </Text>
         ) : (
           <View style={s.table}>
             <View style={s.tRowHeader} fixed>

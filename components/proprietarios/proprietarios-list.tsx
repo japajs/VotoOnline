@@ -179,6 +179,7 @@ export function ProprietariosList({
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
   const [filtroVoto, setFiltroVoto] = useState<FiltroVoto>("todos")
   const [exportando, setExportando] = useState(false)
+  const [gerandoPdf, setGerandoPdf] = useState(false)
   // Modo compartilhar / "Dados a compartilhar" (LGPD): oculta E-mail/CPF e
   // Celular pra projetar a tela sem expor dados pessoais (pedido do Carlos — os
   // presentes online conferem se estão marcados como presentes sem ver os dados
@@ -604,6 +605,45 @@ export function ProprietariosList({
           ? "Tentando entrar"
           : "Filtros"
 
+  // Rótulo do filtro ativo pro cabeçalho do PDF "Lista do cadastro" (nome limpo,
+  // sem a contagem) + a busca, se houver. "Todos os imóveis" = sem recorte.
+  const filtroLabelRelatorio = (() => {
+    const base =
+      filtroMenuAtivo?.[1] ?? (filtroVoto === "tentando" ? "Tentando entrar" : "Todos os imóveis")
+    const termo = busca.trim()
+    return termo ? `${base} · busca: "${termo}"` : base
+  })()
+
+  // Baixa a "Lista do cadastro" (PDF) OBEDECENDO o filtro ativo (pedido do
+  // Carlos): manda os ids da lista exibida (filtro + busca) + o nome do filtro
+  // pro cabeçalho. POST + blob, igual ao Exportar XLSX.
+  async function baixarListaCadastro() {
+    if (gerandoPdf) return
+    setGerandoPdf(true)
+    try {
+      const res = await fetch(`/api/relatorios/cadastro/${condominioId}/pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: proprietariosExibidos.map((p) => p.id),
+          filtroLabel: filtroLabelRelatorio,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${APP_NAME}_Cadastro_${(condominioNome ?? "Cadastro").replace(/[^a-z0-9]/gi, "_")}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("Não foi possível gerar o PDF. Tente novamente.")
+    } finally {
+      setGerandoPdf(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Alerta "tentando entrar" NA PRÓPRIA tela de cadastro (pedido do Carlos):
@@ -721,14 +761,12 @@ export function ProprietariosList({
                 em ORDEM DE IMÓVEL (a Exportar XLSX sai alfabética por nome). Baixa
                 direto. Tem PII → só pra quem edita (a rota recusa visualizador). */}
             {podeEditar && (
-              <DropdownMenuItem
-                onClick={() => {
-                  const a = document.createElement("a")
-                  a.href = `/api/relatorios/cadastro/${condominioId}/pdf`
-                  a.click()
-                }}
-              >
-                <FileText className="h-4 w-4" />
+              <DropdownMenuItem onClick={baixarListaCadastro} disabled={gerandoPdf}>
+                {gerandoPdf ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
                 Lista do cadastro (PDF)
               </DropdownMenuItem>
             )}
