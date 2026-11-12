@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, QrCode, History, Users, Zap, UserPlus, Send } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, QrCode, History, Users, Zap, UserPlus, Send, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -16,6 +16,7 @@ import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
 import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
+import { useModoCompartilhar } from "@/components/assembleias/modo-compartilhar-context"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -172,6 +173,11 @@ export function ApuracaoAssembleia({
   // Disparar e-mails saíram da fileira de botões soltos pra dentro do menu).
   const votoManualRef = useRef<HTMLButtonElement>(null)
   const dispararRef = useRef<HTMLButtonElement>(null)
+  // "Dados a compartilhar" no "Operacionais ▾": o toggle (esconder PII) mora no
+  // ApuracaoModoExibir e é compartilhado com a lista dos Participantes pelo
+  // context. Null quando esta apuração não está dentro do Modo exibir (não
+  // acontece hoje, mas o item só aparece quando o context existe).
+  const compartilharCtx = useModoCompartilhar()
 
   // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
   // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
@@ -501,6 +507,26 @@ export function ApuracaoAssembleia({
                             <BellRing className="h-4 w-4" />
                             Lembrar quem não votou ({pendentes})
                           </DropdownMenuItem>
+                        )}
+                        {/* "Dados a compartilhar" (pedido do Carlos): liga/desliga
+                            o modo que esconde PII (e-mail/CPF/celular) da lista dos
+                            Participantes pra projetar a tela numa videoconferência.
+                            O estado é COMPARTILHADO com o toggle da lista (context),
+                            então reflete e controla o mesmo modo. */}
+                        {compartilharCtx && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={compartilharCtx.toggle}>
+                              {compartilharCtx.value ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                              {compartilharCtx.value
+                                ? "Mostrar dados (sair do compartilhar)"
+                                : "Dados a compartilhar"}
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>

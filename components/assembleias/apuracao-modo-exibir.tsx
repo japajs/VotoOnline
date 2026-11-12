@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { BarChart3, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ModoCompartilharContext } from "@/components/assembleias/modo-compartilhar-context"
 
 type Modo = "apuracao" | "participantes"
 
@@ -20,9 +21,17 @@ export function ApuracaoModoExibir({
   participantes: ReactNode
 }) {
   const [modo, setModo] = useState<Modo>("apuracao")
+  // "Dados a compartilhar" (pedido do Carlos): estado COMPARTILHADO entre o
+  // toggle do menu "Operacionais ▾" (na aba Apuração) e a lista dos
+  // Participantes — as duas são filhas deste componente, então o estado mora
+  // aqui e desce pelo context. Só esconde PII (visibilidade de coluna).
+  const [compartilhar, setCompartilhar] = useState(false)
 
   return (
-    <div className="flex flex-col gap-6">
+    <ModoCompartilharContext.Provider
+      value={{ value: compartilhar, toggle: () => setCompartilhar((v) => !v) }}
+    >
+      <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">Modo exibir:</span>
         <div
@@ -47,7 +56,8 @@ export function ApuracaoModoExibir({
 
       <div className={cn(modo !== "apuracao" && "hidden")}>{apuracao}</div>
       <div className={cn(modo !== "participantes" && "hidden")}>{participantes}</div>
-    </div>
+      </div>
+    </ModoCompartilharContext.Provider>
   )
 }
 

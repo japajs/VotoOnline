@@ -63,6 +63,7 @@ import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, formatCpf, normalizarBusca } from "@/lib/format"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
+import { useModoCompartilhar } from "@/components/assembleias/modo-compartilhar-context"
 import type { Proprietario, CriterioPeso, Pauta } from "@/types"
 
 interface ProprietariosListProps {
@@ -177,10 +178,19 @@ export function ProprietariosList({
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
   const [filtroVoto, setFiltroVoto] = useState<FiltroVoto>("todos")
   const [exportando, setExportando] = useState(false)
-  // Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar a tela
-  // sem expor dados pessoais (pedido do Carlos — os presentes online conferem
-  // se estão marcados como presentes sem ver os dados dos outros).
-  const [modoCompartilhar, setModoCompartilhar] = useState(false)
+  // Modo compartilhar / "Dados a compartilhar" (LGPD): oculta E-mail/CPF e
+  // Celular pra projetar a tela sem expor dados pessoais (pedido do Carlos — os
+  // presentes online conferem se estão marcados como presentes sem ver os dados
+  // dos outros). FONTE do estado: na APURAÇÃO vem do context (compartilhado com
+  // o toggle do menu "Operacionais ▾" da aba Apuração — ver
+  // ModoCompartilharContext); na tela de GESTÃO não há provider → cai no
+  // useState local. É só visibilidade de coluna; nada toca a lógica de voto.
+  const compartilharCtx = useModoCompartilhar()
+  const [modoCompartilharLocal, setModoCompartilharLocal] = useState(false)
+  const modoCompartilhar = compartilharCtx ? compartilharCtx.value : modoCompartilharLocal
+  const toggleCompartilhar = compartilharCtx
+    ? compartilharCtx.toggle
+    : () => setModoCompartilharLocal((v) => !v)
 
   // Presença marcada direto na lista (pedido do Carlos: agilizar a chamada sem
   // abrir a Apuração). Estado local semeado do servidor, atualizado de forma
@@ -692,9 +702,9 @@ export function ProprietariosList({
             <DropdownMenuSeparator />
             {/* Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar
                 sem expor dados. O estado também aparece no aviso abaixo da barra. */}
-            <DropdownMenuItem onClick={() => setModoCompartilhar((v) => !v)}>
+            <DropdownMenuItem onClick={toggleCompartilhar}>
               {modoCompartilhar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {modoCompartilhar ? "Mostrar dados (sair do compartilhar)" : "Modo compartilhar (LGPD)"}
+              {modoCompartilhar ? "Mostrar dados (sair do compartilhar)" : "Dados a compartilhar"}
             </DropdownMenuItem>
             {podeEditar && (
               <DropdownMenuItem onClick={exportarXlsx} disabled={exportando}>
