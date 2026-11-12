@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, QrCode, History, Users, Zap, UserPlus, Send, Eye, EyeOff } from "lucide-react"
+import { FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, QrCode, History, Users, Zap, UserPlus, Send, Eye, EyeOff, Undo2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -16,6 +16,7 @@ import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
 import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
+import { AnularVotoDialog } from "@/components/assembleias/anular-voto-dialog"
 import { useModoCompartilhar } from "@/components/assembleias/modo-compartilhar-context"
 import {
   DropdownMenu,
@@ -173,6 +174,7 @@ export function ApuracaoAssembleia({
   // Disparar e-mails saíram da fileira de botões soltos pra dentro do menu).
   const votoManualRef = useRef<HTMLButtonElement>(null)
   const dispararRef = useRef<HTMLButtonElement>(null)
+  const anularRef = useRef<HTMLButtonElement>(null)
   // "Dados a compartilhar" no "Operacionais ▾": o toggle (esconder PII) mora no
   // ApuracaoModoExibir e é compartilhado com a lista dos Participantes pelo
   // context. Null quando esta apuração não está dentro do Modo exibir (não
@@ -468,6 +470,18 @@ export function ApuracaoAssembleia({
                       triggerClassName="hidden"
                     />
                   )}
+                  {/* Anular voto registrado (versão em menu do atalho por linha):
+                      só em andamento (é quando há voto pra anular). Gatilho oculto,
+                      aberto pelo item do "Operacionais ▾". */}
+                  {emAndamento && (
+                    <AnularVotoDialog
+                      assembleiaId={assembleia.id}
+                      condominioId={condominioId}
+                      proprietarios={proprietarios}
+                      triggerRef={anularRef}
+                      triggerClassName="hidden"
+                    />
+                  )}
                   {/* Histórico de disparos migrou pro "Relatórios ▾" (é consulta/
                       auditoria, não ação operacional). Gatilho segue oculto aqui,
                       disponível inclusive encerrada pra revisar depois. */}
@@ -493,6 +507,12 @@ export function ApuracaoAssembleia({
                           <DropdownMenuItem onClick={() => abrirPeloTrigger(votoManualRef)}>
                             <UserPlus className="h-4 w-4" />
                             Registrar voto manual
+                          </DropdownMenuItem>
+                        )}
+                        {emAndamento && (
+                          <DropdownMenuItem onClick={() => abrirPeloTrigger(anularRef)}>
+                            <Undo2 className="h-4 w-4" />
+                            Anular voto registrado
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={() => abrirPeloTrigger(dispararRef)}>
