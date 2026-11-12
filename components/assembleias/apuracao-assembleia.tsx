@@ -551,7 +551,7 @@ export function ApuracaoAssembleia({
                         }}
                       >
                         <FileText className="h-4 w-4" />
-                        Boletim de votos (PDF)
+                        Relatório de apuração (PDF)
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
@@ -561,7 +561,7 @@ export function ApuracaoAssembleia({
                         }}
                       >
                         <FileSpreadsheet className="h-4 w-4" />
-                        Boletim de votos (Excel)
+                        Relatório de apuração (Excel)
                       </DropdownMenuItem>
                       {/* "Extrato de votos" (pedido do Carlos): versão baixável
                           da tabela "Participação (controle interno)", com data/
