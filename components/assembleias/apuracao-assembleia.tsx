@@ -609,10 +609,12 @@ export function ApuracaoAssembleia({
                         <FileSpreadsheet className="h-4 w-4" />
                         Relatório de apuração (Excel)
                       </DropdownMenuItem>
-                      {/* "Extrato de votos" (pedido do Carlos): versão baixável
-                          da tabela "Participação (controle interno)", com data/
-                          hora do voto por imóvel e contadores por imóvel — ótimo
-                          pra auditar. */}
+                      {/* "Extrato de participação" (pedido do Carlos): versão
+                          baixável da tabela "Participação (controle interno)", com
+                          data/hora do voto por imóvel e contadores por imóvel —
+                          ótimo pra auditar. Nome do menu alinhado ao título do
+                          próprio relatório ("Extrato de participação", ver
+                          pdf-participacao) — regra do Carlos "menu = relatório". */}
                       <DropdownMenuItem
                         onClick={() => {
                           const a = document.createElement("a")
@@ -621,7 +623,7 @@ export function ApuracaoAssembleia({
                         }}
                       >
                         <ClipboardList className="h-4 w-4" />
-                        Extrato de votos (PDF)
+                        Extrato de participação (PDF)
                       </DropdownMenuItem>
                       {/* "Histórico de e-mail" migrou do antigo "E-mails ▾" pra cá
                           (dissolvido na 4ª leva): é consulta/auditoria dos disparos,
