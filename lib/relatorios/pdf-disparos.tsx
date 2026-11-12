@@ -165,9 +165,16 @@ export function DisparosPDF({
   emitidoPor,
   emitidoEm,
 }: DisparosPDFProps) {
-  // Ordem cronológica (mais antigo → mais recente): lê como um livro de
-  // remessas, reforçando "foi enviado ao longo do tempo".
+  // Ordem de IMÓVEL (pedido do Carlos: fica mais fácil e rápido de localizar um
+  // imóvel na lista). Compara o imóvel já formatado (ex.: "B0401") com ordenação
+  // numérica → bloco+número na sequência certa; "—" (sem imóvel) vai pro fim.
+  // Empate (mesmo imóvel, vários disparos) cai no cronológico (mais antigo →
+  // mais recente), pra ler as remessas daquele imóvel em ordem.
   const linhas = [...disparos].sort((a, b) => {
+    const ua = a.unidades && a.unidades !== "—" ? a.unidades : "￿"
+    const ub = b.unidades && b.unidades !== "—" ? b.unidades : "￿"
+    const cmp = ua.localeCompare(ub, undefined, { numeric: true })
+    if (cmp !== 0) return cmp
     const ta = a.sentAt ? new Date(a.sentAt).getTime() : 0
     const tb = b.sentAt ? new Date(b.sentAt).getTime() : 0
     return ta - tb
@@ -279,7 +286,7 @@ export function DisparosPDF({
           </Text>
         </View>
 
-        <Text style={s.sectionLabel}>DISPAROS (EM ORDEM CRONOLÓGICA)</Text>
+        <Text style={s.sectionLabel}>DISPAROS (EM ORDEM DE IMÓVEL)</Text>
         {linhas.length === 0 ? (
           <Text style={s.vazio}>Nenhum disparo no período selecionado.</Text>
         ) : (
