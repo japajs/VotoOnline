@@ -5,7 +5,7 @@ import { headers } from "next/headers"
 import { getAssembleiaById } from "@/services/assembleias"
 import { getCondominioById } from "@/services/condominios"
 import { getProprietarioById } from "@/services/proprietarios"
-import { outorgouProcuracao } from "@/services/procuracoes"
+import { outorgouProcuracao, getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { getPesoParticipante } from "@/lib/peso"
 import {
   upsertAssembleiaSend,
@@ -499,6 +499,26 @@ export async function getProprietarioIdsVotaramAction(
   try {
     const set = await getProprietarioIdsVotaram(assembleiaId)
     return { success: true, ids: [...set] }
+  } catch {
+    return { success: false, ids: [] }
+  }
+}
+
+// Ids de quem OUTORGOU procuração nesta assembleia — não vota (quem vota é o
+// representante), então nunca deve entrar no filtro "só quem não votou" do
+// Disparar (senão o outorgante recebe convocação/lembrete pra votar mesmo com
+// o imóvel já votado pelo representante — bug relatado pelo Carlos).
+export async function getOutorganteIdsAction(
+  assembleiaId: string,
+  condominioId: string
+): Promise<{ success: boolean; ids: string[] }> {
+  const auth = await requirePerfil(["administrador", "operador", "visualizador"])
+  if (!auth.ok) return { success: false, ids: [] }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, ids: [] }
+  try {
+    const procuracoes = await getProcuracoesByAssembleia(assembleiaId)
+    return { success: true, ids: procuracoes.map((p) => p.outorgante_id) }
   } catch {
     return { success: false, ids: [] }
   }
