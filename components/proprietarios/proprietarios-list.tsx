@@ -14,6 +14,7 @@ import {
   EyeOff,
   Eraser,
   Download,
+  FileText,
   Undo2,
   MoreVertical,
   Pencil,
@@ -714,6 +715,21 @@ export function ProprietariosList({
                   <Download className="h-4 w-4" />
                 )}
                 Exportar XLSX
+              </DropdownMenuItem>
+            )}
+            {/* "Lista do cadastro" (pedido do Carlos): PDF da relação do cadastro
+                em ORDEM DE IMÓVEL (a Exportar XLSX sai alfabética por nome). Baixa
+                direto. Tem PII → só pra quem edita (a rota recusa visualizador). */}
+            {podeEditar && (
+              <DropdownMenuItem
+                onClick={() => {
+                  const a = document.createElement("a")
+                  a.href = `/api/relatorios/cadastro/${condominioId}/pdf`
+                  a.click()
+                }}
+              >
+                <FileText className="h-4 w-4" />
+                Lista do cadastro (PDF)
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
