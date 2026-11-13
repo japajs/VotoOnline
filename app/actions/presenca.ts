@@ -8,6 +8,7 @@ import {
   getChamada,
   getProprietariosTentandoEntrar,
   getStatusPresencaLive,
+  getParticipantesNaAberta,
   marcarPresenca,
   setParticipanteNome,
   setExigePresenca,
@@ -174,6 +175,10 @@ export type EstadoVotacaoLive = {
   // abertas pela mesa no modo pauta-por-pauta). Muda ao vivo nesse modo.
   totalPautasVotaveis: number
   tentando: { id: string; em: string }[]
+  // Nome de quem participou pelo imóvel (capturado na entrada pelo QR, ou
+  // anotado pela mesa) — pares [proprietarioId, nome]. Sincroniza "quem
+  // participou" AO VIVO: a mesa vê o nome preencher sem recarregar a tela.
+  participantes: [string, string][]
 }
 
 const ESTADO_VOTACAO_VAZIO: EstadoVotacaoLive = {
@@ -185,6 +190,7 @@ const ESTADO_VOTACAO_VAZIO: EstadoVotacaoLive = {
   outorgantesComRepVotou: [],
   totalPautasVotaveis: 0,
   tentando: [],
+  participantes: [],
 }
 
 // Estado de votação AO VIVO pra a tela de gestão sincronizar entre dispositivos
@@ -202,11 +208,14 @@ export async function getEstadoVotacaoLiveAction(
   const acesso = await requireAcessoCondominio(condominioId)
   if (!acesso.ok) return ESTADO_VOTACAO_VAZIO
   try {
-    const [status, pautasMap, procuracoes, assembleia] = await Promise.all([
+    const [status, pautasMap, procuracoes, assembleia, participantesMap] = await Promise.all([
       getStatusPresencaLive(assembleiaId),
       getPautasVotadasPorProprietario(assembleiaId),
       getProcuracoesByAssembleia(assembleiaId),
       getAssembleiaById(assembleiaId),
+      // Nomes de "quem participou" (resiliente: devolve Map vazio se a coluna
+      // faltar ou der erro — não derruba o resto do estado ao vivo).
+      getParticipantesNaAberta(assembleiaId),
     ])
     // Mesmo cálculo da página (condominios/[id]): no modo pauta-por-pauta só
     // contam as pautas já abertas pela mesa; no normal, todas.
@@ -230,6 +239,7 @@ export async function getEstadoVotacaoLiveAction(
       outorgantesComRepVotou,
       totalPautasVotaveis,
       tentando: status.tentando,
+      participantes: [...participantesMap.entries()],
     }
   } catch {
     return ESTADO_VOTACAO_VAZIO
