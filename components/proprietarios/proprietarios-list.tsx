@@ -23,6 +23,9 @@ import {
   ChevronDown,
   Check,
   ListFilter,
+  DoorOpen,
+  QrCode,
+  Tv,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -64,8 +67,9 @@ import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, formatCpf, normalizarBusca } from "@/lib/format"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
+import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { useModoCompartilhar } from "@/components/assembleias/modo-compartilhar-context"
-import type { Proprietario, CriterioPeso, Pauta } from "@/types"
+import type { Proprietario, CriterioPeso, Pauta, AssembleiaStatus } from "@/types"
 
 interface ProprietariosListProps {
   proprietarios: Proprietario[]
@@ -112,6 +116,13 @@ interface ProprietariosListProps {
   // Visualizador = só leitura: esconde editar/excluir/adicionar/remover unidade.
   podeEditar?: boolean
   criterioPeso?: CriterioPeso
+  // Assembleia ATUAL da tela (fusão, mockup de 5 menus do Carlos): leva o Link
+  // de entrada, o QR e o Telão pro menu "Cadastro ▾" — antes viviam na barra da
+  // apuração ("Entrada ▾" + botão Telão). Difere de assembleiaAbertaId (que só
+  // existe em andamento): aqui vem o status real, pra o Telão também aparecer na
+  // encerrada. Só a tela da assembleia passa; a tela de gestão NÃO (sem esses
+  // itens lá, como antes).
+  assembleiaAtual?: { id: string; titulo: string; status: AssembleiaStatus }
 }
 
 type FiltroVoto =
@@ -174,6 +185,7 @@ export function ProprietariosList({
   isAdmin = false,
   podeEditar = true,
   criterioPeso = "unidade",
+  assembleiaAtual,
 }: ProprietariosListProps) {
   const [busca, setBusca] = useState("")
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
@@ -211,7 +223,35 @@ export function ProprietariosList({
   // mesmo CriarProprietarioDialog do botão do cabeçalho, aberto pelo item de
   // menu via abrirPeloTrigger (o botão do cabeçalho segue à mão, como atalho).
   const criarTriggerRef = useRef<HTMLButtonElement>(null)
+  // Gatilho oculto do QR de entrada (item "QR de entrada" do Cadastro ▾), aberto
+  // via abrirPeloTrigger — mesmo padrão do Incluir proprietário.
+  const qrEntradaRef = useRef<HTMLButtonElement>(null)
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
+
+  // Link/QR/Telão no "Cadastro ▾" (fusão, mockup de 5 menus): mesmos gatings da
+  // antiga barra da apuração. Link e QR são operacionais (podeEditar) e valem só
+  // antes de encerrar; o Telão é leitura ao vivo (todos os perfis) e vale até na
+  // encerrada — só não na rascunho. Sem `assembleiaAtual` (tela de gestão) nada
+  // disso aparece.
+  const entStatus = assembleiaAtual?.status
+  const linkEntradaOn =
+    !!assembleiaAtual && podeEditar && (entStatus === "aberta" || entStatus === "pausada")
+  const qrEntradaOn = !!assembleiaAtual && podeEditar && entStatus !== "encerrada"
+  const telaoOn = !!assembleiaAtual && entStatus !== "rascunho"
+  const temEntradaNoCadastro = linkEntradaOn || qrEntradaOn || telaoOn
+
+  function copiarLinkEntrada() {
+    if (!assembleiaAtual) return
+    const url = `${window.location.origin}/entrar/${assembleiaAtual.id}`
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(
+        () => toast.success("Link de entrada copiado — cole no grupo do WhatsApp."),
+        () => toast.message(url)
+      )
+    } else {
+      toast.message(url)
+    }
+  }
 
   // Nome de quem participou pelo imóvel (co-dono presente que não é o dono do
   // cadastro). Semeado do servidor, atualizado otimista ao salvar na linha. Não
@@ -716,6 +756,16 @@ export function ProprietariosList({
             triggerClassName="hidden"
           />
         )}
+        {/* QR de entrada montado oculto — aberto pelo item do Cadastro ▾. */}
+        {qrEntradaOn && assembleiaAtual && (
+          <QrEntradaDialog
+            assembleiaId={assembleiaAtual.id}
+            assembleiaTitulo={assembleiaAtual.titulo}
+            condominioNome={condominioNome}
+            triggerRef={qrEntradaRef}
+            triggerClassName="hidden"
+          />
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<Button variant="outline" className="h-12 shrink-0 gap-1.5 px-3" />}
@@ -740,6 +790,36 @@ export function ProprietariosList({
               <Check className={`h-4 w-4 ${ordenacao === "unidade" ? "" : "opacity-0"}`} />
               Ordenar por unidade
             </DropdownMenuItem>
+            {/* Entrada da assembleia (fusão, mockup de 5 menus): Link + QR +
+                Telão vieram pra cá da barra da apuração ("Entrada ▾" + botão
+                Telão). Ficam agrupados com o cadastro, onde a secretária opera. */}
+            {temEntradaNoCadastro && (
+              <>
+                <DropdownMenuSeparator />
+                {linkEntradaOn && (
+                  <DropdownMenuItem onClick={copiarLinkEntrada}>
+                    <DoorOpen className="h-4 w-4" />
+                    Copiar link de entrada
+                  </DropdownMenuItem>
+                )}
+                {qrEntradaOn && (
+                  <DropdownMenuItem onClick={() => abrirPeloTrigger(qrEntradaRef)}>
+                    <QrCode className="h-4 w-4" />
+                    QR de entrada
+                  </DropdownMenuItem>
+                )}
+                {telaoOn && assembleiaAtual && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      window.open(`/telao/${assembleiaAtual.id}`, "_blank", "noopener")
+                    }
+                  >
+                    <Tv className="h-4 w-4" />
+                    Telão ao vivo
+                  </DropdownMenuItem>
+                )}
+              </>
+            )}
             <DropdownMenuSeparator />
             {/* Modo compartilhar (LGPD): oculta E-mail/CPF e Celular pra projetar
                 sem expor dados. O estado também aparece no aviso abaixo da barra. */}

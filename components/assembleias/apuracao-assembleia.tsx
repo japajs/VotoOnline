@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition, type ReactNode } from "react"
 import Link from "next/link"
-import { BarChart3, FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, DoorOpen, Tv, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, QrCode, History, Users, Zap, UserPlus, Send, Eye, EyeOff, Undo2 } from "lucide-react"
+import { BarChart3, FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, History, Users, Zap, UserPlus, Send, Eye, EyeOff, Undo2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -12,7 +12,6 @@ import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-d
 import { EditarPautaDialog } from "@/components/assembleias/editar-pauta-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { MesaAssembleiaDialog } from "@/components/assembleias/mesa-assembleia-dialog"
-import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
 import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
@@ -168,10 +167,9 @@ export function ApuracaoAssembleia({
   const editarAssembleiaRef = useRef<HTMLButtonElement>(null)
   const adicionarPautaRef = useRef<HTMLButtonElement>(null)
   const procuracoesRef = useRef<HTMLButtonElement>(null)
-  // Gatilho oculto do menu "Entrada ▾" (QR). O historicoRef alimenta o item
-  // "Histórico de e-mail" do "Relatórios ▾" (o antigo "E-mails ▾" foi dissolvido
-  // na 4ª leva; ver o bloco do Operacionais ▾).
-  const qrEntradaRef = useRef<HTMLButtonElement>(null)
+  // O historicoRef alimenta o item "Histórico de e-mail" do "Relatórios ▾" (o
+  // antigo "E-mails ▾" foi dissolvido na 4ª leva; ver o bloco do Operacionais ▾).
+  // (O QR de entrada migrou pro "Cadastro ▾" da lista — ver ProprietariosList.)
   const historicoRef = useRef<HTMLButtonElement>(null)
   // Mesa dobrada no "Relatórios ▾" (só encerrada): gatilho oculto.
   const mesaRef = useRef<HTMLButtonElement>(null)
@@ -366,52 +364,9 @@ export function ApuracaoAssembleia({
               {/* "Registrar voto manual" saiu da fileira pro menu "Operacionais ▾"
                   (4ª leva) — o atalho rápido por pessoa segue no 👤+ e no "⋯" de
                   cada linha, então o botão solto no topo virava redundância. */}
-              {/* Grupo "Entrada ▾" (2ª leva): o link de entrada (WhatsApp) + o QR
-                  da entrada num só menu. A "Presença" (chamada) segue à mão, de
-                  propósito. Liberado até rascunho (QR) pra a mesa preparar antes. */}
-              {canExport && assembleia.status !== "encerrada" && (
-                <>
-                  <QrEntradaDialog
-                    assembleiaId={assembleia.id}
-                    assembleiaTitulo={assembleia.titulo}
-                    triggerRef={qrEntradaRef}
-                    triggerClassName="hidden"
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={<Button variant="outline" size="sm" className="gap-1.5" />}
-                    >
-                      <DoorOpen className="h-3.5 w-3.5" />
-                      Entrada
-                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {(assembleia.status === "aberta" || assembleia.status === "pausada") && (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const url = `${window.location.origin}/entrar/${assembleia.id}`
-                            if (navigator.clipboard) {
-                              navigator.clipboard.writeText(url).then(
-                                () => toast.success("Link de entrada copiado — cole no grupo do WhatsApp."),
-                                () => toast.message(url)
-                              )
-                            } else {
-                              toast.message(url)
-                            }
-                          }}
-                        >
-                          <DoorOpen className="h-4 w-4" />
-                          Copiar link de entrada
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => abrirPeloTrigger(qrEntradaRef)}>
-                        <QrCode className="h-4 w-4" />
-                        QR de entrada
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              )}
+              {/* Entrada (Link + QR) e Telão migraram pro menu "Cadastro ▾" da
+                  lista (fusão, mockup de 5 menus do Carlos): ficam agrupados com
+                  o cadastro, onde a secretária opera. Ver ProprietariosList. */}
               {canExport && assembleia.status !== "rascunho" && (
                 <PresencaDialog
                   assembleiaId={assembleia.id}
@@ -434,20 +389,6 @@ export function ApuracaoAssembleia({
                     <ListChecks className="h-3.5 w-3.5" />
                   )}
                   Pauta por pauta: {votacaoPorPauta ? "ligada" : "desligada"}
-                </Button>
-              )}
-              {/* Telão liberado pra todos os perfis (inclusive visualizador/
-                  "advogado" que acompanha): é tela ao vivo só de leitura, e a
-                  própria página /telao e a action já permitem visualizador. */}
-              {assembleia.status !== "rascunho" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`/telao/${assembleia.id}`, "_blank", "noopener")}
-                  className="gap-1.5"
-                >
-                  <Tv className="h-3.5 w-3.5" />
-                  Telão
                 </Button>
               )}
               {canExport && (
