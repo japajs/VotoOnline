@@ -219,6 +219,11 @@ export function ProprietariosList({
   // servidor enquanto a gravação não confirmou. É um Set (não um id único) pra
   // aguentar toques rápidos em pessoas diferentes sem piscar nenhuma delas.
   const marcandoIdsRef = useRef<Set<string>>(new Set())
+  // Nomes de "quem participou" sendo EDITADOS em voo pela mesa neste dispositivo
+  // (mesma ideia do marcandoIdsRef): o polling preserva o valor local destes ids
+  // até a gravação voltar, pra o nome recém-capturado pelo QR (que chega pelo
+  // poll) não atropelar o que a secretária está digitando/acabou de salvar.
+  const editandoParticipanteRef = useRef<Set<string>>(new Set())
   // Gatilho oculto do "Incluir proprietário" (menu Cadastro ▾) — reaproveita o
   // mesmo CriarProprietarioDialog do botão do cabeçalho, aberto pelo item de
   // menu via abrirPeloTrigger (o botão do cabeçalho segue à mão, como atalho).
@@ -254,8 +259,10 @@ export function ProprietariosList({
   }
 
   // Nome de quem participou pelo imóvel (co-dono presente que não é o dono do
-  // cadastro). Semeado do servidor, atualizado otimista ao salvar na linha. Não
-  // entra no poll ao vivo (é anotação, não dado crítico de tempo real).
+  // cadastro). Semeado do servidor, atualizado otimista ao salvar na linha E
+  // sincronizado pelo poll: o nome capturado na entrada pelo QR (ou anotado por
+  // outra secretária) aparece aqui ao vivo, sem recarregar. As edições em voo
+  // deste dispositivo são preservadas (editandoParticipanteRef).
   const [participantesLocal, setParticipantesLocal] = useState<Map<string, string>>(
     () => new Map(participantesNaAberta)
   )
@@ -264,6 +271,8 @@ export function ProprietariosList({
     if (!assembleiaAbertaId) return
     const valor = nome.trim()
     const anterior = participantesLocal.get(proprietarioId) ?? ""
+    // Em voo: o poll preserva o valor local deste id até a gravação voltar.
+    editandoParticipanteRef.current.add(proprietarioId)
     // Otimista.
     setParticipantesLocal((prev) => {
       const next = new Map(prev)
@@ -282,6 +291,7 @@ export function ProprietariosList({
       })
       toast.error(r.error ?? "Erro ao salvar o participante.")
     }
+    editandoParticipanteRef.current.delete(proprietarioId)
   }
   // Há assembleia aberta? Gate do funil de votos e do polling. Antes era o
   // próprio `votouNaAberta` (undefined sem assembleia aberta); agora que o voto
@@ -338,6 +348,18 @@ export function ProprietariosList({
       // gravação voltar e o próximo ciclo trazer a verdade.
       for (const id of marcandoIdsRef.current) {
         if (prev.has(id)) servidor.add(id)
+        else servidor.delete(id)
+      }
+      return servidor
+    })
+    // "Quem participou" ao vivo: o servidor é a verdade (mesmo modelo da
+    // presença), preservando os nomes em edição em voo deste dispositivo pra não
+    // atropelar o que a secretária está digitando/acabou de salvar.
+    setParticipantesLocal((prev) => {
+      const servidor = new Map(r.participantes)
+      for (const id of editandoParticipanteRef.current) {
+        const local = prev.get(id)
+        if (local !== undefined) servidor.set(id, local)
         else servidor.delete(id)
       }
       return servidor
