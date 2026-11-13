@@ -195,25 +195,43 @@ export default function AjudaPage() {
           <Chip>Gerenciar</Chip> abre a tela completa da assembleia (para o Visualizador aparece
           como <Chip>Acompanhar</Chip>).
         </p>
+        <p>
+          A tela da assembleia é <strong className="text-foreground">uma só</strong>: no centro fica
+          a <strong className="text-foreground">lista de proprietários</strong> (a chamada, onde você
+          marca presença e acompanha quem votou) e, no topo, as ações agrupadas em menus —{" "}
+          <Chip>Cadastro</Chip>, <Chip>Filtros</Chip>, <Chip>Assembleia</Chip>,{" "}
+          <Chip>Operacionais</Chip> e <Chip>Relatórios</Chip>. Os atalhos do dia a dia (editar ✏️,
+          excluir 🗑️, voto manual) continuam à mão nas linhas; o menu serve para{" "}
+          <strong className="text-foreground">achar</strong> cada função sem decorar onde fica.
+        </p>
+        <p>
+          Para ver o <strong className="text-foreground">resultado</strong> (apuração por pauta,
+          gráficos, quórum), abra <Chip>Relatórios</Chip> → <Chip>Ver apuração</Chip>; para voltar à
+          chamada, <Chip>Ver lista</Chip>. Assim você alterna entre operar a assembleia e conferir o
+          resultado sem trocar de tela.
+        </p>
       </Secao>
 
       <Secao icon={Send} titulo="4. Como as pessoas votam">
         <p>Há dois caminhos — você pode usar só um ou os dois juntos:</p>
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
-            <strong className="text-foreground">Por e-mail:</strong> o botão <Chip>Disparar</Chip>{" "}
-            envia a cada proprietário com e-mail o seu link pessoal de voto. A lista vem{" "}
-            <strong className="text-foreground">em ordem de imóvel</strong> e você pode{" "}
-            <strong className="text-foreground">marcar só uma parte</strong> (ou só quem ainda não
-            votou) — útil para <strong className="text-foreground">fracionar o envio em dias</strong>{" "}
-            e respeitar o limite diário de e-mails do provedor.
+            <strong className="text-foreground">Por e-mail:</strong> no menu <Chip>Operacionais</Chip>,{" "}
+            <Chip>Disparar e-mails</Chip> envia a cada proprietário com e-mail o seu link pessoal de
+            voto. A lista vem <strong className="text-foreground">em ordem de imóvel</strong> e você
+            pode <strong className="text-foreground">marcar só uma parte</strong> (ou só quem ainda
+            não votou) — útil para <strong className="text-foreground">fracionar o envio em
+            dias</strong> e respeitar o limite diário de e-mails do provedor.
           </li>
           <li>
-            <strong className="text-foreground">Link de entrada (WhatsApp):</strong> copie o{" "}
-            <Chip>Link de entrada</Chip> e cole no grupo. A pessoa se identifica pela{" "}
-            <em>unidade + CPF</em> e entra para votar. Ótimo para a assembleia presencial ou híbrida.
-            Em condomínio com blocos, ela digita a unidade <strong className="text-foreground">com o
-            bloco junto</strong> (ex.: <Chip>A0101</Chip>).
+            <strong className="text-foreground">Link de entrada (WhatsApp):</strong> no menu{" "}
+            <Chip>Cadastro</Chip>, use <Chip>Copiar link de entrada</Chip> (ou <Chip>QR de
+            entrada</Chip>) e divulgue no grupo. A pessoa se identifica pela <em>unidade + CPF</em> e
+            entra para votar. Ótimo para a assembleia presencial ou híbrida. Em condomínio com blocos,
+            ela digita a unidade <strong className="text-foreground">com o bloco junto</strong> (ex.:{" "}
+            <Chip>A0101</Chip>). Na entrada ela também pode informar o{" "}
+            <strong className="text-foreground">nome</strong> (opcional) — veja{" "}
+            <em>&quot;Quem participou pelo imóvel&quot;</em> no item 6.
           </li>
         </ul>
         <p className="text-xs">
@@ -282,6 +300,16 @@ export default function AjudaPage() {
             toque usa o cônjuge cadastrado, se houver). Essa anotação sai no detalhamento do relatório
             de apuração (PDF).
           </li>
+          <li>
+            <strong className="text-foreground">Nome na entrada (preenche sozinho):</strong> na
+            entrada pelo <strong className="text-foreground">link/QR</strong>, a pessoa pode digitar o
+            próprio <strong className="text-foreground">nome</strong> — e ele já cai no campo{" "}
+            <em>&quot;quem participou&quot;</em> daquele imóvel, <strong className="text-foreground">na
+            hora</strong>, aparecendo na lista <strong className="text-foreground">sozinho</strong>{" "}
+            (sem a mesa digitar e sem recarregar). É <strong className="text-foreground">opcional</strong>:
+            quem não preencher não fica travado, e a identidade continua sendo{" "}
+            <em>unidade + CPF</em>.
+          </li>
           <li>Não é possível desmarcar a presença de quem já votou.</li>
         </ul>
       </Secao>
@@ -289,8 +317,11 @@ export default function AjudaPage() {
       <Secao icon={Gavel} titulo="7. Procurações e voto manual">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
-            <strong className="text-foreground">Procurações:</strong> dentro da assembleia dá para
-            registrar quem vota representando outra unidade.
+            <strong className="text-foreground">Procurações:</strong> no menu{" "}
+            <Chip>Assembleia</Chip>, <Chip>Procurações</Chip> registra quem vota representando outra
+            unidade. Dá para <strong className="text-foreground">buscar pelo nome ou pelo número do
+            imóvel</strong> (ex.: <Chip>A0101</Chip>), e a lista mostra o imóvel (objeto da
+            procuração) na frente de cada registro.
           </li>
           <li>
             <strong className="text-foreground">Anular procuração:</strong> na lista do{" "}
@@ -307,11 +338,12 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Registrar voto manual:</strong> para quem não tem
-            e-mail ou votou na mão. Use <Chip>Registrar voto manual</Chip> no topo da lista (busca a
-            pessoa) ou, mais rápido, pelo <strong className="text-foreground">ícone na coluna Ações da
-            própria linha</strong> do proprietário — já com o ponteiro na pessoa, sem trocar de tela.
-            Com &quot;exigir presença&quot; ligado, só aparece quem já está presente; e o imóvel
-            aparece na frente do nome (dá para buscar pelo nome ou pela unidade, ex.: &quot;A0101&quot;).
+            e-mail ou votou na mão. Use <Chip>Registrar voto manual</Chip> no menu{" "}
+            <Chip>Operacionais</Chip> (busca a pessoa) ou, mais rápido, pelo{" "}
+            <strong className="text-foreground">ícone na coluna Ações da própria linha</strong> do
+            proprietário — já com o ponteiro na pessoa, sem trocar de tela. Com &quot;exigir
+            presença&quot; ligado, só aparece quem já está presente; e o imóvel aparece na frente do
+            nome (dá para buscar pelo nome ou pela unidade, ex.: &quot;A0101&quot;).
           </li>
           <li>
             <strong className="text-foreground">Data e hora do voto:</strong> no voto manual dá para
@@ -325,8 +357,10 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Anular voto:</strong> no menu <Chip>⋯</Chip> (mais
-            ações) da coluna <Chip>Ações</Chip> da linha do proprietário (aparece só para quem já
-            votou nesta assembleia). Serve para corrigir um voto lançado errado ou para liberar a
+            ações) da coluna <Chip>Ações</Chip> da linha do proprietário — fica{" "}
+            <strong className="text-foreground">habilitado assim que a pessoa vota</strong> — ou, para
+            buscar pelo nome, em <Chip>Anular voto registrado</Chip> no menu{" "}
+            <Chip>Operacionais</Chip>. Serve para corrigir um voto lançado errado ou para liberar a
             exclusão do cadastro. Pede a sua senha.
           </li>
           <li>
@@ -340,22 +374,25 @@ export default function AjudaPage() {
       <Secao icon={BellRing} titulo="8. Acompanhar e cobrar quem falta">
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
-            Na lista de proprietários, use os filtros <Chip>Imóveis</Chip> · <Chip>Presentes</Chip> ·{" "}
-            <Chip>Votou geral</Chip> · <Chip>Votou parcial</Chip> · <Chip>Não votaram</Chip> para
-            enxergar o andamento na hora (do total de imóveis, os presentes; dos presentes, quem
-            votou geral, parcial ou ainda não votou).
+            No menu <Chip>Filtros</Chip> (sobre a lista), escolha{" "}
+            <Chip>Presentes</Chip> · <Chip>Ausentes</Chip> · <Chip>Votou geral</Chip> ·{" "}
+            <Chip>Votou parcial</Chip> · <Chip>Não votaram</Chip> · <Chip>Procuração</Chip> ·{" "}
+            <Chip>Inadimplentes</Chip> para enxergar o andamento na hora (cada opção mostra a
+            contagem ao lado). Do total de imóveis, os presentes; dos presentes, quem votou geral,
+            parcial ou ainda não votou.
           </li>
           <li>
             O botão <Chip>Limpar</Chip> zera a busca e o filtro de uma vez e volta a lista para os
             100% dos imóveis (só aparece quando há algo a limpar).
           </li>
           <li>
-            O botão <Chip>Lembrar quem não votou</Chip> reenvia o e-mail só para quem ainda está
-            pendente.
+            No menu <Chip>Operacionais</Chip>, <Chip>Lembrar quem não votou</Chip> reenvia o e-mail só
+            para quem ainda está pendente.
           </li>
           <li>
-            <strong className="text-foreground">Histórico de disparos:</strong> o botão{" "}
-            <Chip>Histórico de disparos</Chip> mostra <strong className="text-foreground">todos os
+            <strong className="text-foreground">Histórico de e-mail:</strong> no menu{" "}
+            <Chip>Relatórios</Chip>, <Chip>Histórico de e-mail</Chip> mostra{" "}
+            <strong className="text-foreground">todos os
             envios</strong> da assembleia — <strong className="text-foreground">cada remessa</strong> a
             cada imóvel, não só a última. Em cada linha aparece o{" "}
             <strong className="text-foreground">imóvel</strong>, quem recebeu, a data e o status. Dá para{" "}
@@ -369,42 +406,52 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Filtrar por data:</strong> dentro do{" "}
-            <Chip>Histórico de disparos</Chip>, os campos <Chip>De</Chip> e <Chip>Até</Chip> deixam
+            <Chip>Histórico de e-mail</Chip>, os campos <Chip>De</Chip> e <Chip>Até</Chip> deixam
             escolher o <strong className="text-foreground">período</strong> — a lista e o comprovante
             passam a mostrar só os disparos daquelas datas. Deixe em branco para incluir tudo.
           </li>
           <li>
             <strong className="text-foreground">Comprovante de disparos (PDF):</strong> ainda dentro do{" "}
-            <Chip>Histórico de disparos</Chip>, o botão <Chip>Exportar (PDF)</Chip> gera um documento
-            organizado, em ordem cronológica, com{" "}
+            <Chip>Histórico de e-mail</Chip>, o botão <Chip>Exportar (PDF)</Chip> gera um documento
+            organizado, <strong className="text-foreground">em ordem de imóvel</strong>, com{" "}
             <strong className="text-foreground">Data · Imóvel · Nome · E-mail · Tipo · Status</strong>,
             um resumo (enviados, entregues, bounce, spam) e a explicação de cada status — pronto para{" "}
             <strong className="text-foreground">apresentar à síndica</strong> como prova de que os
             e-mails foram disparados. Respeita o período escolhido em <Chip>De</Chip>/<Chip>Até</Chip>.
           </li>
           <li>
-            <strong className="text-foreground">Exportar a lista (Excel):</strong> o botão{" "}
-            <Chip>Exportar XLSX</Chip> gera a planilha com <strong className="text-foreground">só o
-            que está à vista</strong> (respeita a busca e o filtro) e na mesma ordem da tela, com as
-            colunas <strong className="text-foreground">Imóvel · Nome · E-mail · Telefone · CPF ·
+            <strong className="text-foreground">Exportar a lista (Excel):</strong> no menu{" "}
+            <Chip>Cadastro</Chip>, <Chip>Exportar XLSX</Chip> gera a planilha com{" "}
+            <strong className="text-foreground">só o que está à vista</strong> (respeita a busca e o
+            filtro) e na mesma ordem da tela, com as colunas{" "}
+            <strong className="text-foreground">Imóvel · Nome · E-mail · Telefone · CPF ·
             Cônjuge</strong>.
           </li>
           <li>
-            <strong className="text-foreground">Modo compartilhar (LGPD):</strong> o botão{" "}
-            <Chip>Modo compartilhar</Chip> oculta e-mail, CPF e celular da lista e deixa só nome
-            (com quem participou pelo imóvel, quando anotado), situação e imóvel — útil para projetar
-            ou compartilhar a tela (ex.: os presentes online
-            conferirem se já constam como presentes) sem expor os dados dos condôminos. Clicar de
-            novo volta ao normal.
+            <strong className="text-foreground">Lista do cadastro (PDF):</strong> também no menu{" "}
+            <Chip>Cadastro</Chip>, gera a relação do cadastro em{" "}
+            <strong className="text-foreground">ordem de imóvel</strong> (Imóvel · Proprietário · CPF
+            · Telefone · E-mail). <strong className="text-foreground">Obedece o filtro ativo</strong>{" "}
+            e imprime o nome do filtro no cabeçalho — assim você tira, de uma opção só, a lista de
+            &quot;Não votaram&quot;, &quot;Presentes&quot;, etc., sem precisar editar planilha.
+          </li>
+          <li>
+            <strong className="text-foreground">Dados a compartilhar (LGPD):</strong> nos menus{" "}
+            <Chip>Cadastro</Chip> e <Chip>Operacionais</Chip>, <Chip>Dados a compartilhar</Chip>{" "}
+            oculta e-mail, CPF e celular da lista e deixa só nome (com quem participou pelo imóvel,
+            quando anotado), situação e imóvel — útil para projetar ou compartilhar a tela numa
+            videoconferência (ex.: os presentes online conferirem se já constam como presentes) sem
+            expor os dados dos condôminos. <Chip>Mostrar dados</Chip> volta ao normal.
           </li>
         </ul>
       </Secao>
 
       <Secao icon={Tv} titulo="9. Telão ao vivo">
         <p>
-          O botão <Chip>Telão</Chip> abre uma tela cheia que se atualiza sozinha, pensada para
-          projetar no salão. Mostra o resultado parcial em tempo real. Está liberado inclusive para o
-          Visualizador — o advogado pode abrir e acompanhar sem depender do síndico.
+          No menu <Chip>Cadastro</Chip>, <Chip>Telão</Chip> abre uma tela cheia que se atualiza
+          sozinha, pensada para projetar no salão. Mostra o resultado parcial em tempo real. Está
+          liberado inclusive para o Visualizador — o advogado pode abrir e acompanhar sem depender do
+          síndico.
         </p>
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
@@ -436,20 +483,19 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Mesa da ata (3 assinaturas):</strong> antes de gerar
-            a Ata, use o botão <Chip>Mesa</Chip> (ao lado da Ata) para informar{" "}
-            <strong className="text-foreground">presidente</strong> e{" "}
+            a Ata, no menu <Chip>Relatórios</Chip> use <Chip>Mesa (presidente/secretário)</Chip> para
+            informar <strong className="text-foreground">presidente</strong> e{" "}
             <strong className="text-foreground">secretário</strong> — a ata sai com as três
             assinaturas (síndico, presidente e secretário). Em branco, sai só a linha com o cargo
             (assina à mão).
           </li>
           <li>
-            Baixe os relatórios pelo menu <Chip>Relatórios</Chip>: o{" "}
-            <strong className="text-foreground">PDF</strong> e o{" "}
-            <strong className="text-foreground">Excel</strong> da apuração e o{" "}
-            <strong className="text-foreground">Imprimir</strong> ficam agrupados ali; a{" "}
-            <strong className="text-foreground">Ata</strong> fica no botão ao lado (quando a
-            assembleia está encerrada). O PDF já sai com os dados completos do condomínio (CNPJ,
-            endereço, síndico, contato e critério de peso) e{" "}
+            Tudo fica no menu <Chip>Relatórios</Chip>:{" "}
+            <Chip>Relatório de apuração (PDF)</Chip> e <Chip>(Excel)</Chip>;{" "}
+            <Chip>Extrato de participação (PDF)</Chip> (data/hora do voto por imóvel e contadores, bom
+            para auditar); <Chip>Histórico de e-mail</Chip>; <Chip>Imprimir</Chip>; e, com a
+            assembleia encerrada, a <Chip>Ata (PDF)</Chip>. O Relatório de apuração já sai com os
+            dados completos do condomínio (CNPJ, endereço, síndico, contato e critério de peso) e{" "}
             <strong className="text-foreground">sem expor e-mails</strong> dos votantes (LGPD).
           </li>
           <li>
