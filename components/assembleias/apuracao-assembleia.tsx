@@ -380,23 +380,11 @@ export function ApuracaoAssembleia({
                   podeLembrar={assembleia.status === "aberta"}
                 />
               )}
-              {canExport && assembleia.status !== "encerrada" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleToggleVotacaoPorPauta}
-                  disabled={isPendingVpp}
-                  title="Conduzir a votação pauta por pauta: a mesa abre e fecha cada pauta no seu tempo."
-                  className={`gap-1.5 ${votacaoPorPauta ? "border-primary/40 text-primary" : ""}`}
-                >
-                  {isPendingVpp ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ListChecks className="h-3.5 w-3.5" />
-                  )}
-                  Pauta por pauta: {votacaoPorPauta ? "ligada" : "desligada"}
-                </Button>
-              )}
+              {/* "Pauta por pauta" (liga/desliga) migrou pro corpo de resultados
+                  — a aba /apuracao virou o centro de controle da votação, junto
+                  dos botões Abrir/Fechar de cada pauta (ver abaixo). Com os
+                  resultados fora da tela principal (nova aba), o controle precisa
+                  morar JUNTO deles, senão ficaria inacessível. */}
               {canExport && (
                 <>
                   {/* Grupo "Operacionais ▾" (4ª leva, mockup final do Carlos):
@@ -700,6 +688,28 @@ export function ApuracaoAssembleia({
           sem trocar de tela. Na ROTA /apuracao (somenteLeitura) aparece normal —
           é o conteúdo da aba compartilhável. */}
       <div className={cn("space-y-6", !somenteLeitura && "hidden print:block")}>
+      {/* "Pauta por pauta" (liga/desliga): mora aqui, no corpo de resultados —
+          a aba /apuracao é o centro de controle da votação. Some na encerrada.
+          Fica junto dos botões Abrir/Fechar de cada pauta (nos cards abaixo). */}
+      {canExport && assembleia.status !== "encerrada" && (
+        <div className="print:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleVotacaoPorPauta}
+            disabled={isPendingVpp}
+            title="Conduzir a votação pauta por pauta: a mesa abre e fecha cada pauta no seu tempo."
+            className={`gap-1.5 ${votacaoPorPauta ? "border-primary/40 text-primary" : ""}`}
+          >
+            {isPendingVpp ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ListChecks className="h-3.5 w-3.5" />
+            )}
+            Pauta por pauta: {votacaoPorPauta ? "ligada" : "desligada"}
+          </Button>
+        </div>
+      )}
       {/* Instrução de onde ficam os controles de abrir/fechar cada pauta
           (pedido do Carlos: "não localizo a opção de bloquear/liberar pauta por
           pauta"). Só no modo ligado + assembleia em andamento + quem pode operar. */}
