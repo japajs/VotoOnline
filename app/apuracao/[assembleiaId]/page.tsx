@@ -4,7 +4,7 @@ import { getAssembleiaById } from "@/services/assembleias"
 import { getCondominioById } from "@/services/condominios"
 import { getApuracaoAssembleia } from "@/services/assembleia-votos"
 import { getHistoricoParticipacao } from "@/services/relatorios"
-import { requireAcessoCondominio } from "@/lib/auth"
+import { getSession, requireAcessoCondominio } from "@/lib/auth"
 import { ApuracaoAssembleia } from "@/components/assembleias/apuracao-assembleia"
 import { HistoricoParticipacao } from "@/components/assembleias/historico-participacao"
 import { APP_NAME } from "@/lib/constants"
@@ -40,6 +40,12 @@ export default async function ApuracaoPage({ params }: Props) {
   const acesso = await requireAcessoCondominio(assembleia.condominio_id)
   if (!acesso.ok) notFound()
 
+  // Operador controla a VOTAÇÃO por aqui (pauta por pauta: liga/desliga + abrir/
+  // fechar cada pauta) — a aba /apuracao é o centro de controle, já que os
+  // resultados saíram da tela principal. Visualizador vê só leitura.
+  const session = await getSession()
+  const podeOperar = session?.perfil !== "visualizador"
+
   const condominio = await getCondominioById(assembleia.condominio_id).catch(() => null)
   if (!condominio) notFound()
 
@@ -60,13 +66,15 @@ export default async function ApuracaoPage({ params }: Props) {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{assembleia.titulo}</h1>
         </div>
         {/* proprietarios=[] de propósito: em somenteLeitura a fileira de ações
-            (que usaria a lista pro Disparar/Anular) não é renderada. */}
+            (que usaria a lista pro Disparar/Anular) não é renderada. `canExport`
+            por perfil habilita o controle pauta-por-pauta (toggle + abrir/fechar
+            cada pauta) pro operador; visualizador vê só leitura. */}
         <ApuracaoAssembleia
           assembleia={assembleia}
           condominioId={assembleia.condominio_id}
           apuracao={apuracao}
           proprietarios={[]}
-          canExport={false}
+          canExport={podeOperar}
           criterioPeso={condominio.criterio_peso}
           somenteLeitura
           historicoSlot={<HistoricoParticipacao historico={historicoParticipacao} />}
