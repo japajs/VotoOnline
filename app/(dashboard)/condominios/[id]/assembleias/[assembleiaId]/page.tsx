@@ -108,16 +108,14 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{assembleia.titulo}</h1>
       </div>
 
-      {/* Tela da assembleia FUNDIDA (letra B, validada pelo Carlos): UMA tela
-          principal — a LISTA (participantes/chamada) — com a barra de ações
-          sempre no topo; a APURAÇÃO (resultados) virou um item do "Relatórios ▾"
-          que alterna a visão, não mais uma aba. Encerrada abre direto nos
-          resultados; em andamento/rascunho abre na lista (operação ao vivo).
-          A lista é plena com a assembleia em andamento (aberta/pausada) — fora
-          disso vira a lista simples, sem os badges de voto/presença (a
-          ProprietariosList os gateia por assembleiaAbertaId). */}
+      {/* Tela da assembleia FUNDIDA (letra B): UMA tela principal — a LISTA
+          (participantes/chamada) — com a barra de ações sempre no topo. A
+          APURAÇÃO (resultados) abre em NOVA ABA pela rota /apuracao (igual ao
+          Telão, pedido do Carlos 2026-11-13), então a tela principal nunca troca
+          de conteúdo. A lista é plena com a assembleia em andamento
+          (aberta/pausada) — fora disso vira a lista simples, sem os badges de
+          voto/presença (a ProprietariosList os gateia por assembleiaAbertaId). */}
       <ApuracaoTela
-        apuracaoInicial={assembleia.status === "encerrada"}
         apuracao={
           <ApuracaoAssembleia
             assembleia={assembleia}
