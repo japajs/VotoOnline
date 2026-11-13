@@ -155,6 +155,18 @@ export default async function CondominioDetailPage({ params }: Props) {
           isAdmin={session?.perfil === "administrador"}
           podeEditar={session?.perfil !== "visualizador"}
           criterioPeso={condominio.criterio_peso}
+          // Link de entrada + QR + Telão no "Cadastro ▾" também aqui na gestão,
+          // pra a assembleia EM ANDAMENTO: a secretária pega o link/QR sem ir à
+          // tela da apuração. Sem assembleia aberta, os itens nem aparecem.
+          assembleiaAtual={
+            assembleiaAberta
+              ? {
+                  id: assembleiaAberta.id,
+                  titulo: assembleiaAberta.titulo,
+                  status: assembleiaAberta.status,
+                }
+              : undefined
+          }
         />
       </section>
     </div>
