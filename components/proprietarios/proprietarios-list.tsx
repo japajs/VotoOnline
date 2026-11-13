@@ -746,7 +746,7 @@ export function ProprietariosList({
       {/* Painel de ferramentas — fundo e borda diferentes da listagem abaixo,
           para deixar claro à primeira vista que esta área serve para
           localizar/organizar registros, não faz parte da tabela em si. */}
-      <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/80 sm:pr-1">
           <Search className="h-3.5 w-3.5" />
           Buscar
