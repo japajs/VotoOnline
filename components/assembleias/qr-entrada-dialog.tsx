@@ -18,8 +18,8 @@ interface Props {
   assembleiaId: string
   assembleiaTitulo: string
   condominioNome?: string | null
-  /** Deixa o gatilho ser disparado de fora (ex.: item do menu "Entrada ▾" da
-   * apuração), via abrirPeloTrigger. */
+  /** Deixa o gatilho ser disparado de fora (ex.: item "QR de entrada" do menu
+   * "Cadastro ▾" da lista), via abrirPeloTrigger. */
   triggerRef?: Ref<HTMLButtonElement>
   /** Classe extra do botão-gatilho — passe "hidden" pra escondê-lo quando o
    * diálogo for aberto só pelo menu. Padrão: visível (uso standalone). */
