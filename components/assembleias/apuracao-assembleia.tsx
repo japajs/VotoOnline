@@ -1,30 +1,12 @@
 "use client"
 
-import { useRef, useState, useTransition, type ReactNode } from "react"
-import Link from "next/link"
-import { BarChart3, FileSpreadsheet, FileText, Printer, Trash2, Scale, Lock, Unlock, BellRing, ListChecks, ClipboardList, Loader2, ArrowLeft, ChevronDown, Pencil, Plus, FileSignature, Settings2, History, Users, Zap, UserPlus, Send, Eye, EyeOff, Undo2 } from "lucide-react"
+import { useState, useTransition, type ReactNode } from "react"
+import { Trash2, Scale, Lock, Unlock, ListChecks, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { DonutChart } from "@/components/ui/donut-chart"
-import { EditarAssembleiaDialog } from "@/components/assembleias/editar-assembleia-dialog"
-import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-dialog"
 import { EditarPautaDialog } from "@/components/assembleias/editar-pauta-dialog"
-import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
-import { MesaAssembleiaDialog } from "@/components/assembleias/mesa-assembleia-dialog"
-import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
-import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
-import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
-import { AnularVotoDialog } from "@/components/assembleias/anular-voto-dialog"
-import { useModoCompartilhar } from "@/components/assembleias/modo-compartilhar-context"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
   excluirPautaAction,
@@ -33,15 +15,14 @@ import {
   fecharVotacaoPautaAction,
   definirDataEncerramentoAction,
 } from "@/app/actions/assembleias"
-import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
-import { APP_NAME, ROUTES } from "@/lib/constants"
+import { APP_NAME } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
 import {
   STATUS_EXIBIDO_LABEL as STATUS_LABEL,
   STATUS_EXIBIDO_CLASS as STATUS_CLASS,
   type StatusExibido,
 } from "@/lib/assembleia-status"
-import type { Assembleia, AssembleiaApuracao, CriterioPeso, PautaApuracao, PautaStatus, Proprietario } from "@/types"
+import type { Assembleia, AssembleiaApuracao, CriterioPeso, PautaApuracao, PautaStatus } from "@/types"
 
 const PAUTA_STATUS_LABEL: Record<PautaStatus, string> = {
   rascunho: "Rascunho",
@@ -61,9 +42,6 @@ interface Props {
   assembleia: Assembleia
   condominioId: string
   apuracao: AssembleiaApuracao
-  // Lista de proprietários do condomínio — usada pelo botão "Disparar" (mesma
-  // tela do Histórico de disparos, pedido do Carlos pra agilizar a conferência).
-  proprietarios: Proprietario[]
   canExport?: boolean
   // Critério do condomínio — define se o resultado ponderado é contado em
   // imóveis ou em fração ideal (ver formatPesoResultado).
@@ -71,11 +49,11 @@ interface Props {
   // Histórico de participação — faz parte da visão de RESULTADOS. Vem da página
   // como slot pra não refazer a query aqui.
   historicoSlot?: ReactNode
-  // Modo só-leitura da ROTA /apuracao (nova aba, pedido do Carlos: "Apuração
-  // segue o mesmo rito do Telão"). Esconde a fileira de ações (Voltar + menus) e
-  // MOSTRA o corpo de resultados (que na tela principal fica oculto, só pro
-  // Imprimir). Assim a mesma montagem serve a barra da tela principal e a aba
-  // só-de-leitura compartilhável.
+  // `true` na ROTA /apuracao (aba compartilhável): MOSTRA o corpo de resultados.
+  // `false` na tela principal: os resultados ficam OCULTOS (só pro Imprimir, via
+  // print:block) — a tela principal é a lista, e a barra de ações mora na toolbar
+  // dela (ver BarraAcoesAssembleia). Este componente, na tela principal, serve só
+  // de cabeçalho (status/datas) + corpo de resultados oculto pro boletim.
   somenteLeitura?: boolean
 }
 
@@ -125,29 +103,16 @@ function isoParaDatetimeLocal(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// Abre um diálogo a partir de um item do menu "Assembleia ▾": dispara o clique
-// no botão-gatilho do próprio diálogo (que fica montado porém oculto —
-// triggerClassName="hidden"). Assim agrupamos os botões frios no menu sem
-// refatorar o estado de abertura de cada diálogo. O setTimeout(…,0) deixa o
-// menu fechar e restaurar o foco ANTES do diálogo tomar o foco (mesmo padrão
-// do menu "⋯" da lista de proprietários).
-function abrirPeloTrigger(ref: { current: HTMLButtonElement | null }) {
-  setTimeout(() => ref.current?.click(), 0)
-}
-
 export function ApuracaoAssembleia({
   assembleia,
   condominioId,
   apuracao,
-  proprietarios,
   canExport = false,
   criterioPeso = "unidade",
   historicoSlot,
   somenteLeitura = false,
 }: Props) {
   const {
-    total_enviados,
-    total_respondidos,
     imoveis_cadastrados,
     imoveis_votantes,
     imoveis_presentes,
@@ -155,13 +120,9 @@ export function ApuracaoAssembleia({
     imoveis_parcial,
     imoveis_nao_votaram,
   } = apuracao
-  // Participação por IMÓVEL (a assembleia gira em torno do imóvel). `pendentes`
-  // continua por PESSOA porque é a contagem do lembrete de e-mail (quem avisar).
+  // Participação por IMÓVEL (a assembleia gira em torno do imóvel).
   const participacao =
     imoveis_cadastrados > 0 ? Math.round((imoveis_votantes / imoveis_cadastrados) * 100) : 0
-  const pendentes = total_enviados - total_respondidos
-
-  const [isPendingLembrete, startLembreteTransition] = useTransition()
 
   // Votação pauta por pauta: a mesa abre/fecha cada pauta (ver Fase 1). O
   // liga/desliga fica aqui no cabeçalho; quando ligado, cada pauta ganha os
@@ -169,31 +130,6 @@ export function ApuracaoAssembleia({
   const [votacaoPorPauta, setVotacaoPorPautaState] = useState(assembleia.votacao_por_pauta ?? false)
   const [isPendingVpp, startVppTransition] = useTransition()
   const emAndamento = assembleia.status === "aberta" || assembleia.status === "pausada"
-
-  // Gatilhos ocultos dos diálogos agrupados no menu "Assembleia ▾" (frios):
-  // Editar assembleia, Incluir pauta e Procurações saíram da fileira de botões
-  // e são abertos pelos itens do menu via abrirPeloTrigger. Presença segue à
-  // mão (ação quente ao vivo); Disparar e Registrar voto manual foram pro menu
-  // "Operacionais ▾" (4ª leva).
-  const editarAssembleiaRef = useRef<HTMLButtonElement>(null)
-  const adicionarPautaRef = useRef<HTMLButtonElement>(null)
-  const procuracoesRef = useRef<HTMLButtonElement>(null)
-  // O historicoRef alimenta o item "Histórico de e-mail" do "Relatórios ▾" (o
-  // antigo "E-mails ▾" foi dissolvido na 4ª leva; ver o bloco do Operacionais ▾).
-  // (O QR de entrada migrou pro "Cadastro ▾" da lista — ver ProprietariosList.)
-  const historicoRef = useRef<HTMLButtonElement>(null)
-  // Mesa dobrada no "Relatórios ▾" (só encerrada): gatilho oculto.
-  const mesaRef = useRef<HTMLButtonElement>(null)
-  // 4ª leva: gatilhos ocultos do menu "Operacionais ▾" (Registrar voto manual +
-  // Disparar e-mails saíram da fileira de botões soltos pra dentro do menu).
-  const votoManualRef = useRef<HTMLButtonElement>(null)
-  const dispararRef = useRef<HTMLButtonElement>(null)
-  const anularRef = useRef<HTMLButtonElement>(null)
-  // "Dados a compartilhar" no "Operacionais ▾": o toggle (esconder PII) mora na
-  // ApuracaoTela e é compartilhado com a lista dos Participantes pelo context.
-  // Null quando esta apuração não está dentro da ApuracaoTela (não acontece
-  // hoje, mas o item só aparece quando o context existe).
-  const compartilharCtx = useModoCompartilhar()
 
   // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
   // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
@@ -225,27 +161,6 @@ export function ApuracaoAssembleia({
       if (!r.success) {
         setVotacaoPorPautaState(!novo)
         toast.error(r.error ?? "Erro ao atualizar a opção.")
-      }
-    })
-  }
-
-  // Auditoria de assembleias — Fase 6: lembrete manual (sem cron/agendamento
-  // neste projeto) pra quem ainda não registrou nenhum voto. Confirmação
-  // antes de disparar — é um e-mail de verdade indo pra pessoas de verdade,
-  // não uma ação só de dados.
-  function handleNotificarNaoVotaram() {
-    if (
-      !confirm(
-        `Enviar lembrete de votação por e-mail para ${pendentes} proprietário(s) que ainda não votou/votaram?`
-      )
-    )
-      return
-    startLembreteTransition(async () => {
-      const result = await notificarNaoVotaramAction(assembleia.id)
-      if (result.success) {
-        toast.success(`${result.sent} lembrete(s) enviado(s).`)
-      } else {
-        toast.error(result.error)
       }
     })
   }
@@ -285,341 +200,6 @@ export function ApuracaoAssembleia({
             >
               {STATUS_LABEL[statusExibido]}
             </span>
-            {!somenteLeitura && (
-            <div className="flex flex-wrap items-center gap-2 print:hidden">
-              {/* Navegação clara pro operador leigo (pedido do Carlos): volta
-                  pra tela de gestão do condomínio (cadastro/presença), onde a
-                  secretária fica o tempo todo — em vez de depender só do "<-"
-                  discreto no topo. Primeiro item, destacado. */}
-              <Link
-                href={`${ROUTES.condominios}/${condominioId}`}
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "sm" }),
-                  "gap-1.5 border-primary/40 font-medium text-primary hover:bg-primary/5"
-                )}
-                title="Voltar à tela de gestão do condomínio (proprietários e presença)"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Voltar à gestão
-              </Link>
-              {/* Grupo "Assembleia ▾" — funde "Assembleia" + "Gerenciar pautas"
-                  do mockup final do Carlos (5ª leva): Editar assembleia + Incluir
-                  pauta + Procurações, com gatilho OCULTO (triggerClassName=
-                  "hidden") abertos pelos itens do menu. As ações POR PAUTA
-                  (editar/abrir/pausar cada pauta) seguem como ATALHOS inline no
-                  card de cada pauta (lápis/lixeira/abrir-fechar), conforme o
-                  princípio "menu nomeia a função p/ descoberta, atalho inline dá
-                  velocidade". O toggle "Pauta por pauta" segue à mão porque é
-                  também INDICADOR de modo (precisa ver de relance se está ligado).
-                  NÃO há "abrir/pausar TODAS as pautas de uma vez" — é por pauta,
-                  pela mesa (mudaria a dinâmica da votação; aguarda o Carlos). */}
-              {canExport && (
-                <>
-                  <EditarAssembleiaDialog
-                    assembleia={assembleia}
-                    condominioId={condominioId}
-                    temVotos={temVotos}
-                    triggerRef={editarAssembleiaRef}
-                    triggerClassName="hidden"
-                  />
-                  {assembleia.status === "aberta" && (
-                    <AdicionarPautaDialog
-                      assembleiaId={assembleia.id}
-                      condominioId={condominioId}
-                      triggerRef={adicionarPautaRef}
-                      triggerClassName="hidden"
-                    />
-                  )}
-                  {assembleia.status === "aberta" && (
-                    <ProcuracoesDialog
-                      assembleiaId={assembleia.id}
-                      condominioId={condominioId}
-                      triggerRef={procuracoesRef}
-                      triggerClassName="hidden"
-                    />
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={<Button variant="outline" size="sm" className="gap-1.5" />}
-                    >
-                      <Settings2 className="h-3.5 w-3.5" />
-                      Assembleia
-                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem onClick={() => abrirPeloTrigger(editarAssembleiaRef)}>
-                        <Pencil className="h-4 w-4" />
-                        Editar assembleia
-                      </DropdownMenuItem>
-                      {assembleia.status === "aberta" && (
-                        <DropdownMenuItem onClick={() => abrirPeloTrigger(adicionarPautaRef)}>
-                          <Plus className="h-4 w-4" />
-                          Incluir pauta
-                        </DropdownMenuItem>
-                      )}
-                      {assembleia.status === "aberta" && (
-                        <DropdownMenuItem onClick={() => abrirPeloTrigger(procuracoesRef)}>
-                          <FileSignature className="h-4 w-4" />
-                          Procurações
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              )}
-              {/* "Registrar voto manual" saiu da fileira pro menu "Operacionais ▾"
-                  (4ª leva) — o atalho rápido por pessoa segue no 👤+ e no "⋯" de
-                  cada linha, então o botão solto no topo virava redundância. */}
-              {/* Entrada (Link + QR) e Telão migraram pro menu "Cadastro ▾" da
-                  lista (fusão, mockup de 5 menus do Carlos): ficam agrupados com
-                  o cadastro, onde a secretária opera. Ver ProprietariosList. */}
-              {canExport && assembleia.status !== "rascunho" && (
-                <PresencaDialog
-                  assembleiaId={assembleia.id}
-                  condominioId={condominioId}
-                  podeLembrar={assembleia.status === "aberta"}
-                />
-              )}
-              {/* "Pauta por pauta" (liga/desliga) migrou pro corpo de resultados
-                  — a aba /apuracao virou o centro de controle da votação, junto
-                  dos botões Abrir/Fechar de cada pauta (ver abaixo). Com os
-                  resultados fora da tela principal (nova aba), o controle precisa
-                  morar JUNTO deles, senão ficaria inacessível. */}
-              {canExport && (
-                <>
-                  {/* Grupo "Operacionais ▾" (4ª leva, mockup final do Carlos):
-                      agrupa as AÇÕES operacionais ao vivo — Registrar voto manual,
-                      Disparar e-mails e Lembrar quem não votou — num menu NOMEADO
-                      pra DESCOBERTA. Tira 2 botões soltos da fileira (Voto manual +
-                      Disparar) e dissolve o antigo "E-mails ▾". Os ATALHOS seguem:
-                      voto manual no 👤+ e no "⋯" de cada linha; disparar no "⋯" da
-                      linha. Os diálogos ficam montados com gatilho OCULTO e abrem
-                      pelos itens via abrirPeloTrigger.
-                      FORA deste menu (de propósito): "Anular voto" é POR PESSOA →
-                      segue no "⋯" da linha; "Dados a compartilhar" (modoCompartilhar)
-                      é estado da LISTA → fica no "Cadastro ▾" da lista por ora. */}
-                  {assembleia.status === "aberta" && (
-                    <RegistrarVotoManualDialog
-                      assembleiaId={assembleia.id}
-                      assembleiaTitulo={assembleia.titulo}
-                      condominioId={condominioId}
-                      pautas={assembleia.pautas ?? []}
-                      triggerRef={votoManualRef}
-                      triggerClassName="hidden"
-                    />
-                  )}
-                  {assembleia.status !== "encerrada" && (
-                    <DispararAssembleiaDialog
-                      assembleia={assembleia}
-                      proprietarios={proprietarios}
-                      triggerRef={dispararRef}
-                      triggerClassName="hidden"
-                    />
-                  )}
-                  {/* Anular voto registrado (versão em menu do atalho por linha):
-                      só em andamento (é quando há voto pra anular). Gatilho oculto,
-                      aberto pelo item do "Operacionais ▾". */}
-                  {emAndamento && (
-                    <AnularVotoDialog
-                      assembleiaId={assembleia.id}
-                      condominioId={condominioId}
-                      proprietarios={proprietarios}
-                      triggerRef={anularRef}
-                      triggerClassName="hidden"
-                    />
-                  )}
-                  {/* Histórico de disparos migrou pro "Relatórios ▾" (é consulta/
-                      auditoria, não ação operacional). Gatilho segue oculto aqui,
-                      disponível inclusive encerrada pra revisar depois. */}
-                  <HistoricoDisparosDialog
-                    assembleiaId={assembleia.id}
-                    condominioId={condominioId}
-                    triggerRef={historicoRef}
-                    triggerClassName="hidden"
-                  />
-                  {/* Operacionais ▾ só aparece com algo operacional disponível
-                      (não-encerrada tem ao menos "Disparar"); encerrada some. */}
-                  {assembleia.status !== "encerrada" && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={<Button variant="outline" size="sm" className="gap-1.5" />}
-                      >
-                        <Zap className="h-3.5 w-3.5" />
-                        Operacionais
-                        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {assembleia.status === "aberta" && (
-                          <DropdownMenuItem onClick={() => abrirPeloTrigger(votoManualRef)}>
-                            <UserPlus className="h-4 w-4" />
-                            Registrar voto manual
-                          </DropdownMenuItem>
-                        )}
-                        {emAndamento && (
-                          <DropdownMenuItem onClick={() => abrirPeloTrigger(anularRef)}>
-                            <Undo2 className="h-4 w-4" />
-                            Anular voto registrado
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => abrirPeloTrigger(dispararRef)}>
-                          <Send className="h-4 w-4" />
-                          Disparar e-mails
-                        </DropdownMenuItem>
-                        {assembleia.status === "aberta" && pendentes > 0 && (
-                          <DropdownMenuItem
-                            onClick={handleNotificarNaoVotaram}
-                            disabled={isPendingLembrete}
-                          >
-                            <BellRing className="h-4 w-4" />
-                            Lembrar quem não votou ({pendentes})
-                          </DropdownMenuItem>
-                        )}
-                        {/* "Dados a compartilhar" (pedido do Carlos): liga/desliga
-                            o modo que esconde PII (e-mail/CPF/celular) da lista dos
-                            Participantes pra projetar a tela numa videoconferência.
-                            O estado é COMPARTILHADO com o toggle da lista (context),
-                            então reflete e controla o mesmo modo. */}
-                        {compartilharCtx && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={compartilharCtx.toggle}>
-                              {compartilharCtx.value ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                              {compartilharCtx.value ? "Mostrar dados" : "Dados a compartilhar"}
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {/* PDF e Excel da apuração foram pro menu "Relatórios"
-                      (abaixo), junto do Imprimir — POC do redesenho em menus
-                      suspensos (pedido do Carlos: agrupar pra reduzir a poluição
-                      visual da fileira de botões). */}
-                  {/* Auditoria de assembleias — Fase 3: ata só faz sentido
-                      depois que a assembleia encerra (é o documento final,
-                      não um relatório parcial). */}
-                  {/* Mesa (presidente/secretário) que assina a ata — gatilho
-                      OCULTO, aberto pelo item do menu "Relatórios ▾" (junto da
-                      Ata, onde faz sentido na hora de gerar o documento). */}
-                  {assembleia.status === "encerrada" && (
-                    <MesaAssembleiaDialog
-                      assembleiaId={assembleia.id}
-                      condominioId={condominioId}
-                      presidenteInicial={assembleia.mesa_presidente ?? null}
-                      secretarioInicial={assembleia.mesa_secretario ?? null}
-                      triggerRef={mesaRef}
-                      triggerClassName="hidden"
-                    />
-                  )}
-                </>
-              )}
-              {/* POC do redesenho (pedido do Carlos): os relatórios/impressão
-                  da apuração agrupados num único menu suspenso "Relatórios ▾",
-                  no lugar dos botões soltos PDF/Excel/Imprimir. Fica visível pra
-                  todos (Imprimir); PDF/Excel só pra quem pode exportar. Se o
-                  Carlos curtir o padrão, replico nos outros grupos. */}
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="outline" size="sm" className="gap-1.5" />}
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  Relatórios
-                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {/* Apuração (resultados) abre em NOVA ABA, igual ao Telão
-                      (pedido do Carlos 2026-11-13): a tela principal fica na
-                      lista, e a aba da apuração pode ser projetada/compartilhada
-                      à parte. Disponível a todos os perfis (ver resultado não
-                      exige permissão de operação). */}
-                  <DropdownMenuItem
-                    onClick={() => window.open(`/apuracao/${assembleia.id}`, "_blank", "noopener")}
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    Apuração (abrir em nova aba)
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {canExport && (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          const a = document.createElement("a")
-                          a.href = `/api/relatorios/apuracao/${assembleia.id}/pdf`
-                          a.click()
-                        }}
-                      >
-                        <FileText className="h-4 w-4" />
-                        Relatório de apuração (PDF)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          const a = document.createElement("a")
-                          a.href = `/api/relatorios/apuracao/${assembleia.id}/xlsx`
-                          a.click()
-                        }}
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Relatório de apuração (Excel)
-                      </DropdownMenuItem>
-                      {/* "Extrato de participação" (pedido do Carlos): versão
-                          baixável da tabela "Participação (controle interno)", com
-                          data/hora do voto por imóvel e contadores por imóvel —
-                          ótimo pra auditar. Nome do menu alinhado ao título do
-                          próprio relatório ("Extrato de participação", ver
-                          pdf-participacao) — regra do Carlos "menu = relatório". */}
-                      <DropdownMenuItem
-                        onClick={() => {
-                          const a = document.createElement("a")
-                          a.href = `/api/relatorios/participacao/${assembleia.id}/pdf`
-                          a.click()
-                        }}
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                        Extrato de participação (PDF)
-                      </DropdownMenuItem>
-                      {/* "Histórico de e-mail" migrou do antigo "E-mails ▾" pra cá
-                          (dissolvido na 4ª leva): é consulta/auditoria dos disparos,
-                          lugar de relatório. Abre o diálogo pelo gatilho oculto. */}
-                      <DropdownMenuItem onClick={() => abrirPeloTrigger(historicoRef)}>
-                        <History className="h-4 w-4" />
-                        Histórico de e-mail
-                      </DropdownMenuItem>
-                      {/* Mesa + Ata (só encerrada): documentos de fechamento,
-                          dobrados aqui pra tirar mais 2 botões soltos da fileira.
-                          Mesa abre o diálogo pelo gatilho oculto; Ata baixa o PDF. */}
-                      {assembleia.status === "encerrada" && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => abrirPeloTrigger(mesaRef)}>
-                            <Users className="h-4 w-4" />
-                            Mesa (presidente/secretário)
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const a = document.createElement("a")
-                              a.href = `/api/relatorios/apuracao/${assembleia.id}/ata`
-                              a.click()
-                            }}
-                          >
-                            <FileText className="h-4 w-4" />
-                            Ata (PDF)
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </>
-                  )}
-                  <DropdownMenuItem onClick={() => window.print()}>
-                    <Printer className="h-4 w-4" />
-                    Imprimir
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            )}
           </div>
         </div>
 
