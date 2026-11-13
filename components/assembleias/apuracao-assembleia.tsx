@@ -68,10 +68,15 @@ interface Props {
   // Critério do condomínio — define se o resultado ponderado é contado em
   // imóveis ou em fração ideal (ver formatPesoResultado).
   criterioPeso?: CriterioPeso
-  // Histórico de participação — faz parte da visão de RESULTADOS, então é
-  // renderado junto do corpo da apuração (gateado por `verApuracao`). Vem da
-  // página como slot pra não refazer a query aqui.
+  // Histórico de participação — faz parte da visão de RESULTADOS. Vem da página
+  // como slot pra não refazer a query aqui.
   historicoSlot?: ReactNode
+  // Modo só-leitura da ROTA /apuracao (nova aba, pedido do Carlos: "Apuração
+  // segue o mesmo rito do Telão"). Esconde a fileira de ações (Voltar + menus) e
+  // MOSTRA o corpo de resultados (que na tela principal fica oculto, só pro
+  // Imprimir). Assim a mesma montagem serve a barra da tela principal e a aba
+  // só-de-leitura compartilhável.
+  somenteLeitura?: boolean
 }
 
 // Resultado ponderado: "N imóvel(is)" no critério por unidade; percentual da
@@ -138,6 +143,7 @@ export function ApuracaoAssembleia({
   canExport = false,
   criterioPeso = "unidade",
   historicoSlot,
+  somenteLeitura = false,
 }: Props) {
   const {
     total_enviados,
@@ -188,12 +194,6 @@ export function ApuracaoAssembleia({
   // Null quando esta apuração não está dentro da ApuracaoTela (não acontece
   // hoje, mas o item só aparece quando o context existe).
   const compartilharCtx = useModoCompartilhar()
-
-  // Fusão (letra B, validada pelo Carlos): o corpo de RESULTADOS só aparece
-  // quando a visão é a apuração; na visão LISTA ele fica oculto (mas montado).
-  // A troca é feita pelo item do "Relatórios ▾" abaixo. Sem context (não
-  // acontece nesta tela) mostra sempre, por segurança.
-  const verApuracao = compartilharCtx ? compartilharCtx.verApuracao : true
 
   // Corrigir a HORA de encerramento no boletim mesmo com a assembleia encerrada,
   // sem reabrir (pedido do Carlos: o boletim tem que mostrar a hora exata que a
@@ -285,6 +285,7 @@ export function ApuracaoAssembleia({
             >
               {STATUS_LABEL[statusExibido]}
             </span>
+            {!somenteLeitura && (
             <div className="flex flex-wrap items-center gap-2 print:hidden">
               {/* Navegação clara pro operador leigo (pedido do Carlos): volta
                   pra tela de gestão do condomínio (cadastro/presença), onde a
@@ -542,24 +543,18 @@ export function ApuracaoAssembleia({
                   <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {/* Fusão (letra B): a Apuração (resultados) deixou de ser aba
-                      e virou este item, que ALTERNA entre os resultados e a lista
-                      (a tela principal). Disponível a todos os perfis — ver o
-                      resultado não exige permissão de operação. Primeiro item,
-                      porque é a troca de visão mais usada ao vivo. */}
-                  {compartilharCtx && (
-                    <>
-                      <DropdownMenuItem onClick={compartilharCtx.toggleApuracao}>
-                        {verApuracao ? (
-                          <Users className="h-4 w-4" />
-                        ) : (
-                          <BarChart3 className="h-4 w-4" />
-                        )}
-                        {verApuracao ? "Ver lista (participantes)" : "Ver apuração (resultados)"}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
+                  {/* Apuração (resultados) abre em NOVA ABA, igual ao Telão
+                      (pedido do Carlos 2026-11-13): a tela principal fica na
+                      lista, e a aba da apuração pode ser projetada/compartilhada
+                      à parte. Disponível a todos os perfis (ver resultado não
+                      exige permissão de operação). */}
+                  <DropdownMenuItem
+                    onClick={() => window.open(`/apuracao/${assembleia.id}`, "_blank", "noopener")}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Apuração (abrir em nova aba)
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   {canExport && (
                     <>
                       <DropdownMenuItem
@@ -636,6 +631,7 @@ export function ApuracaoAssembleia({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            )}
           </div>
         </div>
 
@@ -699,11 +695,11 @@ export function ApuracaoAssembleia({
         </div>
       </div>
 
-      {/* Corpo de RESULTADOS (fusão, letra B): some na visão LISTA, mas fica
-          MONTADO (`hidden`, não desmonta) pra não reiniciar estado. `print:block`
-          garante que o "Imprimir" (boletim da apuração) saia mesmo estando na
-          lista — a lista, por sua vez, tem `print:hidden` no wrapper da página. */}
-      <div className={cn("space-y-6", !verApuracao && "hidden", "print:block")}>
+      {/* Corpo de RESULTADOS. Na TELA PRINCIPAL (barra) fica oculto (`hidden`),
+          mas MONTADO + `print:block` pra o "Imprimir" sair como boletim mesmo
+          sem trocar de tela. Na ROTA /apuracao (somenteLeitura) aparece normal —
+          é o conteúdo da aba compartilhável. */}
+      <div className={cn("space-y-6", !somenteLeitura && "hidden print:block")}>
       {/* Instrução de onde ficam os controles de abrir/fechar cada pauta
           (pedido do Carlos: "não localizo a opção de bloquear/liberar pauta por
           pauta"). Só no modo ligado + assembleia em andamento + quem pode operar. */}
