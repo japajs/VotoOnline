@@ -92,6 +92,9 @@ function formatDateHora(dateString: string) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    // Fixa o fuso (senão o SSR em UTC ≠ o navegador em Brasília → hidratação #418,
+    // e a hora exibida sairia errada fora do BRT). Horário oficial da assembleia.
+    timeZone: "America/Sao_Paulo",
   }).format(new Date(dateString))
 }
 
@@ -103,6 +106,8 @@ function formatDate(dateString: string | null) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    // Fixa o fuso (ver formatDateHora) — evita o #418 e mostra o horário de Brasília.
+    timeZone: "America/Sao_Paulo",
   }).format(new Date(dateString))
 }
 
