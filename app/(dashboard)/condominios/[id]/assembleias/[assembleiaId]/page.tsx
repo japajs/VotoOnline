@@ -9,6 +9,7 @@ import { getHistoricoParticipacao } from "@/services/relatorios"
 import { getAllProprietarios } from "@/services/proprietarios"
 import { getDadosParticipantes, type DadosParticipantes } from "@/services/participantes"
 import { ApuracaoAssembleia } from "@/components/assembleias/apuracao-assembleia"
+import { BarraAcoesAssembleia } from "@/components/assembleias/barra-acoes-assembleia"
 import { ApuracaoTela } from "@/components/assembleias/apuracao-tela"
 import { HistoricoParticipacao } from "@/components/assembleias/historico-participacao"
 import { ProprietariosList } from "@/components/proprietarios/proprietarios-list"
@@ -121,7 +122,6 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
             assembleia={assembleia}
             condominioId={condominioId}
             apuracao={apuracao}
-            proprietarios={proprietarios}
             canExport={session?.perfil !== "visualizador"}
             criterioPeso={condominio.criterio_peso}
             historicoSlot={<HistoricoParticipacao historico={historicoParticipacao} />}
@@ -155,6 +155,17 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
               titulo: assembleia.titulo,
               status: assembleia.status,
             }}
+            // Barra única (fusão): a barra de ações da assembleia entra na MESMA
+            // toolbar que o Cadastro ▾ / Filtros / busca da lista.
+            barraAcoes={
+              <BarraAcoesAssembleia
+                assembleia={assembleia}
+                condominioId={condominioId}
+                proprietarios={proprietarios}
+                canExport={session?.perfil !== "visualizador"}
+                apuracao={apuracao}
+              />
+            }
           />
         }
       />

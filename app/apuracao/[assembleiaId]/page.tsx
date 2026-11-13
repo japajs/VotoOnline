@@ -65,15 +65,14 @@ export default async function ApuracaoPage({ params }: Props) {
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{assembleia.titulo}</h1>
         </div>
-        {/* proprietarios=[] de propósito: em somenteLeitura a fileira de ações
-            (que usaria a lista pro Disparar/Anular) não é renderada. `canExport`
-            por perfil habilita o controle pauta-por-pauta (toggle + abrir/fechar
-            cada pauta) pro operador; visualizador vê só leitura. */}
+        {/* `canExport` por perfil habilita o controle pauta-por-pauta (toggle +
+            abrir/fechar cada pauta) pro operador; visualizador vê só leitura. A
+            fileira de ações da barra não vive mais aqui (foi pra toolbar da
+            lista) — esta rota mostra só o boletim. */}
         <ApuracaoAssembleia
           assembleia={assembleia}
           condominioId={assembleia.condominio_id}
           apuracao={apuracao}
-          proprietarios={[]}
           canExport={podeOperar}
           criterioPeso={condominio.criterio_peso}
           somenteLeitura

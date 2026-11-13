@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo, useRef, useState, useTransition, useEffect, useCallback } from "react"
+import { memo, useMemo, useRef, useState, useTransition, useEffect, useCallback, type ReactNode } from "react"
 import {
   Users,
   Trash2,
@@ -124,6 +124,12 @@ interface ProprietariosListProps {
   // passa a assembleia EM ANDAMENTO (se houver) — assim a secretária pega o
   // link/QR/Telão sem trocar de tela. Ausente = nenhum desses itens aparece.
   assembleiaAtual?: { id: string; titulo: string; status: AssembleiaStatus }
+  // Barra de AÇÕES da assembleia (fusão / barra única): a tela da apuração passa
+  // aqui o <BarraAcoesAssembleia> (Assembleia ▾ / Presença / Operacionais ▾ /
+  // Relatórios ▾ / Voltar), que então renderiza na MESMA toolbar que o Cadastro ▾
+  // e os Filtros — uma barra só. Ausente na tela de GESTÃO (lá não há assembleia
+  // única em foco).
+  barraAcoes?: ReactNode
 }
 
 type FiltroVoto =
@@ -187,6 +193,7 @@ export function ProprietariosList({
   podeEditar = true,
   criterioPeso = "unidade",
   assembleiaAtual,
+  barraAcoes,
 }: ProprietariosListProps) {
   const [busca, setBusca] = useState("")
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
@@ -875,6 +882,10 @@ export function ProprietariosList({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* Barra de ações da assembleia (Assembleia/Presença/Operacionais/
+            Relatórios/Voltar) — injetada pela tela da apuração, na MESMA linha
+            que o Cadastro ▾ e a busca (barra única). */}
+        {barraAcoes}
       </div>
 
       {/* Aviso discreto quando o modo compartilhar está ligado — fica visível
