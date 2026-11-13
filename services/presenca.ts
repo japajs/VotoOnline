@@ -28,10 +28,18 @@ export type RegistrarPresencaResult =
 // resto do sistema; quem chama ainda aplica rate limit por IP).
 export async function registrarPresenca(
   assembleiaId: string,
-  input: { numero: string; bloco: string | null; cpf: string }
+  input: { numero: string; bloco: string | null; cpf: string; nome?: string | null }
 ): Promise<RegistrarPresencaResult> {
   const db = createServerClient()
   const erroGenerico = "Unidade ou CPF não confere. Confira os dados e tente de novo."
+
+  // Nome de quem está participando pelo imóvel (opcional — ideia dos síndicos do
+  // Rio Quente, via Carlos): capturado na PRÓPRIA entrada (QR/link) e gravado em
+  // `participante_nome` ("quem participou"), pra a mesa não ter que digitar.
+  // OPCIONAL de propósito (decisão do Cleiton): nunca trava a entrada/voto — a
+  // identidade segue por unidade + CPF; o nome é só o rótulo de quem veio. Cap
+  // de tamanho por higiene. Em branco nunca APAGA um nome já registrado.
+  const participanteNome = input.nome?.trim().slice(0, 120) || null
 
   const { data: assembleia, error: aErr } = await db
     .from("assembleias")
@@ -123,7 +131,12 @@ export async function registrarPresenca(
     const tent = existente
       ? await db
           .from("assembleia_sends")
-          .update({ tentou_entrar_em: agora })
+          .update({
+            tentou_entrar_em: agora,
+            // Guarda o nome informado já na 1ª tentativa (o filtro write-once
+            // abaixo casa só nela). Em branco não entra no patch → não apaga.
+            ...(participanteNome ? { participante_nome: participanteNome } : {}),
+          })
           .eq("id", existente.id)
           .is("tentou_entrar_em", null)
       : await db.from("assembleia_sends").insert({
@@ -132,6 +145,7 @@ export async function registrarPresenca(
           token: generateSurveyToken(),
           status: "pending",
           tentou_entrar_em: agora,
+          participante_nome: participanteNome,
         })
     // Falha aqui NÃO quebra a entrada (a pessoa só vê o aviso pra assinar a
     // lista), mas logamos pra rastrear em produção — ex.: migração não rodada,
@@ -154,11 +168,14 @@ export async function registrarPresenca(
   const agora = new Date().toISOString()
 
   if (existente) {
-    if (!existente.presente_em) {
-      const { error } = await db
-        .from("assembleia_sends")
-        .update({ presente_em: agora })
-        .eq("id", existente.id)
+    // presente_em só na 1ª entrada (nunca sobrescreve a ordem de chegada);
+    // participante_nome sempre que veio um nome (o último informado vence; em
+    // branco não entra no patch → não apaga um nome já registrado).
+    const patch: { presente_em?: string; participante_nome?: string } = {}
+    if (!existente.presente_em) patch.presente_em = agora
+    if (participanteNome) patch.participante_nome = participanteNome
+    if (Object.keys(patch).length > 0) {
+      const { error } = await db.from("assembleia_sends").update(patch).eq("id", existente.id)
       if (error) return { ok: false, error: error.message }
     }
     return { ok: true, token: existente.token }
@@ -171,6 +188,7 @@ export async function registrarPresenca(
     token,
     status: "pending",
     presente_em: agora,
+    participante_nome: participanteNome,
   })
   if (error) return { ok: false, error: error.message }
   return { ok: true, token }
