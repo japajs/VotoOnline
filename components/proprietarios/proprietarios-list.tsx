@@ -196,7 +196,7 @@ export function ProprietariosList({
   // Celular pra projetar a tela sem expor dados pessoais (pedido do Carlos — os
   // presentes online conferem se estão marcados como presentes sem ver os dados
   // dos outros). FONTE do estado: na APURAÇÃO vem do context (compartilhado com
-  // o toggle do menu "Operacionais ▾" da aba Apuração — ver
+  // o toggle do menu "Operacionais ▾" da barra da apuração — ver
   // ModoCompartilharContext); na tela de GESTÃO não há provider → cai no
   // useState local. É só visibilidade de coluna; nada toca a lógica de voto.
   const compartilharCtx = useModoCompartilhar()

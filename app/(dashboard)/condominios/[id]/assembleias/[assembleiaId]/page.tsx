@@ -76,8 +76,8 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
   }))
 
   // Participação (ordenada por imóvel), a lista de proprietários (botão
-  // "Disparar" + aba "Participantes" do Modo exibir) e os dados da chamada
-  // (presença/votos/procurações) pra essa aba. Em paralelo.
+  // "Disparar" + a lista de Participantes da tela da assembleia) e os dados da
+  // chamada (presença/votos/procurações) pra essa lista. Em paralelo.
   const emAndamento = isEmAndamento(assembleia.status)
   const [historicoParticipacao, proprietarios, dados, proprietariosQueJaVotaram] =
     await Promise.all([

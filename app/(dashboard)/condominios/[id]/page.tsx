@@ -54,7 +54,7 @@ export default async function CondominioDetailPage({ params }: Props) {
   // Dados da chamada (presença, quem votou, voto total vs. parcial,
   // procurações, e-mail com problema) da assembleia EM ANDAMENTO agora — pra
   // marcar/filtrar na lista de proprietários sem precisar ir à apuração. É a
-  // MESMA fonte que a aba "Participantes" do Modo exibir consome
+  // MESMA fonte que a lista de Participantes da tela da assembleia consome
   // (services/participantes.ts): uma conta só, pra as duas telas nunca
   // divergirem pro mesmo imóvel. Sem assembleia em andamento, vem tudo vazio.
   const assembleiaAberta = assembleias.find((a) => isEmAndamento(a.status))

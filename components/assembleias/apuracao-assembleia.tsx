@@ -178,10 +178,10 @@ export function ApuracaoAssembleia({
   const votoManualRef = useRef<HTMLButtonElement>(null)
   const dispararRef = useRef<HTMLButtonElement>(null)
   const anularRef = useRef<HTMLButtonElement>(null)
-  // "Dados a compartilhar" no "Operacionais ▾": o toggle (esconder PII) mora no
-  // ApuracaoModoExibir e é compartilhado com a lista dos Participantes pelo
-  // context. Null quando esta apuração não está dentro do Modo exibir (não
-  // acontece hoje, mas o item só aparece quando o context existe).
+  // "Dados a compartilhar" no "Operacionais ▾": o toggle (esconder PII) mora na
+  // ApuracaoTela e é compartilhado com a lista dos Participantes pelo context.
+  // Null quando esta apuração não está dentro da ApuracaoTela (não acontece
+  // hoje, mas o item só aparece quando o context existe).
   const compartilharCtx = useModoCompartilhar()
 
   // Fusão (letra B, validada pelo Carlos): o corpo de RESULTADOS só aparece
