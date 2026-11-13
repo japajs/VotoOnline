@@ -199,16 +199,25 @@ export default function AjudaPage() {
           A tela da assembleia é <strong className="text-foreground">uma só</strong>: no centro fica
           a <strong className="text-foreground">lista de proprietários</strong> (a chamada, onde você
           marca presença e acompanha quem votou) e, no topo, as ações agrupadas em menus —{" "}
-          <Chip>Cadastro</Chip>, <Chip>Filtros</Chip>, <Chip>Assembleia</Chip>,{" "}
+          <Chip>Assembleia</Chip>, <Chip>Cadastro</Chip>, <Chip>Filtros</Chip>,{" "}
           <Chip>Operacionais</Chip> e <Chip>Relatórios</Chip>. Os atalhos do dia a dia (editar ✏️,
           excluir 🗑️, voto manual) continuam à mão nas linhas; o menu serve para{" "}
           <strong className="text-foreground">achar</strong> cada função sem decorar onde fica.
         </p>
         <p>
+          <strong className="text-foreground">Ordenar a lista:</strong> clique no título{" "}
+          <Chip>Nome</Chip> (no alto das colunas, em telas grandes) para alternar entre{" "}
+          <strong className="text-foreground">ordem alfabética</strong> e{" "}
+          <strong className="text-foreground">ordem de imóvel</strong> — clicando de novo, volta. No
+          celular, use <Chip>Ordenar</Chip> no menu <Chip>Cadastro</Chip>.
+        </p>
+        <p>
           Para ver o <strong className="text-foreground">resultado</strong> (apuração por pauta,
-          gráficos, quórum), abra <Chip>Relatórios</Chip> → <Chip>Ver apuração</Chip>; para voltar à
-          chamada, <Chip>Ver lista</Chip>. Assim você alterna entre operar a assembleia e conferir o
-          resultado sem trocar de tela.
+          gráficos, quórum), abra <Chip>Relatórios</Chip> →{" "}
+          <Chip>Apuração (abrir em nova aba)</Chip>: ela abre numa{" "}
+          <strong className="text-foreground">aba nova</strong>, do mesmo jeito que o telão. Assim a
+          tela da chamada <strong className="text-foreground">continua intacta</strong> — você
+          acompanha a votação numa aba e confere o resultado na outra, sem perder o lugar.
         </p>
       </Secao>
 
@@ -280,7 +289,8 @@ export default function AjudaPage() {
           <li>
             <strong className="text-foreground">Marcar presença:</strong> direto na lista de
             proprietários (a bolinha ao lado do nome, com a assembleia aberta) ou pela{" "}
-            <Chip>Chamada</Chip> dentro da assembleia. O <span className="text-emerald-600 dark:text-emerald-400">check verde</span>{" "}
+            <Chip>Chamada / Presença</Chip>, dentro do menu <Chip>Assembleia</Chip>. O{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">check verde</span>{" "}
             indica quem está presente — e continua à vista mesmo quando você filtra por
             &quot;Votou geral&quot; ou &quot;Não votaram&quot;. Duas pessoas podem marcar presença ao
             mesmo tempo, em celulares diferentes: a tela de uma atualiza o que a outra marcou em
@@ -383,7 +393,8 @@ export default function AjudaPage() {
           </li>
           <li>
             O botão <Chip>Limpar</Chip> zera a busca e o filtro de uma vez e volta a lista para os
-            100% dos imóveis (só aparece quando há algo a limpar).
+            100% dos imóveis. Fica <strong className="text-foreground">sempre à vista</strong> ao
+            lado da busca (apagado quando não há nada a limpar).
           </li>
           <li>
             No menu <Chip>Operacionais</Chip>, <Chip>Lembrar quem não votou</Chip> reenvia o e-mail só
