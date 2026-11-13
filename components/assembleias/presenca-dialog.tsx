@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useCallback, useEffect, useRef } from "react"
+import { useState, useTransition, useCallback, useEffect, useRef, type Ref } from "react"
 import { Users, Loader2, BellRing, CheckCircle2, Search, Circle, Link2, DoorOpen } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -45,12 +45,23 @@ interface Props {
   // Só mostra o botão de lembrete quando a votação está aberta (o envio em si
   // também é barrado no servidor fora disso — ver notificarNaoVotaramAction).
   podeLembrar: boolean
+  /** Deixa o gatilho ser disparado de fora (ex.: item "Chamada / Presença" do
+   * menu "Assembleia ▾"), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do botão-gatilho — "hidden" quando aberto só pelo menu. */
+  triggerClassName?: string
 }
 
 // Chamada / Lista de presença (presença controlada pela mesa). A secretária
 // marca quem está presente conforme assina a lista; com "exigir presença"
 // ligado, só vota quem estiver marcado aqui.
-export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Props) {
+export function PresencaDialog({
+  assembleiaId,
+  condominioId,
+  podeLembrar,
+  triggerRef,
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [exigePresenca, setExigePresenca] = useState(false)
@@ -193,7 +204,7 @@ export function PresencaDialog({ assembleiaId, condominioId, podeLembrar }: Prop
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+      <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} variant="outline" size="sm" />}>
         <Users className="h-3.5 w-3.5" />
         Chamada / Presença
       </DialogTrigger>

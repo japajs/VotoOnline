@@ -26,6 +26,7 @@ import {
   DoorOpen,
   QrCode,
   Tv,
+  ArrowUpDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -124,11 +125,16 @@ interface ProprietariosListProps {
   // passa a assembleia EM ANDAMENTO (se houver) — assim a secretária pega o
   // link/QR/Telão sem trocar de tela. Ausente = nenhum desses itens aparece.
   assembleiaAtual?: { id: string; titulo: string; status: AssembleiaStatus }
-  // Barra de AÇÕES da assembleia (fusão / barra única): a tela da apuração passa
-  // aqui o <BarraAcoesAssembleia> (Assembleia ▾ / Presença / Operacionais ▾ /
-  // Relatórios ▾ / Voltar), que então renderiza na MESMA toolbar que o Cadastro ▾
-  // e os Filtros — uma barra só. Ausente na tela de GESTÃO (lá não há assembleia
-  // única em foco).
+  // Barra de AÇÕES da assembleia (fusão / barra única, layout "sem poluição
+  // visual" do Carlos): a tela da apuração injeta os menus da assembleia na
+  // MESMA toolbar que a busca da lista — uma barra só. A ordem dos 5 menus é
+  // Assembleia · Cadastro · Filtros · Operacionais · Relatórios; por isso a
+  // barra chega em DUAS partes:
+  //   • menuAssembleia → o "Assembleia ▾" (vem ANTES do Cadastro ▾).
+  //   • barraAcoes     → "Operacionais ▾" + "Relatórios ▾" (vêm DEPOIS dos
+  //     Filtros ▾).
+  // Ausentes na tela de GESTÃO (lá não há assembleia única em foco).
+  menuAssembleia?: ReactNode
   barraAcoes?: ReactNode
 }
 
@@ -193,6 +199,7 @@ export function ProprietariosList({
   podeEditar = true,
   criterioPeso = "unidade",
   assembleiaAtual,
+  menuAssembleia,
   barraAcoes,
 }: ProprietariosListProps) {
   const [busca, setBusca] = useState("")
@@ -746,65 +753,39 @@ export function ProprietariosList({
       {/* Painel de ferramentas — fundo e borda diferentes da listagem abaixo,
           para deixar claro à primeira vista que esta área serve para
           localizar/organizar registros, não faz parte da tabela em si. */}
-      <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/80 sm:pr-1">
-          <Search className="h-3.5 w-3.5" />
-          Buscar
-        </div>
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar por nome, e-mail, celular, unidade ou bloco…"
-            className="border-border/60 bg-background pl-10"
-            aria-label="Buscar proprietário"
-          />
-        </div>
-        {/* Limpar busca + filtros de uma vez (pedido do Carlos) — só aparece
-            quando há algo a limpar; volta a lista a 100% dos imóveis. */}
-        {temFiltroAtivo && (
-          <button
-            type="button"
-            onClick={limparBuscaEFiltros}
-            title="Limpar a busca e o filtro — volta a mostrar todos os imóveis"
-            className="flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/40"
-          >
-            <Eraser className="h-4 w-4" />
-            <span className="hidden sm:inline">Limpar</span>
-          </button>
-        )}
-        {/* "Cadastro ▾" (leva 2 do redesenho, pedido do Carlos — era "Opções"):
-            agrupa a gestão do cadastro — Incluir proprietário + Ordenar, e, POR
-            ORA, Modo compartilhar e Exportar (migram pra Operacionais/Relatórios
-            nas próximas levas). Busca, Limpar, Filtros e o "Novo proprietário" do
-            cabeçalho (atalho) seguem à mão. */}
-        {podeEditar && (
-          <CriarProprietarioDialog
-            condominioId={condominioId}
-            triggerRef={criarTriggerRef}
-            triggerClassName="hidden"
-          />
-        )}
-        {/* QR de entrada montado oculto — aberto pelo item do Cadastro ▾. */}
-        {qrEntradaOn && assembleiaAtual && (
-          <QrEntradaDialog
-            assembleiaId={assembleiaAtual.id}
-            assembleiaTitulo={assembleiaAtual.titulo}
-            condominioNome={condominioNome}
-            triggerRef={qrEntradaRef}
-            triggerClassName="hidden"
-          />
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button variant="outline" className="h-12 shrink-0 gap-1.5 px-3" />}
-          >
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Cadastro</span>
-            <ChevronDown className="h-4 w-4 opacity-60" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3">
+        {/* Linha 1 — os 5 menus na ordem do layout "sem poluição visual" do
+            Carlos: Assembleia · Cadastro · Filtros · Operacionais · Relatórios. */}
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          {/* 1) Assembleia ▾ (injetado pela tela da apuração). */}
+          {menuAssembleia}
+          {/* Diálogos do Cadastro ▾ montados OCULTOS (Incluir proprietário / QR
+              de entrada), abertos pelos itens do menu. */}
+          {podeEditar && (
+            <CriarProprietarioDialog
+              condominioId={condominioId}
+              triggerRef={criarTriggerRef}
+              triggerClassName="hidden"
+            />
+          )}
+          {qrEntradaOn && assembleiaAtual && (
+            <QrEntradaDialog
+              assembleiaId={assembleiaAtual.id}
+              assembleiaTitulo={assembleiaAtual.titulo}
+              condominioNome={condominioNome}
+              triggerRef={qrEntradaRef}
+              triggerClassName="hidden"
+            />
+          )}
+          {/* 2) Cadastro ▾ — gestão do cadastro: Incluir proprietário, Ordenar,
+              Link/QR/Telão de entrada, Dados a compartilhar e Exportar/Lista. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
+              <Users className="h-3.5 w-3.5" />
+              Cadastro
+              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
             {podeEditar && (
               <DropdownMenuItem onClick={() => abrirPeloTrigger(criarTriggerRef)}>
                 <UserPlus className="h-4 w-4" />
@@ -881,63 +862,18 @@ export function ProprietariosList({
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
-        </DropdownMenu>
-        {/* Barra de ações da assembleia (Assembleia/Presença/Operacionais/
-            Relatórios/Voltar) — injetada pela tela da apuração, na MESMA linha
-            que o Cadastro ▾ e a busca (barra única). */}
-        {barraAcoes}
-      </div>
-
-      {/* Aviso discreto quando o modo compartilhar está ligado — fica visível
-          também pra quem está vendo a tela projetada, explicando a ocultação. */}
-      {modoCompartilhar && (
-        <p className="flex items-center gap-1.5 px-1 text-xs text-amber-700 dark:text-amber-400">
-          <EyeOff className="h-3.5 w-3.5 shrink-0" />
-          Modo compartilhar ligado — E-mail, CPF e Celular ocultos para proteger os dados dos
-          condôminos (LGPD).
-        </p>
-      )}
-
-      {/* Painel de votação da assembleia aberta (pedido do Carlos): acompanhar e
-          cobrar quem falta sem ir à apuração. Traz a explicação, o "Registrar
-          voto manual" à mão e o menu "Filtros ▾" (leva 1 do redesenho — antes
-          era uma fileira de chips de filtro). */}
-      {temAssembleiaAberta && (
-        <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
-          {/* Cabeçalho do painel de votação: explicação à esquerda e, à direita,
-              o "Registrar voto manual" DIRETO na lista (pedido do Carlos: lançar
-              o voto sem trocar de tela — a mesa fica nesta tela o tempo todo). Só
-              pra quem pode operar (podeEditar) e com as pautas em mãos. */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              Votação de{" "}
-              <span className="font-medium text-foreground">{assembleiaAbertaTitulo}</span> — peso por{" "}
-              <span className="font-medium text-foreground">imóvel</span>. Dos presentes na assembleia:
-              quem votou todas as pautas (geral), quem votou parcialmente, e quem ainda não votou.
-            </p>
-            {podeEditar && assembleiaAbertaId && assembleiaAbertaTitulo && pautasDaAberta && (
-              <div className="shrink-0">
-                <RegistrarVotoManualDialog
-                  assembleiaId={assembleiaAbertaId}
-                  assembleiaTitulo={assembleiaAbertaTitulo}
-                  condominioId={condominioId}
-                  pautas={pautasDaAberta}
-                />
-              </div>
-            )}
-          </div>
-          {/* Menu "Filtros ▾" (leva 1 do redesenho — "Controles (filtros)"):
-              substitui a fileira de chips. O botão mostra o filtro ativo +
-              contagem; cada item traz o total ao lado, com um ✓ no ativo. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Filtrar:</span>
+          </DropdownMenu>
+          {/* 3) Filtros ▾ — só com assembleia em andamento (filtra presença /
+              voto). Vinha do "painel de votação"; agora é um dos 5 menus da
+              barra. O botão destaca e mostra o filtro ativo + contagem. */}
+          {temAssembleiaAberta && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`h-8 gap-1.5 ${
+                    className={`gap-1.5 ${
                       filtroVoto !== "todos" ? "border-primary/40 bg-primary/10 text-primary" : ""
                     }`}
                   />
@@ -957,8 +893,52 @@ export function ProprietariosList({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          )}
+          {/* 4+5) Operacionais ▾ + Relatórios ▾ (injetados pela tela da apuração). */}
+          {barraAcoes}
         </div>
+
+        {/* Linha 2 — busca + Limpar. A busca fica numa linha própria (layout do
+            Carlos: menus em cima, busca embaixo). */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/80 sm:pr-1">
+            <Search className="h-3.5 w-3.5" />
+            Buscar
+          </div>
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nome, e-mail, celular, unidade ou bloco…"
+              className="border-border/60 bg-background pl-10"
+              aria-label="Buscar proprietário"
+            />
+          </div>
+          {/* Limpar busca + filtros (pedido do Carlos): SEMPRE visível na linha da
+              busca, pra achar de primeira; desabilitado quando não há o que
+              limpar. Zera busca + filtro e volta a 100% dos imóveis. */}
+          <button
+            type="button"
+            onClick={limparBuscaEFiltros}
+            disabled={!temFiltroAtivo}
+            title="Limpar a busca e o filtro — volta a mostrar todos os imóveis"
+            className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-background"
+          >
+            <Eraser className="h-4 w-4" />
+            Limpar
+          </button>
+        </div>
+      </div>
+
+      {/* Aviso discreto quando o modo compartilhar está ligado — fica visível
+          também pra quem está vendo a tela projetada, explicando a ocultação. */}
+      {modoCompartilhar && (
+        <p className="flex items-center gap-1.5 px-1 text-xs text-amber-700 dark:text-amber-400">
+          <EyeOff className="h-3.5 w-3.5 shrink-0" />
+          Modo compartilhar ligado — E-mail, CPF e Celular ocultos para proteger os dados dos
+          condôminos (LGPD).
+        </p>
       )}
 
       {proprietariosExibidos.length === 0 ? (
@@ -1017,7 +997,25 @@ export function ProprietariosList({
           <div
             className={`hidden border-b border-border/60 bg-muted/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 lg:grid lg:gap-3 ${gridCols}`}
           >
-            <span>Nome</span>
+            {/* Atalho de ordenação (pedido do Carlos): clicar no "Nome" alterna
+                entre ordem por NOME (A–Z) e por IMÓVEL, sem abrir o menu. O
+                mesmo estado do "Ordenar" do Cadastro ▾. Só no cabeçalho lg+. */}
+            <button
+              type="button"
+              onClick={() => setOrdenacao((o) => (o === "nome" ? "unidade" : "nome"))}
+              title={
+                ordenacao === "nome"
+                  ? "Ordenado por nome (A–Z) — clique para ordenar por imóvel"
+                  : "Ordenado por imóvel — clique para ordenar por nome"
+              }
+              className="-my-1 -ml-1 flex w-fit items-center gap-1 rounded px-1 py-1 text-left uppercase tracking-wide transition-colors hover:bg-accent/40 hover:text-foreground"
+            >
+              Nome
+              <ArrowUpDown className="h-3 w-3 opacity-60" />
+              <span className="font-normal normal-case tracking-normal text-muted-foreground/70">
+                {ordenacao === "nome" ? "A–Z" : "imóvel"}
+              </span>
+            </button>
             <span>E-mail</span>
             <span>Celular</span>
             <span>Votos</span>

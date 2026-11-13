@@ -155,10 +155,24 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
               titulo: assembleia.titulo,
               status: assembleia.status,
             }}
-            // Barra única (fusão): a barra de ações da assembleia entra na MESMA
-            // toolbar que o Cadastro ▾ / Filtros / busca da lista.
+            // Barra única (fusão, layout "sem poluição visual" do Carlos): os 5
+            // menus ficam na MESMA toolbar que a busca da lista, nesta ordem —
+            // Assembleia · Cadastro · Filtros · Operacionais · Relatórios. A
+            // barra de ações é dividida em duas seções pra o Cadastro ▾ e os
+            // Filtros ▾ (da lista) caberem no meio, na posição certa.
+            menuAssembleia={
+              <BarraAcoesAssembleia
+                secao="assembleia"
+                assembleia={assembleia}
+                condominioId={condominioId}
+                proprietarios={proprietarios}
+                canExport={session?.perfil !== "visualizador"}
+                apuracao={apuracao}
+              />
+            }
             barraAcoes={
               <BarraAcoesAssembleia
+                secao="operacoes"
                 assembleia={assembleia}
                 condominioId={condominioId}
                 proprietarios={proprietarios}

@@ -1,32 +1,27 @@
 "use client"
 
 import { useRef, useTransition } from "react"
-import Link from "next/link"
 import {
-  ArrowLeft,
   Settings2,
   ChevronDown,
   Pencil,
   Plus,
   FileSignature,
+  Users,
   Zap,
   UserPlus,
   Undo2,
   Send,
   BellRing,
-  Eye,
-  EyeOff,
   FileText,
   BarChart3,
   FileSpreadsheet,
   ClipboardList,
   History,
-  Users,
   Printer,
 } from "lucide-react"
 import { toast } from "sonner"
-import { Button, buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { EditarAssembleiaDialog } from "@/components/assembleias/editar-assembleia-dialog"
 import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
@@ -36,7 +31,6 @@ import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disp
 import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
 import { AnularVotoDialog } from "@/components/assembleias/anular-voto-dialog"
 import { PresencaDialog } from "@/components/assembleias/presenca-dialog"
-import { useModoCompartilhar } from "@/components/assembleias/modo-compartilhar-context"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -45,17 +39,19 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
-import { ROUTES } from "@/lib/constants"
 import type { Assembleia, AssembleiaApuracao, Proprietario } from "@/types"
 
-// Barra de AÇÕES da assembleia (fusão / barra única, pedido do Carlos): extraída
-// da ApuracaoAssembleia pra ser injetada na toolbar da ProprietariosList — assim
-// os menus Assembleia ▾ / Presença / Operacionais ▾ / Relatórios ▾ ficam na MESMA
-// barra que Cadastro ▾ / Filtros ▾ da lista (uma barra só, não duas áreas).
+// Barra de AÇÕES da assembleia (fusão / barra única, pedido do Carlos). Os menus
+// vivem na MESMA toolbar que o Cadastro ▾ / Filtros ▾ da lista — uma barra só.
 //
-// Os diálogos ficam montados OCULTOS (triggerClassName="hidden") e são abertos
-// pelos itens do menu via `abrirPeloTrigger`. Estado próprio (refs + lembrete);
-// o "Dados a compartilhar" vem do context (compartilhado com a lista).
+// Pra a ordem dos 5 menus bater com o layout "sem poluição visual" do Carlos
+// (Assembleia · Cadastro · Filtros · Operacionais · Relatórios), a barra é
+// quebrada em DUAS seções, montadas em pontos diferentes da toolbar da lista:
+//   • "assembleia" → o menu "Assembleia ▾" (com a Chamada / Presença dentro),
+//     renderizado ANTES do Cadastro ▾.
+//   • "operacoes"  → "Operacionais ▾" + "Relatórios ▾", DEPOIS dos Filtros ▾.
+// Cada seção monta só os seus diálogos (ocultos, triggerClassName="hidden") e os
+// abre pelos itens do menu via `abrirPeloTrigger`.
 
 // Abre um diálogo a partir de um item de menu: clica o botão-gatilho oculto do
 // diálogo. setTimeout(…,0) deixa o menu fechar/devolver o foco antes.
@@ -64,6 +60,8 @@ function abrirPeloTrigger(ref: { current: HTMLButtonElement | null }) {
 }
 
 interface Props {
+  // Qual metade da barra renderizar (ver comentário acima).
+  secao: "assembleia" | "operacoes"
   assembleia: Assembleia
   condominioId: string
   // Lista de proprietários — usada pelo "Disparar" / "Anular voto" dos menus.
@@ -76,6 +74,7 @@ interface Props {
 }
 
 export function BarraAcoesAssembleia({
+  secao,
   assembleia,
   condominioId,
   proprietarios,
@@ -96,14 +95,12 @@ export function BarraAcoesAssembleia({
   const editarAssembleiaRef = useRef<HTMLButtonElement>(null)
   const adicionarPautaRef = useRef<HTMLButtonElement>(null)
   const procuracoesRef = useRef<HTMLButtonElement>(null)
+  const presencaRef = useRef<HTMLButtonElement>(null)
   const historicoRef = useRef<HTMLButtonElement>(null)
   const mesaRef = useRef<HTMLButtonElement>(null)
   const votoManualRef = useRef<HTMLButtonElement>(null)
   const dispararRef = useRef<HTMLButtonElement>(null)
   const anularRef = useRef<HTMLButtonElement>(null)
-
-  // "Dados a compartilhar" — estado compartilhado com a lista (context).
-  const compartilharCtx = useModoCompartilhar()
 
   // Lembrete manual pra quem ainda não votou. Confirmação antes (e-mail de
   // verdade indo pra pessoas de verdade, não só dado).
@@ -124,88 +121,94 @@ export function BarraAcoesAssembleia({
     })
   }
 
-  return (
-    <div className="flex flex-wrap items-center gap-2 print:hidden">
-      {/* Navegação clara pro operador leigo (pedido do Carlos): volta pra tela
-          de gestão do condomínio (cadastro/presença). Primeiro item, destacado. */}
-      <Link
-        href={`${ROUTES.condominios}/${condominioId}`}
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "gap-1.5 border-primary/40 font-medium text-primary hover:bg-primary/5"
-        )}
-        title="Voltar à tela de gestão do condomínio (proprietários e presença)"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Voltar à gestão
-      </Link>
-      {/* Grupo "Assembleia ▾": Editar assembleia + Incluir pauta + Procurações,
-          com gatilho OCULTO abertos pelos itens do menu. */}
-      {canExport && (
-        <>
-          <EditarAssembleiaDialog
-            assembleia={assembleia}
+  // ===== Seção "Assembleia ▾" (Editar / Incluir pauta / Procurações / Chamada
+  // / Presença). Só pra quem opera; o visualizador não vê nenhuma dessas. =====
+  if (secao === "assembleia") {
+    if (!canExport) return null
+    return (
+      <>
+        {/* Diálogos montados OCULTOS, abertos pelos itens do menu. */}
+        <EditarAssembleiaDialog
+          assembleia={assembleia}
+          condominioId={condominioId}
+          temVotos={temVotos}
+          triggerRef={editarAssembleiaRef}
+          triggerClassName="hidden"
+        />
+        {assembleia.status === "aberta" && (
+          <AdicionarPautaDialog
+            assembleiaId={assembleia.id}
             condominioId={condominioId}
-            temVotos={temVotos}
-            triggerRef={editarAssembleiaRef}
+            triggerRef={adicionarPautaRef}
             triggerClassName="hidden"
           />
-          {assembleia.status === "aberta" && (
-            <AdicionarPautaDialog
-              assembleiaId={assembleia.id}
-              condominioId={condominioId}
-              triggerRef={adicionarPautaRef}
-              triggerClassName="hidden"
-            />
-          )}
-          {assembleia.status === "aberta" && (
-            <ProcuracoesDialog
-              assembleiaId={assembleia.id}
-              condominioId={condominioId}
-              triggerRef={procuracoesRef}
-              triggerClassName="hidden"
-            />
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
-              <Settings2 className="h-3.5 w-3.5" />
-              Assembleia
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => abrirPeloTrigger(editarAssembleiaRef)}>
-                <Pencil className="h-4 w-4" />
-                Editar assembleia
+        )}
+        {assembleia.status === "aberta" && (
+          <ProcuracoesDialog
+            assembleiaId={assembleia.id}
+            condominioId={condominioId}
+            triggerRef={procuracoesRef}
+            triggerClassName="hidden"
+          />
+        )}
+        {/* Chamada / Presença — agora DENTRO do menu Assembleia ▾ (pedido do
+            Carlos: um botão a menos solto na barra). */}
+        {assembleia.status !== "rascunho" && (
+          <PresencaDialog
+            assembleiaId={assembleia.id}
+            condominioId={condominioId}
+            podeLembrar={assembleia.status === "aberta"}
+            triggerRef={presencaRef}
+            triggerClassName="hidden"
+          />
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
+            <Settings2 className="h-3.5 w-3.5" />
+            Assembleia
+            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => abrirPeloTrigger(editarAssembleiaRef)}>
+              <Pencil className="h-4 w-4" />
+              Editar assembleia
+            </DropdownMenuItem>
+            {assembleia.status === "aberta" && (
+              <DropdownMenuItem onClick={() => abrirPeloTrigger(adicionarPautaRef)}>
+                <Plus className="h-4 w-4" />
+                Incluir pauta
               </DropdownMenuItem>
-              {assembleia.status === "aberta" && (
-                <DropdownMenuItem onClick={() => abrirPeloTrigger(adicionarPautaRef)}>
-                  <Plus className="h-4 w-4" />
-                  Incluir pauta
+            )}
+            {assembleia.status === "aberta" && (
+              <DropdownMenuItem onClick={() => abrirPeloTrigger(procuracoesRef)}>
+                <FileSignature className="h-4 w-4" />
+                Procurações
+              </DropdownMenuItem>
+            )}
+            {assembleia.status !== "rascunho" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => abrirPeloTrigger(presencaRef)}>
+                  <Users className="h-4 w-4" />
+                  Chamada / Presença
                 </DropdownMenuItem>
-              )}
-              {assembleia.status === "aberta" && (
-                <DropdownMenuItem onClick={() => abrirPeloTrigger(procuracoesRef)}>
-                  <FileSignature className="h-4 w-4" />
-                  Procurações
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
-      )}
-      {/* Presença (Chamada) — ação quente ao vivo, segue à mão. */}
-      {canExport && assembleia.status !== "rascunho" && (
-        <PresencaDialog
-          assembleiaId={assembleia.id}
-          condominioId={condominioId}
-          podeLembrar={assembleia.status === "aberta"}
-        />
-      )}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </>
+    )
+  }
+
+  // ===== Seção "Operacionais ▾" + "Relatórios ▾". Operacionais é só pra quem
+  // opera; Relatórios tem itens pra todos (Apuração em nova aba + Imprimir). =====
+  return (
+    <>
       {canExport && (
         <>
           {/* Grupo "Operacionais ▾": Registrar voto manual + Anular voto +
-              Disparar e-mails + Lembrar quem não votou + Dados a compartilhar.
-              Diálogos montados OCULTOS, abertos pelos itens. */}
+              Disparar e-mails + Lembrar quem não votou. Diálogos montados
+              OCULTOS, abertos pelos itens. */}
           {assembleia.status === "aberta" && (
             <RegistrarVotoManualDialog
               assembleiaId={assembleia.id}
@@ -239,6 +242,16 @@ export function BarraAcoesAssembleia({
             triggerRef={historicoRef}
             triggerClassName="hidden"
           />
+          {assembleia.status === "encerrada" && (
+            <MesaAssembleiaDialog
+              assembleiaId={assembleia.id}
+              condominioId={condominioId}
+              presidenteInicial={assembleia.mesa_presidente ?? null}
+              secretarioInicial={assembleia.mesa_secretario ?? null}
+              triggerRef={mesaRef}
+              triggerClassName="hidden"
+            />
+          )}
           {assembleia.status !== "encerrada" && (
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
@@ -269,29 +282,8 @@ export function BarraAcoesAssembleia({
                     Lembrar quem não votou ({pendentes})
                   </DropdownMenuItem>
                 )}
-                {/* "Dados a compartilhar": liga/desliga o modo que esconde PII da
-                    lista pra projetar. Estado compartilhado com a lista (context). */}
-                {compartilharCtx && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={compartilharCtx.toggle}>
-                      {compartilharCtx.value ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      {compartilharCtx.value ? "Mostrar dados" : "Dados a compartilhar"}
-                    </DropdownMenuItem>
-                  </>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-          {assembleia.status === "encerrada" && (
-            <MesaAssembleiaDialog
-              assembleiaId={assembleia.id}
-              condominioId={condominioId}
-              presidenteInicial={assembleia.mesa_presidente ?? null}
-              secretarioInicial={assembleia.mesa_secretario ?? null}
-              triggerRef={mesaRef}
-              triggerClassName="hidden"
-            />
           )}
         </>
       )}
@@ -377,6 +369,6 @@ export function BarraAcoesAssembleia({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </>
   )
 }
