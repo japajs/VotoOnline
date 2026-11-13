@@ -149,6 +149,14 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
             isAdmin={session?.perfil === "administrador"}
             podeEditar={session?.perfil !== "visualizador"}
             criterioPeso={condominio.criterio_peso}
+            // Link de entrada + QR + Telão no "Cadastro ▾" (fusão, mockup de 5
+            // menus): a lista recebe a assembleia atual com o status real (não só
+            // quando em andamento) pra o Telão aparecer inclusive na encerrada.
+            assembleiaAtual={{
+              id: assembleia.id,
+              titulo: assembleia.titulo,
+              status: assembleia.status,
+            }}
           />
         }
       />
