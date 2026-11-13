@@ -22,13 +22,26 @@ interface Props {
 // recarregar a página inteira.
 export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
   const [data, setData] = useState<TelaoData>(inicial)
-  const [atualizadoEm, setAtualizadoEm] = useState<Date>(() => new Date())
+  // Hora da última atualização: começa NULL e só é definida no CLIENTE (no efeito
+  // abaixo). Se renderizasse no SSR, o `new Date()` do servidor (UTC, de um
+  // instante) não bateria com o do navegador na hidratação (fuso + instante
+  // diferentes) → erro de hidratação React #418. Mesmo padrão do useEntradaUrl.
+  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null)
 
   // setTimeout ENCADEADO (não setInterval): o próximo refresh só é agendado
   // depois que o atual termina. O telão fica projetado a assembleia inteira e é
   // o poller mais pesado (apuração + votos detalhados); com setInterval fixo, um
   // banco lento faria as consultas EMPILHAREM (feedback loop de carga). Falha de
   // refresh é tolerada — mantém os últimos dados na tela em vez de quebrar.
+  // 1ª marcação da hora só no cliente, após montar (ver atualizadoEm) — efeito
+  // dedicado, pra não renderizar hora no SSR e evitar o mismatch de hidratação.
+  // O setState síncrono aqui é PROPOSITAL: é exatamente o adiamento pro cliente
+  // que resolve o #418 (mesmo padrão do useEntradaUrl).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAtualizadoEm(new Date())
+  }, [])
+
   useEffect(() => {
     let ativo = true
     let timer: ReturnType<typeof setTimeout>
@@ -106,8 +119,15 @@ export function TelaoLive({ assembleiaId, condominioId, inicial }: Props) {
           parcial={parcial}
         />
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Atualiza automaticamente · última atualização às{" "}
-          {atualizadoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          Atualiza automaticamente
+          {atualizadoEm
+            ? ` · última atualização às ${atualizadoEm.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                timeZone: "America/Sao_Paulo",
+              })}`
+            : ""}
         </p>
       </div>
 
