@@ -120,8 +120,9 @@ interface ProprietariosListProps {
   // de entrada, o QR e o Telão pro menu "Cadastro ▾" — antes viviam na barra da
   // apuração ("Entrada ▾" + botão Telão). Difere de assembleiaAbertaId (que só
   // existe em andamento): aqui vem o status real, pra o Telão também aparecer na
-  // encerrada. Só a tela da assembleia passa; a tela de gestão NÃO (sem esses
-  // itens lá, como antes).
+  // encerrada. A tela da apuração passa a assembleia da página; a tela de GESTÃO
+  // passa a assembleia EM ANDAMENTO (se houver) — assim a secretária pega o
+  // link/QR/Telão sem trocar de tela. Ausente = nenhum desses itens aparece.
   assembleiaAtual?: { id: string; titulo: string; status: AssembleiaStatus }
 }
 
