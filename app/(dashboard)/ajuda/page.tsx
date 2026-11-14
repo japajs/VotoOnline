@@ -257,8 +257,9 @@ export default function AjudaPage() {
         </p>
         <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
           <li>
-            Na tela de apuração, ligue <Chip>Pauta por pauta</Chip>. Aí cada pauta ganha os botões{" "}
-            <Chip>Abrir votação</Chip> e <Chip>Fechar votação</Chip>.
+            Ligue <Chip>Pauta por pauta</Chip> no menu <Chip>Operacional</Chip> (ou na tela de
+            apuração). Aí, na <strong className="text-foreground">aba de apuração</strong>, cada
+            pauta ganha os botões <Chip>Abrir votação</Chip> e <Chip>Fechar votação</Chip>.
           </li>
           <li>
             O rito: discute a pauta → <strong className="text-foreground">Abrir votação</strong> →
