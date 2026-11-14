@@ -111,6 +111,18 @@ export function formatCpf(valor: string | null | undefined): string | null {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
 }
 
+// Formata CPF (11 díg. → 000.000.000-00) OU CNPJ (14 díg. → 00.000.000/0000-00)
+// a partir de qualquer entrada; enquanto ainda não tem 11/14 dígitos, devolve só
+// os dígitos (máscara progressiva). Usada no campo de alteração de CPF/CNPJ
+// (pedido do Carlos: estava aceitando letras e sem formatação).
+export function formatCpfCnpj(valor: string | null | undefined): string {
+  const d = (valor ?? "").replace(/\D/g, "")
+  if (d.length === 11) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+  if (d.length === 14)
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+  return d
+}
+
 // Remove acentos, hífens e espaços, e baixa a caixa — assim buscar "joao",
 // "C0502", "C-0502" ou "c 0502" encontra "João" ou a unidade "C-0502"
 // independente de como foi digitado. Compartilhada entre toda busca de

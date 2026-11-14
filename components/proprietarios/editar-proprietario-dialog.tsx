@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { formatCpfCnpj } from "@/lib/format"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import {
   updateProprietarioAction,
@@ -267,7 +268,10 @@ export function EditarProprietarioDialog({
     })
   }
 
-  const cpfMudou = (novoCpfAdmin.trim() || "") !== (proprietario.cpf ?? "")
+  // Compara só os dígitos: o campo agora guarda/exibe formatado, então sem
+  // normalizar daria "mudou" à toa.
+  const cpfMudou =
+    novoCpfAdmin.replace(/\D/g, "") !== (proprietario.cpf ?? "").replace(/\D/g, "")
   const canSalvarCpf = confirmarAlterarCpf && cpfMudou
   // Aviso só pro caso que confunde: mudou o CPF mas esqueceu de marcar a
   // confirmação. CPF igual ao atual = botão desabilitado auto-explicativo.
@@ -403,17 +407,17 @@ export function EditarProprietarioDialog({
                   Diferente de Coproprietário (que aponta outro cadastro). */}
               <div className="space-y-1.5">
                 <Label htmlFor="edit-conjuge">
-                  Cônjuge / 2º participante{" "}
+                  Representante (caso não seja o proprietário){" "}
                   <span className="font-normal text-muted-foreground">(opcional)</span>
                 </Label>
                 <Input
                   id="edit-conjuge"
-                  placeholder="Nome do cônjuge (co-dono que costuma comparecer)"
+                  placeholder="Nome de quem costuma comparecer pelo imóvel"
                   value={conjuge}
                   onChange={(e) => setConjuge(e.target.value.replace(/[0-9]/g, ""))}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Na assembleia, vira um atalho para anotar quem participou pelo imóvel.
+                  Na assembleia, vira um atalho para anotar o representante pelo imóvel.
                 </p>
               </div>
 
@@ -426,7 +430,7 @@ export function EditarProprietarioDialog({
                 </Label>
                 <Input
                   id="edit-cpf"
-                  value={proprietario.cpf ? (isAdmin ? proprietario.cpf : maskCpf(proprietario.cpf)) : ""}
+                  value={proprietario.cpf ? (isAdmin ? formatCpfCnpj(proprietario.cpf) : maskCpf(proprietario.cpf)) : ""}
                   disabled
                   placeholder="Não cadastrado"
                   className="disabled:opacity-70"
@@ -456,9 +460,10 @@ export function EditarProprietarioDialog({
                       </span>
                     </div>
                     <Input
-                      value={novoCpfAdmin}
-                      onChange={(e) => setNovoCpfAdmin(e.target.value)}
-                      placeholder="Novo CPF/CNPJ"
+                      value={formatCpfCnpj(novoCpfAdmin)}
+                      onChange={(e) => setNovoCpfAdmin(e.target.value.replace(/\D/g, "").slice(0, 14))}
+                      inputMode="numeric"
+                      placeholder="Novo CPF/CNPJ (só números)"
                       className="h-9 text-xs"
                     />
                     <label className="flex items-center gap-1.5 text-xs">

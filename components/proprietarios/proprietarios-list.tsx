@@ -65,7 +65,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
-import { formatCelular, formatCpf, normalizarBusca } from "@/lib/format"
+import { formatCelular, formatCpf, formatCpfCnpj, normalizarBusca } from "@/lib/format"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
@@ -525,6 +525,13 @@ export function ProprietariosList({
             p.nome,
             p.email ?? "",
             p.telefone ?? "",
+            // CPF/CNPJ: dígitos puros (busca por número) + formatado (busca com
+            // pontuação) — pedido do Carlos: a busca não achava por CPF.
+            (p.cpf ?? "").replace(/\D/g, ""),
+            formatCpfCnpj(p.cpf),
+            // Representante (quem participou pelo imóvel) — pedido do Carlos: a
+            // busca precisa abranger esse campo.
+            participantesLocal.get(p.id) ?? "",
             ...(p.unidades ?? []).flatMap((u) => [u.numero, u.bloco ?? ""]),
           ].join(" ")
           return normalizarBusca(alvo).includes(termo)
@@ -555,6 +562,7 @@ export function ProprietariosList({
     parciaisNaAberta,
     outorgantesLocal,
     tentandoEntrar,
+    participantesLocal,
   ])
 
   // Há busca ou filtro ativo? Habilita o botão "Limpar" (pedido do Carlos:
@@ -1509,6 +1517,15 @@ const ProprietarioRow = memo(function ProprietarioRow({
           </span>
         ))}
 
+        {/* Sem imóvel vinculado = normalmente é um procurador (vai receber
+            procuração de outro imóvel). Mostra "procurador" no lugar do imóvel
+            pra não parecer cadastro incompleto (pedido do Carlos). */}
+        {unidades.length === 0 && (
+          <span className="rounded border border-indigo-400/40 bg-indigo-500/10 px-1.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300">
+            procurador
+          </span>
+        )}
+
         {/* Quem já votou na assembleia aberta não pode ganhar novo imóvel
             (pedido do Carlos): o peso do voto é congelado no momento do voto,
             mexer nas unidades depois bagunça o encerramento. A trava real está
@@ -1598,10 +1615,10 @@ const ProprietarioRow = memo(function ProprietarioRow({
                 setPartInput(participante)
                 setEditandoPart(true)
               }}
-              title="Quem participou pelo imóvel (clique para editar)"
+              title="Representante pelo imóvel (clique para editar)"
               className="ml-2 flex min-h-[28px] items-center rounded border border-indigo-400/40 bg-indigo-500/10 px-1.5 py-0.5 text-xs text-indigo-700 transition-colors hover:bg-indigo-500/15 dark:text-indigo-300"
             >
-              participou: {participante}
+              representante: {participante}
             </button>
           ) : (
             // Sem participante ainda: se há cônjuge cadastrado, um atalho de 1
