@@ -209,8 +209,11 @@ export function AssembleiaVotoForm({
 
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">
+          {/* "marcada", não "respondida": a resposta só conta depois de
+              "Confirmar votos" (pedido do Carlos: dizia "1 pauta respondida"
+              antes de enviar). */}
           {allAnswered
-            ? `${pautas.length} ${pautas.length === 1 ? "pauta respondida" : "pautas respondidas"}`
+            ? `${pautas.length} ${pautas.length === 1 ? "pauta marcada" : "pautas marcadas"} · confirme para enviar`
             : `${unansweredCount} ${unansweredCount === 1 ? "pauta pendente" : "pautas pendentes"}`}
         </p>
         <Button onClick={handleSubmit} disabled={isPending} className="w-full sm:w-auto">

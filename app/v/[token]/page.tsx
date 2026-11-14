@@ -270,7 +270,7 @@ export default async function PublicVotoPage({ params }: Props) {
                 </p>
               )}
               <p className="mt-2 text-xs text-muted-foreground">
-                O resultado pode mudar até o encerramento — o boletim abaixo é parcial.
+                O resultado pode mudar até o encerramento, o resultado abaixo é parcial.
               </p>
             </div>
 
@@ -281,8 +281,8 @@ export default async function PublicVotoPage({ params }: Props) {
                   {participacao.totalVotaram === 1 ? "pessoa já votou" : "pessoas já votaram"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Quórum e % de participação do condomínio: no quadro abaixo. Quem votou e como,
-                  pauta a pauta: no "Detalhamento dos votos".
+                  Quórum e percentual de participação dos condôminos no quadro abaixo. Quem e como
+                  votou, pauta a pauta, no &quot;Detalhamento dos votos&quot;.
                 </p>
               </div>
             )}
