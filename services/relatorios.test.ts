@@ -38,6 +38,20 @@ function send(
   }
 }
 
+function proc(
+  outorgante_id: string,
+  outorgado_id: string,
+  opts: { outorgante_unidades?: Unid[] } = {}
+): ExtratoProcuracao {
+  return {
+    outorgante_id,
+    outorgante_nome: outorgante_id,
+    outorgante_unidades: opts.outorgante_unidades ?? [],
+    outorgado_id,
+    outorgado_nome: outorgado_id,
+  }
+}
+
 describe("montarExtratoParticipacao — contagem por imóvel", () => {
   it("sem procuração: soma os imóveis de cada dono, uma vez cada", () => {
     const rows: ExtratoSendRow[] = [
@@ -69,10 +83,7 @@ describe("montarExtratoParticipacao — contagem por imóvel", () => {
       ["sA", 3],
       ["sC", 3],
     ])
-    const procs: ExtratoProcuracao[] = [
-      { outorgante_id: "B", outorgado_id: "C", outorgado_nome: "C" },
-    ]
-    const { linhas, resumo } = montarExtratoParticipacao(rows, count, procs, 3)
+    const { linhas, resumo } = montarExtratoParticipacao(rows, count, [proc("B", "C")], 3)
 
     // 4 imóveis (101,102,103,104), cada um UMA vez — não 5.
     expect(resumo.imoveis).toBe(4)
@@ -101,12 +112,46 @@ describe("montarExtratoParticipacao — contagem por imóvel", () => {
       send("sC", "C", "C", { cadastro: [u("103")] }), // representante ainda não votou
     ]
     const count = new Map<string, number>() // ninguém respondeu
-    const procs: ExtratoProcuracao[] = [
-      { outorgante_id: "B", outorgado_id: "C", outorgado_nome: "C" },
-    ]
-    const { resumo } = montarExtratoParticipacao(rows, count, procs, 3)
+    const { resumo } = montarExtratoParticipacao(rows, count, [proc("B", "C")], 3)
     expect(resumo.imoveis).toBe(2) // 102 e 103, uma vez cada
     expect(resumo.naoVotou).toBe(2)
     expect(resumo.votouGeral).toBe(0)
+  })
+
+  it("outorgante SEM send, representante presente: imóvel é resgatado (linha sintética), conta 1x", () => {
+    // B (imóvel 102) não tem send (sem e-mail, não compareceu). C (rep) votou
+    // tudo. Sem o resgate, o 102 sumiria (C agora conta só o próprio 103).
+    const rows: ExtratoSendRow[] = [
+      send("sC", "C", "C", {
+        votado_em: "2026-01-01T11:00:00Z",
+        snapshot: [u("103"), u("102")],
+        cadastro: [u("103")],
+      }),
+    ]
+    const count = new Map<string, number>([["sC", 3]])
+    const procs = [proc("B", "C", { outorgante_unidades: [u("102")] })]
+    const { linhas, resumo } = montarExtratoParticipacao(rows, count, procs, 3)
+
+    expect(resumo.imoveis).toBe(2) // 103 (C) + 102 (B, resgatado)
+    expect(resumo.votouGeral).toBe(2) // ambos via o voto de C
+    expect(resumo.naoVotou).toBe(0)
+
+    const linhaB = linhas.find((l) => l.proprietarioNome === "B")!
+    expect(linhaB.qtdImoveis).toBe(1)
+    expect(linhaB.unidades).toBe("102")
+    expect(linhaB.viaProcuracao).toBe(true)
+    expect(linhaB.status).toBe("completo")
+  })
+
+  it("outorgante SEM send e representante AUSENTE: imóvel NÃO é resgatado (ninguém participa por ele)", () => {
+    // C tem send mas não está presente nem votou. B (outorgante) não tem send.
+    // O 102 de B não está participando por ninguém → fica fora do escopo.
+    const rows: ExtratoSendRow[] = [send("sC", "C", "C", { cadastro: [u("103")] })]
+    const count = new Map<string, number>()
+    const procs = [proc("B", "C", { outorgante_unidades: [u("102")] })]
+    const { linhas, resumo } = montarExtratoParticipacao(rows, count, procs, 3)
+
+    expect(resumo.imoveis).toBe(1) // só o 103 de C
+    expect(linhas.find((l) => l.proprietarioNome === "B")).toBeUndefined()
   })
 })

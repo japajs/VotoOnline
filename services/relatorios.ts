@@ -239,9 +239,14 @@ export interface ExtratoSendRow {
   unidades_snapshot: UnidadeRaw[] | null
   proprietarios: { nome: string; unidades: UnidadeRaw[] | null } | null
 }
-// Procuração desta assembleia (só o que o extrato precisa).
+// Procuração desta assembleia (só o que o extrato precisa). `outorgante_nome` e
+// `outorgante_unidades` servem pra MONTAR uma linha quando o outorgante não tem
+// send (ex.: condômino sem e-mail que não compareceu) — senão o imóvel dele,
+// que agora não é mais somado no representante, sumiria da contagem.
 export interface ExtratoProcuracao {
   outorgante_id: string
+  outorgante_nome: string
+  outorgante_unidades: UnidadeRaw[]
   outorgado_id: string
   outorgado_nome: string
 }
@@ -295,6 +300,31 @@ export function montarExtratoParticipacao(
     })
   }
 
+  // Outorgante SEM send (ex.: condômino sem e-mail que não compareceu): como o
+  // imóvel dele deixou de ser somado no representante, ele sumiria da contagem.
+  // Monta uma linha sintética com as unidades do outorgante — MAS só quando o
+  // representante está de fato participando (presente/votou); senão o imóvel não
+  // está participando por ninguém e fica fora do escopo (como qualquer imóvel
+  // sem send). Pra os dados do Carlos isto fica inerte: lá todo outorgante tem
+  // send (por isso o bug somava 310).
+  const propIdsComSend = new Set(rows.map((r) => r.proprietario_id))
+  const sinteticos: ExtratoSendRow[] = procuracoes
+    .filter((p) => {
+      if (propIdsComSend.has(p.outorgante_id)) return false // já tem linha real
+      if (p.outorgante_unidades.length === 0) return false
+      const repPart = partPorProprietario.get(p.outorgado_id)
+      return !!repPart && repPart.presente // o representante está participando
+    })
+    .map((p) => ({
+      id: `proc:${p.outorgante_id}`,
+      proprietario_id: p.outorgante_id,
+      nome_snapshot: p.outorgante_nome,
+      votado_em: null,
+      presente_em: null,
+      unidades_snapshot: null,
+      proprietarios: { nome: p.outorgante_nome, unidades: p.outorgante_unidades },
+    }))
+
   // Mesmos três estados da tela: pendente (0 respostas), completo (todas),
   // parcial (algumas).
   const statusDe = (pautasRespondidas: number): ParticipacaoStatus =>
@@ -304,7 +334,7 @@ export function montarExtratoParticipacao(
         ? "completo"
         : "parcial"
 
-  const linhas = rows.map((s) => {
+  const linhas = [...rows, ...sinteticos].map((s) => {
     // Imóveis DO DONO (cadastro). No representante NÃO usamos o snapshot do voto
     // (vem somado com o do outorgante → duplicaria). Fora de representante,
     // snapshot == cadastro (não há mudança de unidade após o voto); o snapshot
@@ -404,7 +434,36 @@ export async function getExtratoParticipacao(
     countPorSend.set(r.send_id, (countPorSend.get(r.send_id) ?? 0) + 1)
   }
 
-  const procuracoes = await getProcuracoesByAssembleia(assembleiaId)
+  const procuracoesRaw = await getProcuracoesByAssembleia(assembleiaId)
+
+  // Unidades dos outorgantes que NÃO têm send — pra montar a linha sintética
+  // deles (ver montarExtratoParticipacao). Só busca quando há outorgante sem
+  // send; no caso comum (todos têm send) nem roda a query.
+  const propIdsComSend = new Set(rows.map((r) => r.proprietario_id))
+  const outorganteIdsSemSend = procuracoesRaw
+    .map((p) => p.outorgante_id)
+    .filter((id) => !propIdsComSend.has(id))
+  const unidadesPorOutorgante = new Map<string, UnidadeRaw[]>()
+  if (outorganteIdsSemSend.length > 0) {
+    const { data: uds, error: udsError } = await db
+      .from("unidades")
+      .select("proprietario_id, numero, bloco")
+      .in("proprietario_id", outorganteIdsSemSend)
+    if (udsError) throw new Error(udsError.message)
+    for (const u of (uds ?? []) as { proprietario_id: string; numero: string; bloco: string | null }[]) {
+      const arr = unidadesPorOutorgante.get(u.proprietario_id) ?? []
+      arr.push({ numero: u.numero, bloco: u.bloco })
+      unidadesPorOutorgante.set(u.proprietario_id, arr)
+    }
+  }
+
+  const procuracoes: ExtratoProcuracao[] = procuracoesRaw.map((p) => ({
+    outorgante_id: p.outorgante_id,
+    outorgante_nome: p.outorgante_nome,
+    outorgante_unidades: unidadesPorOutorgante.get(p.outorgante_id) ?? [],
+    outorgado_id: p.outorgado_id,
+    outorgado_nome: p.outorgado_nome,
+  }))
 
   return montarExtratoParticipacao(rows, countPorSend, procuracoes, totalPautas)
 }
