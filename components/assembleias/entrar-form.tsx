@@ -105,7 +105,7 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="cpf">CPF</Label>
+        <Label htmlFor="cpf">CPF ou CNPJ</Label>
         <Input
           id="cpf"
           name="cpf"
@@ -114,9 +114,9 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
           autoComplete="off"
           required
           // Reforço no celular: bloqueia letras conforme digita (só dígitos,
-          // máx. 11). O servidor também normaliza antes de comparar.
+          // máx. 14 = CNPJ). O servidor também normaliza antes de comparar.
           onChange={(e) => {
-            e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "").slice(0, 11)
+            e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "").slice(0, 14)
           }}
         />
       </div>

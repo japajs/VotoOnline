@@ -99,6 +99,47 @@ export function validarCpf(valor: string | null | undefined): boolean {
   return true
 }
 
+// CNPJ tem 14 dígitos (só tamanho). normalizarCpf é um simples tira-não-dígitos,
+// serve igual pra CNPJ.
+export function cnpjCompleto(valor: string | null | undefined): boolean {
+  return normalizarCpf(valor ?? "").length === 14
+}
+
+// Documento completo: CPF (11) ou CNPJ (14) dígitos. Condomínio tem unidade de
+// empresa (CNPJ), então identidade/cadastro aceitam os dois (pedido do Carlos).
+export function cpfOuCnpjCompleto(valor: string | null | undefined): boolean {
+  const n = normalizarCpf(valor ?? "").length
+  return n === 11 || n === 14
+}
+
+// Valida os dígitos verificadores do CNPJ (algoritmo da Receita). Rejeita os 14
+// dígitos iguais (00000000000000 e afins). Só a matemática, não consulta nada.
+export function validarCnpj(valor: string | null | undefined): boolean {
+  const c = normalizarCpf(valor ?? "")
+  if (c.length !== 14) return false
+  if (/^(\d)\1{13}$/.test(c)) return false
+  const dv = (base: string, pesos: number[]): number => {
+    let soma = 0
+    for (let i = 0; i < base.length; i++) soma += Number(base[i]) * pesos[i]
+    const resto = soma % 11
+    return resto < 2 ? 0 : 11 - resto
+  }
+  const p1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+  const p2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+  if (dv(c.slice(0, 12), p1) !== Number(c[12])) return false
+  if (dv(c.slice(0, 13), p2) !== Number(c[13])) return false
+  return true
+}
+
+// CPF (11) válido OU CNPJ (14) válido — a trava única pro documento no cadastro,
+// na alteração e na importação.
+export function validarCpfOuCnpj(valor: string | null | undefined): boolean {
+  const d = normalizarCpf(valor ?? "")
+  if (d.length === 11) return validarCpf(d)
+  if (d.length === 14) return validarCnpj(d)
+  return false
+}
+
 // CPF formatado 000.000.000-00 para exibição (só formata quando tem os 11
 // dígitos; caso contrário devolve o que veio, ou null se vazio). Usado na
 // lista de proprietários pro operador conferir rápido o CPF quando alguém diz

@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { formatCpfCnpj } from "@/lib/format"
 import { createProprietarioAction } from "@/app/actions/proprietarios"
 
 interface CriarProprietarioDialogProps {
@@ -142,17 +143,17 @@ export function CriarProprietarioDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cpf-prop">CPF</Label>
+            <Label htmlFor="cpf-prop">CPF/CNPJ</Label>
             <Input
               id="cpf-prop"
               inputMode="numeric"
               placeholder="Somente números"
-              value={cpf}
-              // CPF só tem dígitos — remove não-números e limita a 11 (Carlos).
-              onChange={(e) => setCpf(e.target.value.replace(/\D/g, "").slice(0, 11))}
+              value={formatCpfCnpj(cpf)}
+              // Só dígitos — CPF (11) ou CNPJ (14, unidade de empresa).
+              onChange={(e) => setCpf(e.target.value.replace(/\D/g, "").slice(0, 14))}
             />
             <p className="text-xs text-muted-foreground">
-              Chave de acesso ao link de voto (o condômino entra com a unidade + o CPF).
+              Chave de acesso ao link de voto (o condômino entra com a unidade + o CPF/CNPJ).
             </p>
           </div>
 

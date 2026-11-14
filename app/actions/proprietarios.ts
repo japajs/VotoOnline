@@ -22,7 +22,7 @@ import { anularVotosDoProprietario } from "@/services/assembleia-votos"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
-import { normalizarCelular, validarEmailFormato, normalizarCpf, cpfCompleto, validarCpf, normalizarBusca } from "@/lib/format"
+import { normalizarCelular, validarEmailFormato, normalizarCpf, cpfOuCnpjCompleto, validarCpfOuCnpj, normalizarBusca } from "@/lib/format"
 import { formatUnidade } from "@/lib/unidade-format"
 
 // Auditoria funcional: antes, qualquer erro de constraint única virava
@@ -73,13 +73,13 @@ export async function createProprietarioAction(input: {
   if (emailInformado && !validarEmailFormato(emailInformado)) {
     return { success: false, error: "E-mail em formato inválido." }
   }
-  if (cpfInformado && !cpfCompleto(cpfInformado)) {
-    return { success: false, error: "CPF deve ter 11 dígitos." }
+  if (cpfInformado && !cpfOuCnpjCompleto(cpfInformado)) {
+    return { success: false, error: "CPF (11 dígitos) ou CNPJ (14 dígitos)." }
   }
   // Valida os dígitos verificadores (rejeita 777.777.777-77 e afins) e bloqueia
-  // CPF repetido no mesmo condomínio (pedidos do Carlos).
-  if (cpfInformado && !validarCpf(cpfInformado)) {
-    return { success: false, error: "CPF inválido. Confira os números digitados." }
+  // CPF/CNPJ repetido no mesmo condomínio (pedidos do Carlos).
+  if (cpfInformado && !validarCpfOuCnpj(cpfInformado)) {
+    return { success: false, error: "CPF/CNPJ inválido. Confira os números digitados." }
   }
   if (cpfInformado && (await cpfJaCadastrado(input.condominio_id, normalizarCpf(cpfInformado)))) {
     return { success: false, error: "Já existe um proprietário com este CPF neste condomínio." }
@@ -484,9 +484,11 @@ export async function updateCpfProprietarioAction(input: {
     }
     // Mesmas travas do cadastro: 11 dígitos, DV válido e sem repetir no condomínio.
     if (novoCpf) {
-      if (!cpfCompleto(novoCpf)) return { success: false, error: "CPF deve ter 11 dígitos." }
-      if (!validarCpf(novoCpf)) {
-        return { success: false, error: "CPF inválido. Confira os números digitados." }
+      if (!cpfOuCnpjCompleto(novoCpf)) {
+        return { success: false, error: "CPF (11 dígitos) ou CNPJ (14 dígitos)." }
+      }
+      if (!validarCpfOuCnpj(novoCpf)) {
+        return { success: false, error: "CPF/CNPJ inválido. Confira os números digitados." }
       }
       if (await cpfJaCadastrado(input.condominioId, novoCpf, input.id)) {
         return { success: false, error: "Já existe um proprietário com este CPF neste condomínio." }

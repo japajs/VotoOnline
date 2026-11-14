@@ -4,7 +4,7 @@ import { generateSurveyToken } from "@/lib/tokens"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { getAllProprietarios } from "@/services/proprietarios"
 import { outorgouProcuracao, getProcuracoesByAssembleia } from "@/services/procuracoes"
-import { normalizarCpf, cpfCompleto } from "@/lib/format"
+import { normalizarCpf, cpfOuCnpjCompleto } from "@/lib/format"
 import type { AssembleiaStatus } from "@/types"
 
 export type RegistrarPresencaResult =
@@ -77,9 +77,9 @@ export async function registrarPresenca(
 
   const cpfInformado = normalizarCpf(input.cpf)
   const cpfCadastro = normalizarCpf(prop.cpf ?? "")
-  if (cpfCadastro.length !== 11) {
-    // Sem CPF (ou CPF incompleto) no cadastro — autoatendimento não consegue
-    // confirmar identidade. Cai pro caminho assistido (síndico lança o voto).
+  if (cpfCadastro.length !== 11 && cpfCadastro.length !== 14) {
+    // Sem CPF/CNPJ (ou documento incompleto) no cadastro — autoatendimento não
+    // confirma identidade. Cai pro caminho assistido (síndico lança o voto).
     return {
       ok: false,
       error:
@@ -335,7 +335,7 @@ export async function getChamada(assembleiaId: string): Promise<ChamadaData> {
       proprietarioId: p.id,
       nome: p.nome,
       email: p.email,
-      temCpf: cpfCompleto(p.cpf),
+      temCpf: cpfOuCnpjCompleto(p.cpf),
       unidades: (p.unidades ?? []).map((u) => ({ numero: u.numero, bloco: u.bloco })),
       presente: st?.presente ?? false,
       votou: st?.votou ?? false,
