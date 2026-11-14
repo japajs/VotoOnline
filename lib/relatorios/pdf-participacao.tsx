@@ -147,6 +147,9 @@ function Linha({ l }: { l: ExtratoParticipacaoLinha }) {
       </View>
       <View style={s.cNome}>
         <Text style={s.tdText}>{l.proprietarioNome}</Text>
+        {l.viaProcuracao ? (
+          <Text style={s.tdMuted}>procuração → {l.representanteNome ?? "representante"}</Text>
+        ) : null}
       </View>
       <View style={s.cPautas}>
         <Text style={s.tdText}>
@@ -249,7 +252,8 @@ export function ParticipacaoPDF({
         </View>
         <Text style={s.nota}>
           Contagem por imóvel (um proprietário com 2 imóveis conta 2). Presentes = marcados presentes
-          pela mesa ou que já votaram.
+          pela mesa ou que já votaram. Imóvel com procuração entra uma vez, sob o dono, com a
+          participação do representante.
         </Text>
 
         <Text style={s.sectionLabel}>PARTICIPAÇÃO POR IMÓVEL</Text>

@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { getAllProprietarios } from "@/services/proprietarios"
+import { getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { menorNumeroUnidade } from "@/lib/unidade-format"
 
 export interface ParticipanteRelatorio {
@@ -207,6 +208,12 @@ export interface ExtratoParticipacaoLinha {
   presente: boolean
   // Data/hora do voto (votado_em) — o dado de auditoria que o Carlos valoriza.
   ultimaResposta: string | null
+  // Este imóvel participou por PROCURAÇÃO: o dono outorgou e quem votou foi o
+  // representante. A participação da linha (pautas/status/presença/data) é a do
+  // representante — não "Não votou". Evita contar o imóvel 2x (bug do Carlos).
+  viaProcuracao?: boolean
+  // Nome do representante, quando viaProcuracao.
+  representanteNome?: string
 }
 
 export interface ExtratoParticipacaoResumo {
@@ -222,11 +229,44 @@ export interface ExtratoParticipacao {
   resumo: ExtratoParticipacaoResumo
 }
 
-export async function getExtratoParticipacao(
-  assembleiaId: string,
+// Linha de send já lida do banco (entrada do núcleo puro do extrato).
+export interface ExtratoSendRow {
+  id: string
+  proprietario_id: string
+  nome_snapshot: string | null
+  votado_em: string | null
+  presente_em: string | null
+  unidades_snapshot: UnidadeRaw[] | null
+  proprietarios: { nome: string; unidades: UnidadeRaw[] | null } | null
+}
+// Procuração desta assembleia (só o que o extrato precisa).
+export interface ExtratoProcuracao {
+  outorgante_id: string
+  outorgado_id: string
+  outorgado_nome: string
+}
+
+// Núcleo PURO do extrato (sem banco) — testável. Recebe os sends já lidos, a
+// contagem de respostas por send e as procurações; monta as linhas por imóvel +
+// o resumo. SEPARADO do fetch de propósito: a contagem por imóvel com procuração
+// é sutil (já contou errado — bug do Carlos) e merece teste de regressão.
+//
+// Procuração (bug do Carlos: o extrato dava 310 imóveis em vez de 300,
+// "duplicando os procuradores"). Quem OUTORGA procuração não vota por conta
+// própria — quem vota é o representante, cujo `unidades_snapshot` do voto vem
+// SOMADO com as unidades do outorgante (pra o peso bater). Somar o snapshot de
+// cada send contava o imóvel do outorgante 2x: na linha do representante
+// (snapshot somado) E na do próprio outorgante. Correção:
+//   • conta cada imóvel UMA vez, sob o dono — unidades do CADASTRO, não o
+//     snapshot do voto (no representante o snapshot está somado);
+//   • a participação do imóvel do outorgante ESPELHA a do representante (quem de
+//     fato votou carregando o peso) em vez de cair em "Não votou".
+export function montarExtratoParticipacao(
+  rows: ExtratoSendRow[],
+  countPorSend: Map<string, number>,
+  procuracoes: ExtratoProcuracao[],
   totalPautas: number
-): Promise<ExtratoParticipacao> {
-  const db = createServerClient()
+): ExtratoParticipacao {
   const resumoVazio: ExtratoParticipacaoResumo = {
     imoveis: 0,
     presentes: 0,
@@ -234,61 +274,73 @@ export async function getExtratoParticipacao(
     votouParcial: 0,
     naoVotou: 0,
   }
+  if (rows.length === 0) return { linhas: [], resumo: resumoVazio }
 
-  const { data: sends, error } = await db
-    .from("assembleia_sends")
-    .select(
-      "id, nome_snapshot, votado_em, presente_em, unidades_snapshot, proprietarios(nome, unidades(numero, bloco))"
-    )
-    .eq("assembleia_id", assembleiaId)
-  if (error) throw new Error(error.message)
+  const repDeOutorgante = new Map<string, { id: string; nome: string }>()
+  for (const p of procuracoes) {
+    repDeOutorgante.set(p.outorgante_id, { id: p.outorgado_id, nome: p.outorgado_nome })
+  }
+  const ehRepresentante = new Set(procuracoes.map((p) => p.outorgado_id))
 
-  const sendIds = (sends ?? []).map((s) => s.id as string)
-  if (sendIds.length === 0) return { linhas: [], resumo: resumoVazio }
-
-  const { data: respostas, error: respError } = await db
-    .from("assembleia_respostas")
-    .select("send_id")
-    .in("send_id", sendIds)
-  if (respError) throw new Error(respError.message)
-
-  const countPorSend = new Map<string, number>()
-  for (const r of (respostas ?? []) as { send_id: string }[]) {
-    countPorSend.set(r.send_id, (countPorSend.get(r.send_id) ?? 0) + 1)
+  // Participação por proprietário (o outorgante puxa a do seu representante).
+  const partPorProprietario = new Map<
+    string,
+    { pautasRespondidas: number; votadoEm: string | null; presente: boolean }
+  >()
+  for (const s of rows) {
+    partPorProprietario.set(s.proprietario_id, {
+      pautasRespondidas: countPorSend.get(s.id) ?? 0,
+      votadoEm: s.votado_em,
+      presente: s.presente_em !== null || s.votado_em !== null,
+    })
   }
 
-  type SendRow = {
-    id: string
-    nome_snapshot: string | null
-    votado_em: string | null
-    presente_em: string | null
-    unidades_snapshot: UnidadeRaw[] | null
-    proprietarios: { nome: string; unidades: UnidadeRaw[] | null } | null
-  }
+  // Mesmos três estados da tela: pendente (0 respostas), completo (todas),
+  // parcial (algumas).
+  const statusDe = (pautasRespondidas: number): ParticipacaoStatus =>
+    pautasRespondidas === 0
+      ? "pendente"
+      : pautasRespondidas === totalPautas && totalPautas > 0
+        ? "completo"
+        : "parcial"
 
-  const linhas = ((sends ?? []) as unknown as SendRow[]).map((s) => {
-    const us =
-      (s.unidades_snapshot && s.unidades_snapshot.length > 0
-        ? s.unidades_snapshot
-        : s.proprietarios?.unidades) ?? []
-    const pautasRespondidas = countPorSend.get(s.id) ?? 0
-    // Mesmos três estados da tela (statusDe): pendente (0 respostas), completo
-    // (respondeu todas), parcial (algumas).
-    const status: ParticipacaoStatus =
-      pautasRespondidas === 0
-        ? "pendente"
-        : pautasRespondidas === totalPautas && totalPautas > 0
-          ? "completo"
-          : "parcial"
+  const linhas = rows.map((s) => {
+    // Imóveis DO DONO (cadastro). No representante NÃO usamos o snapshot do voto
+    // (vem somado com o do outorgante → duplicaria). Fora de representante,
+    // snapshot == cadastro (não há mudança de unidade após o voto); o snapshot
+    // fica só de resiliência caso o cadastro do dono tenha sumido.
+    const us: UnidadeRaw[] = ehRepresentante.has(s.proprietario_id)
+      ? (s.proprietarios?.unidades ?? [])
+      : (s.unidades_snapshot && s.unidades_snapshot.length > 0
+          ? s.unidades_snapshot
+          : s.proprietarios?.unidades) ?? []
+
+    const rep = repDeOutorgante.get(s.proprietario_id)
+    // Participação EFETIVA deste imóvel: a do próprio, ou — se outorgou — a do
+    // representante (o voto que de fato carregou o peso deste imóvel).
+    const part = rep
+      ? partPorProprietario.get(rep.id) ?? {
+          pautasRespondidas: 0,
+          votadoEm: null,
+          presente: false,
+        }
+      : {
+          pautasRespondidas: countPorSend.get(s.id) ?? 0,
+          votadoEm: s.votado_em,
+          presente: s.presente_em !== null || s.votado_em !== null,
+        }
+
     const item: ExtratoParticipacaoLinha = {
       proprietarioNome: s.nome_snapshot ?? s.proprietarios?.nome ?? "—",
       unidades: us.length > 0 ? fmtUnidades(us) : "—",
       qtdImoveis: us.length,
       totalPautas,
-      pautasRespondidas,
-      status,
-      presente: s.presente_em !== null || s.votado_em !== null,
-      ultimaResposta: s.votado_em ?? null,
+      pautasRespondidas: part.pautasRespondidas,
+      status: statusDe(part.pautasRespondidas),
+      presente: part.presente,
+      ultimaResposta: part.votadoEm,
+      viaProcuracao: !!rep,
+      representanteNome: rep?.nome,
     }
     return { item, ordem: menorNumeroUnidade(us) }
   })
@@ -314,6 +366,47 @@ export async function getExtratoParticipacao(
   }, { ...resumoVazio })
 
   return { linhas: ordenadas, resumo }
+}
+
+export async function getExtratoParticipacao(
+  assembleiaId: string,
+  totalPautas: number
+): Promise<ExtratoParticipacao> {
+  const db = createServerClient()
+
+  const { data: sends, error } = await db
+    .from("assembleia_sends")
+    .select(
+      "id, proprietario_id, nome_snapshot, votado_em, presente_em, unidades_snapshot, proprietarios(nome, unidades(numero, bloco))"
+    )
+    .eq("assembleia_id", assembleiaId)
+  if (error) throw new Error(error.message)
+
+  const rows = (sends ?? []) as unknown as ExtratoSendRow[]
+  if (rows.length === 0) {
+    return {
+      linhas: [],
+      resumo: { imoveis: 0, presentes: 0, votouGeral: 0, votouParcial: 0, naoVotou: 0 },
+    }
+  }
+
+  const { data: respostas, error: respError } = await db
+    .from("assembleia_respostas")
+    .select("send_id")
+    .in(
+      "send_id",
+      rows.map((s) => s.id)
+    )
+  if (respError) throw new Error(respError.message)
+
+  const countPorSend = new Map<string, number>()
+  for (const r of (respostas ?? []) as { send_id: string }[]) {
+    countPorSend.set(r.send_id, (countPorSend.get(r.send_id) ?? 0) + 1)
+  }
+
+  const procuracoes = await getProcuracoesByAssembleia(assembleiaId)
+
+  return montarExtratoParticipacao(rows, countPorSend, procuracoes, totalPautas)
 }
 
 export async function getParticipantesByAssembleia(
