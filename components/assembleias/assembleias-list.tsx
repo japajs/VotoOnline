@@ -10,9 +10,18 @@ import {
   RotateCcw,
   Pause,
   Play,
+  Send,
+  MoreVertical,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +47,13 @@ import {
 import { ROUTES } from "@/lib/constants"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
 import type { Assembleia, AssembleiaStatus, Proprietario } from "@/types"
+
+// Abre um diálogo a partir de um item de menu: clica o gatilho oculto do
+// diálogo. setTimeout(…,0) deixa o menu fechar/devolver o foco antes (mesmo
+// padrão do "⋯" da lista de proprietários e dos menus da tela da assembleia).
+function abrirPeloTrigger(ref: { current: HTMLButtonElement | null }) {
+  setTimeout(() => ref.current?.click(), 0)
+}
 
 interface AssembleiasListProps {
   assembleias: Assembleia[]
@@ -101,6 +117,8 @@ function AssembleiaRow({
   // querer (Enter, toque duplo etc.) cancela por padrão, precisa mover pra
   // excluir/encerrar/reabrir de propósito.
   const cancelReabrirRef = useRef<HTMLButtonElement>(null)
+  // Gatilho oculto do "Disparar e-mails" (item do menu de ações da linha).
+  const dispararRef = useRef<HTMLButtonElement>(null)
 
   function handleStatusChange(nextStatus: AssembleiaStatus) {
     startTransition(async () => {
@@ -159,80 +177,12 @@ function AssembleiaRow({
         </div>
       </div>
 
-      {/* flex-wrap: no celular a fileira Pausar·Encerrar·Disparar·Gerenciar·
-          Excluir não cabe numa linha só (ex.: Samsung A16 ~360px) e, sem
-          quebrar, estourava a largura da tela empurrando a página inteira
-          (cortava até o conteúdo da esquerda). Agora quebra em 2 linhas. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
-        {podeOperar && (
-          <>
-            {assembleia.status === "rascunho" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleStatusChange("aberta")}
-            disabled={isPending}
-            className="gap-1.5 px-2.5 text-xs text-emerald-500 hover:text-emerald-600"
-          >
-            <Unlock className="h-4 w-4" />
-            Abrir
-          </Button>
-        )}
-        {assembleia.status === "aberta" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleStatusChange("pausada")}
-            disabled={isPending}
-            className="gap-1.5 px-2.5 text-xs text-amber-500 hover:text-amber-600"
-          >
-            <Pause className="h-4 w-4" />
-            Pausar
-          </Button>
-        )}
-        {assembleia.status === "pausada" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleStatusChange("aberta")}
-            disabled={isPending}
-            className="gap-1.5 px-2.5 text-xs text-emerald-500 hover:text-emerald-600"
-          >
-            <Play className="h-4 w-4" />
-            Retomar
-          </Button>
-        )}
-        {isEmAndamento(assembleia.status) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setEncerrarOpen(true)}
-            disabled={isPending}
-            className="gap-1.5 px-2.5 text-xs text-rose-500 hover:text-rose-600"
-          >
-            <LockKeyhole className="h-4 w-4" />
-            Encerrar
-          </Button>
-        )}
-        {assembleia.status === "encerrada" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setReabrirOpen(true)}
-            disabled={isPending}
-            className="gap-1.5 px-2.5 text-xs text-amber-500 hover:text-amber-600"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Reabrir
-          </Button>
-        )}
-
-        {assembleia.status !== "encerrada" && (
-          <DispararAssembleiaDialog assembleia={assembleia} proprietarios={proprietarios} />
-        )}
-          </>
-        )}
-
+      {/* Ações da assembleia: "Gerenciar" (ação primária) à mão + um menu "⋯"
+          com o resto (status, Disparar, Excluir) — mesmo estilo de menu da tela
+          da assembleia (pedido do Carlos: a linha com botões soltos "parecia
+          antiga" ao lado do resto já em menus). Enxuga a linha e cabe no
+          celular sem quebrar. */}
+      <div className="flex shrink-0 items-center gap-1.5 sm:justify-end">
         <Link
           href={ROUTES.condominioAssembleia(condominioId, assembleia.id)}
           className={cn(
@@ -249,16 +199,78 @@ function AssembleiaRow({
 
         {podeOperar && (
           <>
-            <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setDeleteOpen(true)}
-          disabled={isPending}
-          className="text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-          <span className="sr-only">Excluir assembleia</span>
-        </Button>
+            {/* Disparar montado OCULTO, aberto pelo item do menu. */}
+            {assembleia.status !== "encerrada" && (
+              <DispararAssembleiaDialog
+                assembleia={assembleia}
+                proprietarios={proprietarios}
+                triggerRef={dispararRef}
+                triggerClassName="hidden"
+              />
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-muted-foreground"
+                    title="Ações da assembleia"
+                  />
+                }
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+                <span className="sr-only">Ações da assembleia</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {assembleia.status === "rascunho" && (
+                  <DropdownMenuItem onClick={() => handleStatusChange("aberta")} disabled={isPending}>
+                    <Unlock className="h-4 w-4" />
+                    Abrir votação
+                  </DropdownMenuItem>
+                )}
+                {assembleia.status === "aberta" && (
+                  <DropdownMenuItem onClick={() => handleStatusChange("pausada")} disabled={isPending}>
+                    <Pause className="h-4 w-4" />
+                    Pausar
+                  </DropdownMenuItem>
+                )}
+                {assembleia.status === "pausada" && (
+                  <DropdownMenuItem onClick={() => handleStatusChange("aberta")} disabled={isPending}>
+                    <Play className="h-4 w-4" />
+                    Retomar
+                  </DropdownMenuItem>
+                )}
+                {isEmAndamento(assembleia.status) && (
+                  <DropdownMenuItem onClick={() => setEncerrarOpen(true)} disabled={isPending}>
+                    <LockKeyhole className="h-4 w-4" />
+                    Encerrar
+                  </DropdownMenuItem>
+                )}
+                {assembleia.status === "encerrada" && (
+                  <DropdownMenuItem onClick={() => setReabrirOpen(true)} disabled={isPending}>
+                    <RotateCcw className="h-4 w-4" />
+                    Reabrir
+                  </DropdownMenuItem>
+                )}
+                {assembleia.status !== "encerrada" && (
+                  <DropdownMenuItem onClick={() => abrirPeloTrigger(dispararRef)}>
+                    <Send className="h-4 w-4" />
+                    Disparar e-mails
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                  disabled={isPending}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir assembleia
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
         <ConfirmarSenhaDialog
           open={deleteOpen}
