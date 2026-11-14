@@ -186,17 +186,17 @@ export function CriarProprietarioDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="conjuge-prop">
-              Cônjuge / 2º participante{" "}
+              Representante (caso não seja o proprietário){" "}
               <span className="text-muted-foreground font-normal">(opcional)</span>
             </Label>
             <Input
               id="conjuge-prop"
-              placeholder="Nome do cônjuge (co-dono que costuma comparecer)"
+              placeholder="Nome de quem costuma comparecer pelo imóvel"
               value={conjuge}
               onChange={(e) => setConjuge(e.target.value.replace(/[0-9]/g, ""))}
             />
             <p className="text-xs text-muted-foreground">
-              Na assembleia, vira um atalho para anotar quem participou pelo imóvel.
+              Na assembleia, vira um atalho para anotar o representante pelo imóvel.
             </p>
           </div>
 

@@ -4,6 +4,7 @@ import {
   cpfCompleto,
   validarCpf,
   formatCpf,
+  formatCpfCnpj,
   validarEmailFormato,
   normalizarCelular,
   formatCelular,
@@ -74,6 +75,24 @@ describe("formatCpf", () => {
     expect(formatCpf("   ")).toBeNull()
     expect(formatCpf(null)).toBeNull()
     expect(formatCpf(undefined)).toBeNull()
+  })
+})
+
+describe("formatCpfCnpj", () => {
+  it("formata CPF (11 dígitos) e CNPJ (14 dígitos)", () => {
+    expect(formatCpfCnpj("12345678901")).toBe("123.456.789-01")
+    expect(formatCpfCnpj("14850931000193")).toBe("14.850.931/0001-93")
+    expect(formatCpfCnpj("14.850.931/0001-93")).toBe("14.850.931/0001-93")
+  })
+
+  it("ignora letras e caracteres não numéricos", () => {
+    expect(formatCpfCnpj("abc12345678901xyz")).toBe("123.456.789-01")
+    expect(formatCpfCnpj("dldldld")).toBe("")
+  })
+
+  it("máscara progressiva (só dígitos) enquanto incompleto", () => {
+    expect(formatCpfCnpj("123456")).toBe("123456")
+    expect(formatCpfCnpj(null)).toBe("")
   })
 })
 
