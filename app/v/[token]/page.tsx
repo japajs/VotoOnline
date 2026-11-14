@@ -9,7 +9,6 @@ import {
   getAssembleiaSendByToken,
   getRespostasBySendId,
   getApuracaoAssembleia,
-  getParticipacaoParcial,
 } from "@/services/assembleia-votos"
 import { updateAssembleiaStatus } from "@/services/assembleias"
 import { getConfiguracao } from "@/services/configuracoes"
@@ -236,8 +235,7 @@ export default async function PublicVotoPage({ params }: Props) {
     // travado, não tem como o placar influenciar uma escolha que já foi
     // feita) — só quem ainda não votou continua sem ver nada disso, porque
     // nem chega nesta tela (cai na Situação 2, o formulário de voto).
-    const [participacao, apuracao, condominio, votosDetalhados] = await Promise.all([
-      getParticipacaoParcial(assembleia.id).catch(() => null),
+    const [apuracao, condominio, votosDetalhados] = await Promise.all([
       getApuracaoAssembleia(assembleia.id, pautas, assembleia.condominio_id).catch(() => null),
       getCondominioById(assembleia.condominio_id).catch(() => null),
       getVotosDetalhados(assembleia.id).catch(() => []),
@@ -273,19 +271,6 @@ export default async function PublicVotoPage({ params }: Props) {
                 O resultado pode mudar até o encerramento, o resultado abaixo é parcial.
               </p>
             </div>
-
-            {participacao && (
-              <div className="w-full rounded-lg border border-border/40 bg-muted/30 px-4 py-3 text-center text-sm">
-                <p className="font-medium text-foreground">
-                  {participacao.totalVotaram}{" "}
-                  {participacao.totalVotaram === 1 ? "pessoa já votou" : "pessoas já votaram"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Quórum e percentual de participação dos condôminos no quadro abaixo. Quem e como
-                  votou, pauta a pauta, no &quot;Detalhamento dos votos&quot;.
-                </p>
-              </div>
-            )}
           </div>
 
           {apuracao && (

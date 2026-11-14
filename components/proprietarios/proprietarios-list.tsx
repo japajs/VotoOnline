@@ -680,15 +680,17 @@ export function ProprietariosList({
   // mostra SEMPRE os 8 (mesmo com contagem 0): mais previsível, e o filtro ativo
   // nunca fica num limbo por o chip ter sumido. O botão do menu mostra o filtro
   // ativo + contagem, pra a mesa ver de relance o que está filtrado.
+  // Rótulos no SINGULAR (pedido do Carlos/advogados: padronização; e já batem
+  // com os badges da lista, que são singulares — "Não votou", "Ausente").
   const filtrosMenu: [FiltroVoto, string, number][] = [
     ["todos", "Todos os imóveis", totalImoveis],
-    ["presentes", "Presentes", nPresentes],
-    ["ausentes", "Ausentes", nAusentes],
+    ["presentes", "Presente", nPresentes],
+    ["ausentes", "Ausente", nAusentes],
     ["votaram", "Votou geral", nVotaram],
     ["parcial", "Votou parcial", nParcial],
-    ["nao", "Não votaram", nNao],
+    ["nao", "Não votou", nNao],
     ["procuracao", "Procuração", nProcuracao],
-    ["inadimplentes", "Inadimplentes", nInadimplentes],
+    ["inadimplentes", "Inadimplente", nInadimplentes],
   ]
   const filtroMenuAtivo = filtrosMenu.find(([v]) => v === filtroVoto)
   const filtroAtivoLabel =
