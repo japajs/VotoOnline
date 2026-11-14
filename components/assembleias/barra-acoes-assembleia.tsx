@@ -217,7 +217,7 @@ export function BarraAcoesAssembleia({
         onClick={() => window.open(`/apuracao/${assembleia.id}`, "_blank", "noopener")}
       >
         <BarChart3 className="h-4 w-4" />
-        Apuração (abrir em nova aba)
+        Apuração (nova aba)
       </DropdownMenuItem>
     )
     const telaoItem = telaoOn ? (
@@ -225,7 +225,7 @@ export function BarraAcoesAssembleia({
         onClick={() => window.open(`/telao/${assembleia.id}`, "_blank", "noopener")}
       >
         <Tv className="h-4 w-4" />
-        Telão ao vivo
+        Telão ao vivo (nova aba)
       </DropdownMenuItem>
     ) : null
 
@@ -335,35 +335,26 @@ export function BarraAcoesAssembleia({
             Assembleia
             <ChevronDown className="h-3.5 w-3.5 opacity-60" />
           </DropdownMenuTrigger>
+          {/* Ordem/rótulos do mockup do Carlos (todas no singular; "nova aba"
+              nos itens que abrem aba). Separadores condicionais pra nunca sobrar
+              um traço solto no fim (ex.: no rascunho não há mesa). */}
           <DropdownMenuContent align="start">
-            {/* Configuração */}
-            <DropdownMenuItem onClick={() => abrirPeloTrigger(editarAssembleiaRef)}>
-              <Pencil className="h-4 w-4" />
-              Editar assembleia
+            {/* Criar / configurar */}
+            <DropdownMenuItem onClick={() => abrirPeloTrigger(criarAssembleiaRef)}>
+              <CalendarPlus className="h-4 w-4" />
+              Incluir assembleia
             </DropdownMenuItem>
             {status === "aberta" && (
               <DropdownMenuItem onClick={() => abrirPeloTrigger(adicionarPautaRef)}>
                 <Plus className="h-4 w-4" />
-                Incluir pauta
+                Incluir uma pauta
               </DropdownMenuItem>
             )}
-            {status === "aberta" && (
-              <DropdownMenuItem onClick={() => abrirPeloTrigger(procuracoesRef)}>
-                <FileSignature className="h-4 w-4" />
-                Procurações
-              </DropdownMenuItem>
-            )}
-            {/* Condução ao vivo */}
-            <DropdownMenuSeparator />
-            {status !== "rascunho" && (
-              <DropdownMenuItem onClick={() => abrirPeloTrigger(presencaRef)}>
-                <Users className="h-4 w-4" />
-                Chamada / Presença
-              </DropdownMenuItem>
-            )}
-            {apuracaoItem}
-            {telaoItem}
-            {/* Ciclo de vida: mudar o estado + criar a próxima */}
+            <DropdownMenuItem onClick={() => abrirPeloTrigger(editarAssembleiaRef)}>
+              <Pencil className="h-4 w-4" />
+              Editar assembleia
+            </DropdownMenuItem>
+            {/* Estado da assembleia */}
             <DropdownMenuSeparator />
             {status === "rascunho" && (
               <DropdownMenuItem
@@ -380,7 +371,7 @@ export function BarraAcoesAssembleia({
                 disabled={isPendingStatus}
               >
                 <Pause className="h-4 w-4" />
-                Pausar
+                Pausar assembleia
               </DropdownMenuItem>
             )}
             {status === "pausada" && (
@@ -395,7 +386,7 @@ export function BarraAcoesAssembleia({
             {emAndamento && (
               <DropdownMenuItem onClick={() => setEncerrarOpen(true)} disabled={isPendingStatus}>
                 <LockKeyhole className="h-4 w-4" />
-                Encerrar
+                Encerrar assembleia
               </DropdownMenuItem>
             )}
             {status === "encerrada" && (
@@ -404,10 +395,24 @@ export function BarraAcoesAssembleia({
                 Reabrir
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => abrirPeloTrigger(criarAssembleiaRef)}>
-              <CalendarPlus className="h-4 w-4" />
-              Incluir nova assembleia
-            </DropdownMenuItem>
+            {/* Acompanhar */}
+            <DropdownMenuSeparator />
+            {apuracaoItem}
+            {telaoItem}
+            {/* Mesa (só quando não é rascunho — senão o separador ficaria solto) */}
+            {status !== "rascunho" && <DropdownMenuSeparator />}
+            {status !== "rascunho" && (
+              <DropdownMenuItem onClick={() => abrirPeloTrigger(presencaRef)}>
+                <Users className="h-4 w-4" />
+                Ativar presença de mesa
+              </DropdownMenuItem>
+            )}
+            {status === "aberta" && (
+              <DropdownMenuItem onClick={() => abrirPeloTrigger(procuracoesRef)}>
+                <FileSignature className="h-4 w-4" />
+                Homologar procuração
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </>
@@ -482,7 +487,7 @@ export function BarraAcoesAssembleia({
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
                 <Zap className="h-3.5 w-3.5" />
-                Operacionais
+                Operacional
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -533,7 +538,7 @@ export function BarraAcoesAssembleia({
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
           <FileText className="h-3.5 w-3.5" />
-          Relatórios
+          Relatório
           <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
