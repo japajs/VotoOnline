@@ -213,7 +213,7 @@ export default function AjudaPage() {
         </p>
         <p>
           Para ver o <strong className="text-foreground">resultado</strong> (apuração por pauta,
-          gráficos, quórum), abra <Chip>Relatórios</Chip> →{" "}
+          gráficos, quórum), abra <Chip>Assembleia</Chip> →{" "}
           <Chip>Apuração (abrir em nova aba)</Chip>: ela abre numa{" "}
           <strong className="text-foreground">aba nova</strong>, do mesmo jeito que o telão. Assim a
           tela da chamada <strong className="text-foreground">continua intacta</strong> — você
@@ -234,7 +234,7 @@ export default function AjudaPage() {
           </li>
           <li>
             <strong className="text-foreground">Link de entrada (WhatsApp):</strong> no menu{" "}
-            <Chip>Cadastro</Chip>, use <Chip>Copiar link de entrada</Chip> (ou <Chip>QR de
+            <Chip>Operacionais</Chip>, use <Chip>Copiar link de entrada</Chip> (ou <Chip>Gerar QR de
             entrada</Chip>) e divulgue no grupo. A pessoa se identifica pela <em>unidade + CPF</em> e
             entra para votar. Ótimo para a assembleia presencial ou híbrida. Em condomínio com blocos,
             ela digita a unidade <strong className="text-foreground">com o bloco junto</strong> (ex.:{" "}
@@ -459,8 +459,8 @@ export default function AjudaPage() {
 
       <Secao icon={Tv} titulo="9. Telão ao vivo">
         <p>
-          No menu <Chip>Cadastro</Chip>, <Chip>Telão</Chip> abre uma tela cheia que se atualiza
-          sozinha, pensada para projetar no salão. Mostra o resultado parcial em tempo real. Está
+          No menu <Chip>Assembleia</Chip>, <Chip>Telão ao vivo</Chip> abre uma tela cheia que se
+          atualiza sozinha, pensada para projetar no salão. Mostra o resultado parcial em tempo real. Está
           liberado inclusive para o Visualizador — o advogado pode abrir e acompanhar sem depender do
           síndico.
         </p>

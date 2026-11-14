@@ -160,11 +160,16 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
             // Assembleia · Cadastro · Filtros · Operacionais · Relatórios. A
             // barra de ações é dividida em duas seções pra o Cadastro ▾ e os
             // Filtros ▾ (da lista) caberem no meio, na posição certa.
+            // Na apuração, Link/QR/Telão de entrada vivem nos menus de ação
+            // (Link/QR no Operacionais ▾, Telão no Assembleia ▾), então saem do
+            // Cadastro ▾ pra não repetir a mesma função em dois menus.
+            mostrarEntradaNoCadastro={false}
             menuAssembleia={
               <BarraAcoesAssembleia
                 secao="assembleia"
                 assembleia={assembleia}
                 condominioId={condominioId}
+                condominioNome={condominio.nome}
                 proprietarios={proprietarios}
                 canExport={session?.perfil !== "visualizador"}
                 apuracao={apuracao}
@@ -175,6 +180,7 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
                 secao="operacoes"
                 assembleia={assembleia}
                 condominioId={condominioId}
+                condominioNome={condominio.nome}
                 proprietarios={proprietarios}
                 canExport={session?.perfil !== "visualizador"}
                 apuracao={apuracao}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type Ref } from "react"
 import { Plus, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -16,7 +16,19 @@ import { createAssembleiaAction } from "@/app/actions/assembleias"
 import { useAssembleiaForm } from "./use-assembleia-form"
 import { AssembleiaFormFields } from "./assembleia-form-fields"
 
-export function CriarAssembleiaDialog({ condominioId }: { condominioId: string }) {
+export function CriarAssembleiaDialog({
+  condominioId,
+  triggerRef,
+  triggerClassName,
+}: {
+  condominioId: string
+  /** Deixa o gatilho ser disparado de fora (ex.: item "Incluir nova assembleia"
+   * do menu Assembleia ▾ da apuração), via abrirPeloTrigger. */
+  triggerRef?: Ref<HTMLButtonElement>
+  /** Classe do botão-gatilho — "hidden" pra escondê-lo quando o diálogo for
+   * aberto só pelo menu. Padrão: visível (uso standalone na tela de gestão). */
+  triggerClassName?: string
+}) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const form = useAssembleiaForm()
@@ -58,7 +70,7 @@ export function CriarAssembleiaDialog({ condominioId }: { condominioId: string }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+      <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} size="sm" variant="outline" />}>
         <Plus className="h-4 w-4" />
         Nova assembleia
       </DialogTrigger>

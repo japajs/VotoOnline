@@ -136,6 +136,12 @@ interface ProprietariosListProps {
   // Ausentes na tela de GESTÃO (lá não há assembleia única em foco).
   menuAssembleia?: ReactNode
   barraAcoes?: ReactNode
+  // Onde vivem o Link/QR/Telão de entrada. Padrão (true): no "Cadastro ▾" — é o
+  // caso da tela de GESTÃO, que não tem os menus de ação. A tela da apuração
+  // passa `false`: lá esses itens foram pros menus de ação (Link/QR no
+  // "Operacionais ▾", Telão no "Assembleia ▾" — pedido do Carlos), e manter uma
+  // cópia no Cadastro ▾ seria a mesma função repetida em dois menus.
+  mostrarEntradaNoCadastro?: boolean
 }
 
 type FiltroVoto =
@@ -201,6 +207,7 @@ export function ProprietariosList({
   assembleiaAtual,
   menuAssembleia,
   barraAcoes,
+  mostrarEntradaNoCadastro = true,
 }: ProprietariosListProps) {
   const [busca, setBusca] = useState("")
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("nome")
@@ -258,7 +265,10 @@ export function ProprietariosList({
     !!assembleiaAtual && podeEditar && (entStatus === "aberta" || entStatus === "pausada")
   const qrEntradaOn = !!assembleiaAtual && podeEditar && entStatus !== "encerrada"
   const telaoOn = !!assembleiaAtual && entStatus !== "rascunho"
-  const temEntradaNoCadastro = linkEntradaOn || qrEntradaOn || telaoOn
+  // Na apuração (mostrarEntradaNoCadastro=false) esses itens vivem nos menus de
+  // ação, não no Cadastro ▾ — então aqui some tudo.
+  const temEntradaNoCadastro =
+    mostrarEntradaNoCadastro && (linkEntradaOn || qrEntradaOn || telaoOn)
 
   function copiarLinkEntrada() {
     if (!assembleiaAtual) return
@@ -768,7 +778,7 @@ export function ProprietariosList({
               triggerClassName="hidden"
             />
           )}
-          {qrEntradaOn && assembleiaAtual && (
+          {mostrarEntradaNoCadastro && qrEntradaOn && assembleiaAtual && (
             <QrEntradaDialog
               assembleiaId={assembleiaAtual.id}
               assembleiaTitulo={assembleiaAtual.titulo}
@@ -778,7 +788,9 @@ export function ProprietariosList({
             />
           )}
           {/* 2) Cadastro ▾ — gestão do cadastro: Incluir proprietário, Ordenar,
-              Link/QR/Telão de entrada, Dados a compartilhar e Exportar/Lista. */}
+              Dados a compartilhar e Exportar/Lista. (Link/QR/Telão de entrada só
+              aparecem aqui na tela de GESTÃO — na apuração eles vivem nos menus
+              Operacionais ▾ / Assembleia ▾; ver mostrarEntradaNoCadastro.) */}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
               <Users className="h-3.5 w-3.5" />

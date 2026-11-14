@@ -166,7 +166,13 @@ export function EditarAssembleiaDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button size="sm" variant="ghost" />}>
+      {/* O ref + triggerClassName PRECISAM vir aqui também (não só no ramo
+          "encerrada" acima). Sem eles, quando a assembleia NÃO está encerrada o
+          gatilho ignorava o `hidden` (aparecia um "Editar Assembleia" solto na
+          barra) e o `editarAssembleiaRef` nunca era ligado — então o item
+          "Editar assembleia" do menu Assembleia ▾ não abria nada ("parecia
+          nulo"). Pedido do Carlos: tirar o botão solto + fazer o item abrir. */}
+      <DialogTrigger render={<Button ref={triggerRef} className={triggerClassName} size="sm" variant="ghost" />}>
         <Pencil className="h-3.5 w-3.5" />
         Editar Assembleia
       </DialogTrigger>
