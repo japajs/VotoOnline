@@ -693,12 +693,12 @@ export function ProprietariosList({
   const filtroMenuAtivo = filtrosMenu.find(([v]) => v === filtroVoto)
   const filtroAtivoLabel =
     filtroVoto === "todos"
-      ? "Filtros"
+      ? "Filtro"
       : filtroMenuAtivo
         ? `${filtroMenuAtivo[1]} (${filtroMenuAtivo[2]})`
         : filtroVoto === "tentando"
           ? "Tentando entrar"
-          : "Filtros"
+          : "Filtro"
 
   // Rótulo do filtro ativo pro cabeçalho do PDF "Lista do cadastro" (nome limpo,
   // sem a contagem) + a busca, se houver. "Todos os imóveis" = sem recorte.
