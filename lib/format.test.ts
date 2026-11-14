@@ -3,6 +3,10 @@ import {
   normalizarCpf,
   cpfCompleto,
   validarCpf,
+  cnpjCompleto,
+  validarCnpj,
+  cpfOuCnpjCompleto,
+  validarCpfOuCnpj,
   formatCpf,
   formatCpfCnpj,
   validarEmailFormato,
@@ -75,6 +79,38 @@ describe("formatCpf", () => {
     expect(formatCpf("   ")).toBeNull()
     expect(formatCpf(null)).toBeNull()
     expect(formatCpf(undefined)).toBeNull()
+  })
+})
+
+describe("validarCnpj / cnpjCompleto (CPF ou CNPJ)", () => {
+  it("valida um CNPJ com DV corretos", () => {
+    expect(validarCnpj("11222333000181")).toBe(true)
+    expect(validarCnpj("11.222.333/0001-81")).toBe(true)
+  })
+  it("rejeita CNPJ com DV errado, 14 dígitos iguais e tamanho errado", () => {
+    expect(validarCnpj("11222333000180")).toBe(false)
+    expect(validarCnpj("00000000000000")).toBe(false)
+    expect(validarCnpj("112223330001")).toBe(false) // 12 dígitos
+    expect(validarCnpj("")).toBe(false)
+  })
+  it("cnpjCompleto só com 14 dígitos", () => {
+    expect(cnpjCompleto("11222333000181")).toBe(true)
+    expect(cnpjCompleto("12345678901")).toBe(false) // 11
+  })
+})
+
+describe("cpfOuCnpjCompleto / validarCpfOuCnpj", () => {
+  it("aceita CPF (11) OU CNPJ (14)", () => {
+    expect(cpfOuCnpjCompleto("12345678901")).toBe(true)
+    expect(cpfOuCnpjCompleto("11222333000181")).toBe(true)
+    expect(cpfOuCnpjCompleto("1234567890")).toBe(false) // 10
+    expect(cpfOuCnpjCompleto("123456789012")).toBe(false) // 12
+  })
+  it("valida DV de CPF ou CNPJ conforme o tamanho", () => {
+    expect(validarCpfOuCnpj("111.444.777-35")).toBe(true) // CPF válido
+    expect(validarCpfOuCnpj("11222333000181")).toBe(true) // CNPJ válido
+    expect(validarCpfOuCnpj("11222333000180")).toBe(false) // CNPJ DV errado
+    expect(validarCpfOuCnpj("12345678900")).toBe(false) // CPF DV errado
   })
 })
 

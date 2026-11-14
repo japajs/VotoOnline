@@ -9,7 +9,7 @@ import {
   normalizarCelular,
   validarEmailFormato,
   normalizarCpf,
-  validarCpf,
+  validarCpfOuCnpj,
   formatCpf,
 } from "@/lib/format"
 import { converterEscalaFracaoIdeal, detectarDivisorEscalaFracaoIdeal } from "@/lib/peso"
@@ -219,13 +219,13 @@ export function processarLinhas(linhas: ImportacaoLinha[]): ImportacaoPreview {
     const cpfBruto = linha.cpf?.trim()
     if (cpfBruto) {
       const normalizado = normalizarCpf(cpfBruto)
-      if (validarCpf(normalizado)) {
+      if (validarCpfOuCnpj(normalizado)) {
         cpf = normalizado
       } else {
         erros.push({
           linha: linha._linhaOriginal,
           campo: "CPF",
-          mensagem: `CPF "${cpfBruto}" inválido — será importado sem CPF`,
+          mensagem: `CPF/CNPJ "${cpfBruto}" inválido — será importado sem o documento`,
           dados: cpfBruto,
         })
       }

@@ -65,7 +65,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
-import { formatCelular, formatCpf, formatCpfCnpj, normalizarBusca } from "@/lib/format"
+import { formatCelular, formatCpfCnpj, normalizarBusca } from "@/lib/format"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
@@ -1190,7 +1190,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
     return bloco !== 0 ? bloco : a.numero.localeCompare(b.numero, undefined, { numeric: true })
   })
   const celular = proprietario.telefone ? formatCelular(proprietario.telefone) : null
-  const cpfFmt = formatCpf(proprietario.cpf)
+  const docDigitos = (proprietario.cpf ?? "").replace(/\D/g, "")
+  const cpfFmt = formatCpfCnpj(proprietario.cpf)
+  const docLabel = docDigitos.length === 14 ? "CNPJ" : "CPF"
   const unidadeAlvo = unidades.find((u) => u.id === unidadeExcluir)
 
   // confirmarMover vira true no "Mover", depois do aviso de que o imóvel já está
@@ -1473,7 +1475,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
                 </span>
               )}
               {cpfFmt && (
-                <span className="truncate text-xs text-muted-foreground/70">CPF {cpfFmt}</span>
+                <span className="truncate text-xs text-muted-foreground/70">{docLabel} {cpfFmt}</span>
               )}
             </div>
           )}

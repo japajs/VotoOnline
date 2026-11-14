@@ -235,7 +235,7 @@ export default function AjudaPage() {
           <li>
             <strong className="text-foreground">Link de entrada (WhatsApp):</strong> no menu{" "}
             <Chip>Operacional</Chip>, use <Chip>Copiar link de entrada</Chip> (ou <Chip>Gerar QR de
-            entrada</Chip>) e divulgue no grupo. A pessoa se identifica pela <em>unidade + CPF</em> e
+            entrada</Chip>) e divulgue no grupo. A pessoa se identifica pela <em>unidade + CPF/CNPJ</em> e
             entra para votar. Ótimo para a assembleia presencial ou híbrida. Em condomínio com blocos,
             ela digita a unidade <strong className="text-foreground">com o bloco junto</strong> (ex.:{" "}
             <Chip>A0101</Chip>). Na entrada ela também pode informar o{" "}
@@ -319,7 +319,7 @@ export default function AjudaPage() {
             hora</strong>, aparecendo na lista <strong className="text-foreground">sozinho</strong>{" "}
             (sem a mesa digitar e sem recarregar). É <strong className="text-foreground">opcional</strong>:
             quem não preencher não fica travado, e a identidade continua sendo{" "}
-            <em>unidade + CPF</em>.
+            <em>unidade + CPF/CNPJ</em>.
           </li>
           <li>Não é possível desmarcar a presença de quem já votou.</li>
         </ul>
