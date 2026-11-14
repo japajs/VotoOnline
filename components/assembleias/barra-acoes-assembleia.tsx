@@ -28,6 +28,8 @@ import {
   Play,
   LockKeyhole,
   RotateCcw,
+  ListChecks,
+  Check,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -64,6 +66,7 @@ import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import {
   updateAssembleiaStatusAction,
   reabrirAssembleiaAction,
+  setVotacaoPorPautaAction,
 } from "@/app/actions/assembleias"
 import type { Assembleia, AssembleiaApuracao, Proprietario } from "@/types"
 
@@ -135,6 +138,11 @@ export function BarraAcoesAssembleia({
   const [isPendingStatus, startStatusTransition] = useTransition()
   const [encerrarOpen, setEncerrarOpen] = useState(false)
   const [reabrirOpen, setReabrirOpen] = useState(false)
+  // "Pauta por pauta" (liga/desliga) — agora também aqui, no menu Operacional
+  // (pedido do Carlos: estava só na aba /apuração e ele não achava). Otimista,
+  // reverte se o servidor recusar. O controle da aba /apuração continua.
+  const [votacaoPorPauta, setVppState] = useState(assembleia.votacao_por_pauta ?? false)
+  const [isPendingVpp, startVppTransition] = useTransition()
 
   // Gatilhos ocultos dos diálogos agrupados nos menus.
   const editarAssembleiaRef = useRef<HTMLButtonElement>(null)
@@ -192,6 +200,20 @@ export function BarraAcoesAssembleia({
         toast.success("Assembleia reaberta.")
       } else {
         toast.error(result.error)
+      }
+    })
+  }
+
+  function handleToggleVpp() {
+    const novo = !votacaoPorPauta
+    setVppState(novo)
+    startVppTransition(async () => {
+      const r = await setVotacaoPorPautaAction(assembleia.id, condominioId, novo)
+      if (!r.success) {
+        setVppState(!novo)
+        toast.error(r.error ?? "Erro ao atualizar a opção.")
+      } else {
+        toast.success(novo ? "Votação pauta por pauta ligada." : "Votação pauta por pauta desligada.")
       }
     })
   }
@@ -491,6 +513,19 @@ export function BarraAcoesAssembleia({
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
+                {/* "Pauta por pauta" (modo): liga/desliga conduzir a votação
+                    abrindo e fechando cada pauta no seu tempo. O check mostra se
+                    está ligado. Os botões Abrir/Fechar de cada pauta ficam na
+                    aba Apuração. */}
+                <DropdownMenuItem onClick={handleToggleVpp} disabled={isPendingVpp}>
+                  {votacaoPorPauta ? (
+                    <Check className="h-4 w-4 text-primary" />
+                  ) : (
+                    <ListChecks className="h-4 w-4" />
+                  )}
+                  Pauta por pauta{votacaoPorPauta ? " (ligada)" : ""}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {status === "aberta" && (
                   <DropdownMenuItem onClick={() => abrirPeloTrigger(votoManualRef)}>
                     <UserPlus className="h-4 w-4" />
