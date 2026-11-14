@@ -120,11 +120,14 @@ function AssembleiaRow({
   // Gatilho oculto do "Disparar e-mails" (item do menu de ações da linha).
   const dispararRef = useRef<HTMLButtonElement>(null)
 
-  function handleStatusChange(nextStatus: AssembleiaStatus) {
+  // successMsg opcional pra dar a mensagem certa por AÇÃO (não por status): ex.
+  // "Retomar" (pausada→aberta) diz "Votação retomada", não "aberta". Mesmas
+  // frases da tela da assembleia (barra-acoes-assembleia), pras duas baterem.
+  function handleStatusChange(nextStatus: AssembleiaStatus, successMsg?: string) {
     startTransition(async () => {
       const result = await updateAssembleiaStatusAction(assembleia.id, condominioId, nextStatus)
       if (result.success) {
-        toast.success(`Assembleia ${STATUS_LABEL[nextStatus].toLowerCase()} com sucesso.`)
+        toast.success(successMsg ?? `Assembleia ${STATUS_LABEL[nextStatus].toLowerCase()} com sucesso.`)
       } else {
         toast.error(result.error)
       }
@@ -225,19 +228,28 @@ function AssembleiaRow({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {assembleia.status === "rascunho" && (
-                  <DropdownMenuItem onClick={() => handleStatusChange("aberta")} disabled={isPending}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange("aberta", "Votação aberta.")}
+                    disabled={isPending}
+                  >
                     <Unlock className="h-4 w-4" />
                     Abrir votação
                   </DropdownMenuItem>
                 )}
                 {assembleia.status === "aberta" && (
-                  <DropdownMenuItem onClick={() => handleStatusChange("pausada")} disabled={isPending}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange("pausada", "Assembleia pausada.")}
+                    disabled={isPending}
+                  >
                     <Pause className="h-4 w-4" />
                     Pausar
                   </DropdownMenuItem>
                 )}
                 {assembleia.status === "pausada" && (
-                  <DropdownMenuItem onClick={() => handleStatusChange("aberta")} disabled={isPending}>
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange("aberta", "Votação retomada.")}
+                    disabled={isPending}
+                  >
                     <Play className="h-4 w-4" />
                     Retomar
                   </DropdownMenuItem>
