@@ -255,6 +255,25 @@ export function ProprietariosList({
   // Gatilho oculto do QR de entrada (item "QR de entrada" do Cadastro ▾), aberto
   // via abrirPeloTrigger — mesmo padrão do Incluir proprietário.
   const qrEntradaRef = useRef<HTMLButtonElement>(null)
+  // Barra + cabeçalho fixos (pedido do Carlos): mede a altura da barra de
+  // ferramentas (que varia com a quebra de linha dos menus/busca e o breakpoint)
+  // e expõe no root como CSS var `--barra-ferramentas-h`, pra o cabeçalho da
+  // tabela grudar EXATAMENTE embaixo dela (lg+). Seta a var direto no DOM (sem
+  // React state) — evita re-render e o lint de setState em efeito; ResizeObserver
+  // cobre mudança de largura/quebra; o cleanup desconecta.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const barraRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const root = rootRef.current
+    const barra = barraRef.current
+    if (!root || !barra) return
+    const aplicar = () =>
+      root.style.setProperty("--barra-ferramentas-h", `${barra.offsetHeight}px`)
+    aplicar()
+    const ro = new ResizeObserver(aplicar)
+    ro.observe(barra)
+    return () => ro.disconnect()
+  }, [])
   const podeMarcarPresenca = !!assembleiaAbertaId && podeEditar
 
   // Link/QR/Telão no "Cadastro ▾" (fusão, mockup de 5 menus): mesmos gatings da
@@ -744,7 +763,7 @@ export function ProprietariosList({
   }
 
   return (
-    <div className="space-y-3">
+    <div ref={rootRef} className="space-y-3">
       {/* Alerta "tentando entrar" NA PRÓPRIA tela de cadastro (pedido do Carlos):
           é onde a secretária fica o tempo todo. Quem abriu o link/QR e ainda não
           foi marcado presente aparece aqui em tempo real. Clicar filtra pra ver
@@ -781,7 +800,7 @@ export function ProprietariosList({
           então `sticky top-0` gruda certo. O wrapper opaco (bg-background, igual
           ao fundo da página) impede que as linhas vazem por trás do painel
           semitransparente; z-20 fica ABAIXO dos menus (portais z-50). */}
-      <div className="sticky top-0 z-20 bg-background pb-3">
+      <div ref={barraRef} className="sticky top-0 z-20 bg-background pb-3">
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3">
         {/* Linha 1 — os 5 menus na ordem do layout "sem poluição visual" do
             Carlos: Assembleia · Cadastro · Filtros · Operacionais · Relatórios. */}
@@ -1027,9 +1046,13 @@ export function ProprietariosList({
       ) : (
         <div className="rounded-xl border border-border/60 bg-card">
           {/* Cabeçalho de colunas — só faz sentido a partir de lg, onde a
-              grade de colunas entra em vigor. */}
+              grade de colunas entra em vigor. FIXO logo abaixo da barra de
+              ferramentas (pedido do Carlos): top = altura medida da barra (CSS
+              var no root). bg OPACO (bg-muted) pra as linhas não vazarem por trás
+              ao rolar; z-10 fica abaixo da barra (z-20) e acima das linhas. */}
           <div
-            className={`hidden border-b border-border/60 bg-muted/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 lg:grid lg:gap-3 ${gridCols}`}
+            style={{ top: "var(--barra-ferramentas-h, 0px)" }}
+            className={`sticky z-10 hidden border-b border-border/60 bg-muted px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 lg:grid lg:gap-3 ${gridCols}`}
           >
             {/* Atalho de ordenação (pedido do Carlos): clicar no "Nome" alterna
                 entre ordem por NOME (A–Z) e por IMÓVEL, sem abrir o menu. O
