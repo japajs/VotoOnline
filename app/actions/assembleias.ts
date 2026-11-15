@@ -10,6 +10,7 @@ import {
   setVotacaoPorPauta,
   setDataEncerramento,
   updateMesaAssembleia,
+  updateAtaTextos,
 } from "@/services/assembleias"
 import {
   createPautasBatch,
@@ -18,6 +19,7 @@ import {
   deletePautaIndividual,
   abrirVotacaoPauta,
   fecharVotacaoPauta,
+  updatePautasDeliberacoes,
 } from "@/services/pautas"
 import { getAssembleiaById, contarParticipantesJaVotaram } from "@/services/assembleias"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
@@ -479,6 +481,41 @@ export async function atualizarMesaAction(
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar a mesa." }
+  }
+}
+
+// Ata — textos livres (pedido do Carlos): abertura, encerramento e a deliberação
+// de cada pauta ("o que foi discutido/decidido"). Tudo opcional; em branco sai
+// como null (a seção/linha não aparece na ata). Mesma trava dos outros itens de
+// edição (operador/admin + acesso ao condomínio). Preserva quebras de linha
+// (texto narrativo), só apara as pontas e limita o tamanho.
+export async function atualizarAtaAction(
+  assembleiaId: string,
+  condominioId: string,
+  input: {
+    abertura: string
+    encerramento: string
+    deliberacoes: { pautaId: string; texto: string }[]
+  }
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await requirePerfil(["administrador", "operador"])
+  if (!auth.ok) return { success: false, error: auth.error }
+  const acesso = await requireAcessoCondominio(condominioId)
+  if (!acesso.ok) return { success: false, error: acesso.error }
+  try {
+    const limpa = (s: string, max: number) => {
+      const t = (s ?? "").trim()
+      return t ? t.slice(0, max) : null
+    }
+    await updateAtaTextos(assembleiaId, limpa(input.abertura, 8000), limpa(input.encerramento, 8000))
+    await updatePautasDeliberacoes(
+      assembleiaId,
+      input.deliberacoes.map((d) => ({ pautaId: d.pautaId, texto: limpa(d.texto, 4000) }))
+    )
+    revalidatePath(ROUTES.condominioAssembleia(condominioId, assembleiaId))
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar a ata." }
   }
 }
 

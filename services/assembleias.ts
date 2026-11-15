@@ -26,6 +26,7 @@ type JoinedPauta = {
   votacao_aberta?: boolean
   votacao_aberta_em?: string | null
   votacao_fechada_em?: string | null
+  ata_deliberacao?: string | null
   created_at: string
   pauta_opcoes: JoinedPautaOpcao[] | null
 }
@@ -45,6 +46,8 @@ type JoinedAssembleia = {
   votacao_por_pauta?: boolean
   mesa_presidente?: string | null
   mesa_secretario?: string | null
+  ata_abertura?: string | null
+  ata_encerramento?: string | null
   created_at: string
   updated_at: string
   pautas: JoinedPauta[] | null
@@ -76,6 +79,7 @@ function rowToPauta(row: JoinedPauta): Pauta {
     votacao_aberta: row.votacao_aberta ?? false,
     votacao_aberta_em: row.votacao_aberta_em ?? null,
     votacao_fechada_em: row.votacao_fechada_em ?? null,
+    ata_deliberacao: row.ata_deliberacao ?? null,
     created_at: row.created_at,
     opcoes: row.pauta_opcoes
       ? [...row.pauta_opcoes].sort((a, b) => a.ordem - b.ordem).map(rowToPautaOpcao)
@@ -99,6 +103,8 @@ function rowToAssembleia(row: JoinedAssembleia): Assembleia {
     votacao_por_pauta: row.votacao_por_pauta ?? false,
     mesa_presidente: row.mesa_presidente ?? null,
     mesa_secretario: row.mesa_secretario ?? null,
+    ata_abertura: row.ata_abertura ?? null,
+    ata_encerramento: row.ata_encerramento ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     pautas: (row.pautas ?? []).map(rowToPauta).sort((a, b) => a.ordem - b.ordem),
@@ -156,6 +162,23 @@ export async function updateMesaAssembleia(
   const { error } = await db
     .from("assembleias")
     .update({ mesa_presidente: presidente, mesa_secretario: secretario })
+    .eq("id", assembleiaId)
+  if (error) throw new Error(error.message)
+}
+
+// Textos livres da ata (pedido do Carlos): abertura (local, convocação etc.) e
+// encerramento. Entram na ata além da narrativa automática. null = sem texto (a
+// seção correspondente não aparece). A deliberação de cada pauta é salva à
+// parte (ver updatePautasDeliberacoes em services/pautas).
+export async function updateAtaTextos(
+  assembleiaId: string,
+  abertura: string | null,
+  encerramento: string | null
+): Promise<void> {
+  const db = createServerClient()
+  const { error } = await db
+    .from("assembleias")
+    .update({ ata_abertura: abertura, ata_encerramento: encerramento })
     .eq("id", assembleiaId)
   if (error) throw new Error(error.message)
 }

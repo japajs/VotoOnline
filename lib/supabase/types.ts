@@ -207,6 +207,8 @@ export type Database = {
           votacao_por_pauta: boolean
           mesa_presidente: string | null
           mesa_secretario: string | null
+          ata_abertura: string | null
+          ata_encerramento: string | null
           created_at: string
           updated_at: string
         }
@@ -225,6 +227,8 @@ export type Database = {
           votacao_por_pauta?: boolean
           mesa_presidente?: string | null
           mesa_secretario?: string | null
+          ata_abertura?: string | null
+          ata_encerramento?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -241,6 +245,8 @@ export type Database = {
           votacao_por_pauta?: boolean
           mesa_presidente?: string | null
           mesa_secretario?: string | null
+          ata_abertura?: string | null
+          ata_encerramento?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -261,6 +267,7 @@ export type Database = {
           votacao_aberta: boolean
           votacao_aberta_em: string | null
           votacao_fechada_em: string | null
+          ata_deliberacao: string | null
           created_at: string
         }
         Insert: {
@@ -278,6 +285,7 @@ export type Database = {
           votacao_aberta?: boolean
           votacao_aberta_em?: string | null
           votacao_fechada_em?: string | null
+          ata_deliberacao?: string | null
           created_at?: string
         }
         Update: {
@@ -293,6 +301,7 @@ export type Database = {
           votacao_aberta?: boolean
           votacao_aberta_em?: string | null
           votacao_fechada_em?: string | null
+          ata_deliberacao?: string | null
         }
         Relationships: []
       }

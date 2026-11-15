@@ -16,6 +16,7 @@ type PautaRow = {
   votacao_aberta?: boolean
   votacao_aberta_em?: string | null
   votacao_fechada_em?: string | null
+  ata_deliberacao?: string | null
   created_at: string
   pauta_opcoes?: PautaOpcaoRow[] | null
 }
@@ -54,6 +55,7 @@ function rowToPauta(row: PautaRow): Pauta {
     votacao_aberta: row.votacao_aberta ?? false,
     votacao_aberta_em: row.votacao_aberta_em ?? null,
     votacao_fechada_em: row.votacao_fechada_em ?? null,
+    ata_deliberacao: row.ata_deliberacao ?? null,
     created_at: row.created_at,
     opcoes: row.pauta_opcoes
       ? row.pauta_opcoes.map(rowToPautaOpcao).sort((a, b) => a.ordem - b.ordem)
@@ -279,4 +281,27 @@ export async function getNextOrdem(assembleiaId: string): Promise<number> {
   if (error) throw new Error(error.message)
   const max = (data?.[0] as { ordem: number } | undefined)?.ordem ?? 0
   return max + 1
+}
+
+// Deliberação da ata por pauta (pedido do Carlos): o que foi discutido/decidido,
+// além do resultado numérico. Texto livre; null = sem deliberação (não sai na
+// ata). Cada item é restrito à assembleia informada (eq assembleia_id) pra um id
+// de pauta de outra assembleia não ser gravado por engano. Atualiza só este
+// campo — não mexe em status/voto.
+export async function updatePautasDeliberacoes(
+  assembleiaId: string,
+  deliberacoes: { pautaId: string; texto: string | null }[]
+): Promise<void> {
+  if (deliberacoes.length === 0) return
+  const db = createServerClient()
+  await Promise.all(
+    deliberacoes.map(async ({ pautaId, texto }) => {
+      const { error } = await db
+        .from("pautas")
+        .update({ ata_deliberacao: texto })
+        .eq("id", pautaId)
+        .eq("assembleia_id", assembleiaId)
+      if (error) throw new Error(error.message)
+    })
+  )
 }

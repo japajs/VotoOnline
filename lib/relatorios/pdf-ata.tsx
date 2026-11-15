@@ -87,6 +87,9 @@ const s = StyleSheet.create({
   pautaBlock: { marginBottom: 10 },
   pautaTitle: { fontFamily: "Helvetica-Bold", marginBottom: 2 },
   pautaResult: { fontFamily: "Helvetica-Bold" },
+  // Deliberação da pauta (texto livre da mesa — o que foi discutido/decidido),
+  // logo abaixo do resultado numérico.
+  deliberacao: { marginTop: 3, textAlign: "justify" },
   presentesGrid: { flexDirection: "row", flexWrap: "wrap" },
   presenteItem: { width: "50%", fontSize: 9, marginBottom: 3 },
   // Mesa da assembleia: 3 assinaturas lado a lado (síndico, presidente,
@@ -146,6 +149,14 @@ export function AtaPDF({
     apuracao.percentual_quorum !== null
       ? `Verificado o quórum, constatou-se a representação de ${Math.round(apuracao.percentual_quorum * 100)}% do peso total do condomínio, ${apuracao.quorum_atingido ? "atingindo" : "não atingindo"} o mínimo exigido de ${Math.round((apuracao.quorum_aplicavel ?? 0) * 100)}%.`
       : null
+  // Textos livres da ata (pedido do Carlos). Em branco = a seção não aparece. A
+  // deliberação por pauta vem de assembleia.pautas (não da apuração), casada pelo
+  // id da pauta — robusto independentemente do que a apuração carrega.
+  const aberturaTexto = (assembleia.ata_abertura ?? "").trim()
+  const encerramentoTexto = (assembleia.ata_encerramento ?? "").trim()
+  const deliberacaoPorPauta = new Map(
+    (assembleia.pautas ?? []).map((p) => [p.id, (p.ata_deliberacao ?? "").trim()])
+  )
 
   return (
     <Document title={`Ata - ${assembleia.titulo}`} author={APP_NAME} creator={`${APP_NAME} v${APP_VERSION}`}>
@@ -178,6 +189,13 @@ export function AtaPDF({
             {apuracao.imoveis_cadastrados === 1 ? "imóvel cadastrado" : "imóveis cadastrados"}.
           </Text>
         </View>
+
+        {aberturaTexto ? (
+          <View wrap={false}>
+            <Text style={s.sectionLabel}>Abertura</Text>
+            <Text style={s.paragraph}>{aberturaTexto}</Text>
+          </View>
+        ) : null}
 
         {presentes.length > 0 && (
           <View wrap={false}>
@@ -234,9 +252,19 @@ export function AtaPDF({
               </Text>
               {pauta.descricao && <Text style={s.paragraph}>{pauta.descricao}</Text>}
               <Text style={s.pautaResult}>{resultadoTexto}</Text>
+              {deliberacaoPorPauta.get(pauta.id) ? (
+                <Text style={s.deliberacao}>{deliberacaoPorPauta.get(pauta.id)}</Text>
+              ) : null}
             </View>
           )
         })}
+
+        {encerramentoTexto ? (
+          <View wrap={false}>
+            <Text style={s.sectionLabel}>Encerramento</Text>
+            <Text style={s.paragraph}>{encerramentoTexto}</Text>
+          </View>
+        ) : null}
 
         <Text style={s.paragraph}>
           Nada mais havendo a tratar, foi encerrada a presente assembleia, da qual se lavrou a presente

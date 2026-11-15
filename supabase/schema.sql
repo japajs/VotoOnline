@@ -768,3 +768,15 @@ from assembleia_sends s
 left join proprietarios p on p.id = s.proprietario_id
 where s.status in ('sent', 'failed')
   and not exists (select 1 from assembleia_disparos d where d.send_id = s.id);
+
+-- ============================================================
+-- Ata: textos livres da reunião (pedido do Carlos) — além da narrativa
+-- automática, a mesa escreve a ABERTURA (local, convocação etc.), a DELIBERAÇÃO
+-- de cada pauta ("o que foi discutido/decidido", além do resultado numérico) e
+-- o ENCERRAMENTO. Tudo opcional: em branco, a seção não aparece na ata.
+-- Aditivo e idempotente. Rodar no SQL Editor ANTES de publicar o código que
+-- grava/lê estas colunas.
+-- ============================================================
+alter table assembleias add column if not exists ata_abertura text;
+alter table assembleias add column if not exists ata_encerramento text;
+alter table pautas add column if not exists ata_deliberacao text;
