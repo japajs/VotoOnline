@@ -191,7 +191,7 @@ export function AtaPDF({
         </View>
 
         {aberturaTexto ? (
-          <View wrap={false}>
+          <View>
             <Text style={s.sectionLabel}>Abertura</Text>
             <Text style={s.paragraph}>{aberturaTexto}</Text>
           </View>
@@ -245,7 +245,11 @@ export function AtaPDF({
           }
 
           return (
-            <View key={pauta.id} style={s.pautaBlock} wrap={false}>
+            // Sem wrap={false}: o bloco pode conter texto livre longo (descrição
+            // da pauta + deliberação da mesa). Com wrap={false}, o que passasse do
+            // fim da página seria CORTADO (perda de conteúdo na ata) — deixar
+            // fluir/quebrar entre páginas preserva o texto inteiro.
+            <View key={pauta.id} style={s.pautaBlock}>
               <Text style={s.pautaTitle}>
                 {i + 1}. {pauta.titulo}
                 {pauta.sigiloso ? " (votação sigilosa)" : ""}
@@ -260,7 +264,7 @@ export function AtaPDF({
         })}
 
         {encerramentoTexto ? (
-          <View wrap={false}>
+          <View>
             <Text style={s.sectionLabel}>Encerramento</Text>
             <Text style={s.paragraph}>{encerramentoTexto}</Text>
           </View>
