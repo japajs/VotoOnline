@@ -8,7 +8,6 @@ import { getProprietarioById } from "@/services/proprietarios"
 import { outorgouProcuracao, getProcuracoesByAssembleia } from "@/services/procuracoes"
 import { getPesoParticipante } from "@/lib/peso"
 import {
-  upsertAssembleiaSend,
   getOrCreateAssembleiaSend,
   updateAssembleiaSendStatus,
   registrarDisparos,
@@ -28,7 +27,6 @@ import { getExigePresenca } from "@/services/presenca"
 import { getHistoricoDisparos, type DisparoHistorico } from "@/services/relatorios"
 import type { AssembleiaStatus, PautaTipo } from "@/types"
 import { sendAssembleiaEmailBatch, sendNovaPautaEmailBatch, sendLembreteVotoEmailBatch } from "@/services/email"
-import { generateSurveyToken } from "@/lib/tokens"
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit"
@@ -134,12 +132,11 @@ export async function enviarAssembleiaAction(
         const proprietario = await getProprietarioById(proprietarioId)
         if (!proprietario || !proprietario.email) { failedIds.push(proprietarioId); return }
 
-        const token = generateSurveyToken()
-        const send = await upsertAssembleiaSend({
-          assembleia_id: assembleiaId,
-          proprietario_id: proprietarioId,
-          token,
-        })
+        // Reaproveita o send/token existente (getOrCreate, não upsert): o
+        // re-disparo reenvia o MESMO link, então uma aba que a pessoa já tenha
+        // aberta não morre (mesma classe do bug do voto manual). Token novo só
+        // no 1º disparo de quem ainda não tem send.
+        const send = await getOrCreateAssembleiaSend(assembleiaId, proprietarioId)
 
         const unidades = proprietario.unidades ?? []
         emailInputs.push({
@@ -149,7 +146,7 @@ export async function enviarAssembleiaAction(
           assembleiaTitulo: assembleia!.titulo,
           assembleiaDescricao: assembleia!.descricao,
           pautas,
-          votoUrl: `${appUrl}${ROUTES.publicCondoVoto(token)}`,
+          votoUrl: `${appUrl}${ROUTES.publicCondoVoto(send.token)}`,
           unidades: unidades.map((u) => ({ numero: u.numero, bloco: u.bloco })),
           peso: getPesoParticipante({ unidades }, criterioPeso),
           criterioPeso,

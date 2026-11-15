@@ -179,55 +179,15 @@ export async function getAssembleiaSendByToken(token: string): Promise<Assemblei
   return rowToSend(data as unknown as JoinedSend)
 }
 
-// Upsert garante que cada proprietário recebe no máximo um send por assembleia.
-// Em caso de re-envio, atualiza o token para gerar um novo link.
-export async function upsertAssembleiaSend(input: {
-  assembleia_id: string
-  proprietario_id: string
-  token: string
-}): Promise<AssembleiaSend> {
-  const db = createServerClient()
-  // NÃO força `status` aqui: a coluna tem default 'pending' pra linha NOVA, e num
-  // upsert de send que JÁ EXISTE isto PRESERVA o status real (ex.: 'sent' de um
-  // disparo). Antes forçava 'pending' e apagava o histórico de disparo quando a
-  // mesa lançava um voto manual (iniciarVotoManual) pra quem já tinha recebido
-  // o e-mail. Nada no app gateia por este status — só o relatório/histórico lê.
-  const { data, error } = await db
-    .from("assembleia_sends")
-    .upsert(input, { onConflict: "assembleia_id,proprietario_id" })
-    .select()
-    .single()
-
-  if (error) throw new Error(error.message)
-  return {
-    id: data.id,
-    assembleia_id: data.assembleia_id,
-    proprietario_id: data.proprietario_id,
-    token: data.token,
-    status: data.status as SendStatus,
-    sent_at: data.sent_at,
-    nome_snapshot: data.nome_snapshot,
-    cpf_snapshot: data.cpf_snapshot,
-    email_snapshot: data.email_snapshot,
-    telefone_snapshot: data.telefone_snapshot,
-    quantidade_unidades_snapshot: data.quantidade_unidades_snapshot,
-    unidades_snapshot: data.unidades_snapshot as { numero: string; bloco: string | null }[] | null,
-    peso_snapshot: data.peso_snapshot,
-    votado_em: data.votado_em,
-    ip_snapshot: data.ip_snapshot,
-    user_agent_snapshot: data.user_agent_snapshot,
-    created_at: data.created_at,
-  }
-}
-
 // Pega o send existente do proprietário nesta assembleia PRESERVANDO o token já
-// emitido, ou cria um novo (token fresco) se ainda não houver. Diferente de
-// upsertAssembleiaSend, que ROTACIONA o token de propósito (pro re-disparo de
-// e-mail gerar um link novo). Usado pelo VOTO MANUAL: o síndico lança o voto em
-// nome da pessoa e não precisa de link novo — e, crucialmente, NÃO pode invalidar
-// um link que o condômino já tenha ABERTO (bug: rotacionar o token matava a tela
-// ao vivo do /v, que parava de sincronizar). O token aqui, quando criado, nunca
-// é comunicado a ninguém — é só o "assento" pra gravar as respostas.
+// emitido, ou cria um novo (token fresco) se ainda não houver. É a ÚNICA forma
+// de obter o "assento" de um proprietário, e NUNCA rotaciona o token: rotacionar
+// invalidava um link que a pessoa já tivesse ABERTO e a tela ao vivo do /v
+// parava de sincronizar (bug do Carlos — valia tanto pro voto manual quanto pro
+// re-disparo de e-mail). Assim o (re)disparo reenvia o MESMO link, sem derrubar
+// abas abertas, e o voto manual lança o voto sem mexer no link. Não força
+// `status`: o default 'pending' vale só pra linha nova; um send que já existe
+// preserva o status real (ex.: 'sent', lido só pelo relatório/histórico).
 export async function getOrCreateAssembleiaSend(
   assembleiaId: string,
   proprietarioId: string
