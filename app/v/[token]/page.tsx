@@ -16,7 +16,7 @@ import { getCondominioById } from "@/services/condominios"
 import { getVotosDetalhados } from "@/services/relatorios"
 import { AssembleiaVotoForm } from "@/components/assembleias/assembleia-voto-form"
 import { VotoPautaPorPautaLive } from "@/components/assembleias/voto-pauta-por-pauta-live"
-import { NovasPautasWatcher } from "@/components/assembleias/novas-pautas-watcher"
+import { SituacaoVotoWatcher } from "@/components/assembleias/situacao-voto-watcher"
 import { ResultadoAssembleia } from "@/components/assembleias/resultado-assembleia"
 import type { EstadoVoto } from "@/app/actions/assembleia-votos"
 import { APP_NAME, APP_AUTORIA } from "@/lib/constants"
@@ -141,6 +141,14 @@ export default async function PublicVotoPage({ params }: Props) {
         {header}
         <div className="mx-auto max-w-2xl px-4 py-10">
           {heading}
+          {/* Tela estática: sem o vigia, quando a mesa ABRE a assembleia o celular
+              de quem já está esperando aqui não entra sozinho na votação (relato
+              do Carlos — todo mundo abre o link e aguarda a mesa abrir). */}
+          <SituacaoVotoWatcher
+            token={token}
+            statusInicial={status}
+            pautasConhecidas={pautas.map((p) => p.id)}
+          />
           <div className="flex flex-col items-center gap-4 rounded-xl border border-border/60 bg-card px-6 py-10 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/60 ring-1 ring-border">
               <Clock className="h-7 w-7 text-muted-foreground" />
@@ -247,11 +255,15 @@ export default async function PublicVotoPage({ params }: Props) {
         {header}
         <div className="mx-auto max-w-2xl px-4 py-10">
           {heading}
-          {/* Vigia pauta nova: esta tela é estática, então sem isto uma pauta
-              aberta pela mesa DEPOIS que a pessoa votou tudo não apareceria no
-              celular dela (relato do Carlos). Recarrega quando surge pauta nova
-              ou a assembleia encerra. */}
-          <NovasPautasWatcher token={token} pautasConhecidas={pautas.map((p) => p.id)} />
+          {/* Tela estática: sem este vigia, uma pauta aberta pela mesa DEPOIS que
+              a pessoa votou tudo (ou o encerramento) não apareceria no celular
+              dela (relato do Carlos). Recarrega quando surge pauta nova ou o
+              status muda. */}
+          <SituacaoVotoWatcher
+            token={token}
+            statusInicial={status}
+            pautasConhecidas={pautas.map((p) => p.id)}
+          />
           <div className="flex flex-col items-center gap-4 rounded-xl border border-border/60 bg-card px-6 py-10 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-400/10 ring-1 ring-emerald-400/20">
               <CheckCircle2 className="h-7 w-7 text-emerald-400" />
@@ -378,6 +390,13 @@ export default async function PublicVotoPage({ params }: Props) {
         {header}
         <div className="mx-auto max-w-2xl px-4 py-10">
           {heading}
+          {/* Tela estática: sem o vigia, quando a mesa RETOMA (ou encerra) o
+              celular de quem está na pausa não reage sozinho (relato do Carlos). */}
+          <SituacaoVotoWatcher
+            token={token}
+            statusInicial={status}
+            pautasConhecidas={pautas.map((p) => p.id)}
+          />
           <div className="flex flex-col items-center gap-4 rounded-xl border border-border/60 bg-card px-6 py-10 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/10 ring-1 ring-amber-400/20">
               <PauseCircle className="h-7 w-7 text-amber-500" />
