@@ -68,6 +68,7 @@ import {
   reabrirAssembleiaAction,
   setVotacaoPorPautaAction,
 } from "@/app/actions/assembleias"
+import { linkEntrada } from "@/lib/app-url"
 import type { Assembleia, AssembleiaApuracao, Proprietario } from "@/types"
 
 // Barra de AÇÕES da assembleia (fusão / barra única, pedido do Carlos). Os menus
@@ -218,9 +219,10 @@ export function BarraAcoesAssembleia({
     })
   }
 
-  // Link de entrada (copia pro WhatsApp). Mesmo link da rota /entrar.
+  // Link de entrada (copia pro WhatsApp). Mesmo link da rota /entrar, sempre no
+  // domínio da marca (ver lib/app-url).
   function copiarLinkEntrada() {
-    const url = `${window.location.origin}/entrar/${assembleia.id}`
+    const url = linkEntrada(assembleia.id)
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url).then(
         () => toast.success("Link de entrada copiado — cole no grupo do WhatsApp."),

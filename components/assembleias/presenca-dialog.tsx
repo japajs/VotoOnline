@@ -21,6 +21,7 @@ import {
 } from "@/app/actions/presenca"
 import { notificarNaoVotaramAction } from "@/app/actions/assembleia-votos"
 import { formatUnidade } from "@/lib/unidade-format"
+import { linkVotoToken } from "@/lib/app-url"
 import type { ChamadaItem } from "@/services/presenca"
 
 function formatHora(iso: string): string {
@@ -28,7 +29,7 @@ function formatHora(iso: string): string {
 }
 
 function copiarLinkVoto(token: string) {
-  const url = `${window.location.origin}/v/${token}`
+  const url = linkVotoToken(token)
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url).then(
       () => toast.success("Link de voto copiado."),

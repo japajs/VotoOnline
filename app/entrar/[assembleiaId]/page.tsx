@@ -3,21 +3,51 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Clock, CheckCircle2 } from "lucide-react"
-import { getAssembleiaById } from "@/services/assembleias"
 import { getExigePresenca } from "@/services/presenca"
 import { isEmAndamento } from "@/lib/assembleia-status"
 import { EntrarForm } from "@/components/assembleias/entrar-form"
 import { APP_NAME, APP_AUTORIA } from "@/lib/constants"
+import { carregarEntrada } from "./_entrada-data"
 
 interface Props {
   params: Promise<{ assembleiaId: string }>
 }
 
+// Metadata rica pro cartão de compartilhamento (WhatsApp/Telegram/iMessage).
+// Sem og:title/description próprios, o WhatsApp não acha um "cartão" e cai no
+// fallback de repetir a URL crua 3x (título=domínio, descrição=link) — o que o
+// Carlos notou como "muita informação". Aqui o título é o nome do CONDOMÍNIO
+// daquela assembleia (o que o condômino reconhece na hora) e a descrição traz o
+// título da assembleia + a chamada pra ação. A imagem do cartão vem do arquivo
+// opengraph-image.tsx deste segmento (o Next injeta as tags og:image sozinho).
+// São dados que já aparecem na página pública — nenhum PII novo é exposto.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { assembleiaId } = await params
   try {
-    const a = await getAssembleiaById(assembleiaId)
-    return { title: a ? `Entrar — ${a.titulo}` : APP_NAME }
+    const { assembleia, condominioNome } = await carregarEntrada(assembleiaId)
+    if (!assembleia) return { title: APP_NAME }
+
+    const titulo = condominioNome ?? assembleia.titulo
+    const descricao = condominioNome
+      ? `${assembleia.titulo} · Toque para entrar e votar: informe sua unidade e o CPF cadastrados.`
+      : "Toque para entrar e votar: informe sua unidade e o CPF cadastrados."
+
+    return {
+      title: `Entrar — ${assembleia.titulo}`,
+      description: descricao,
+      openGraph: {
+        title: titulo,
+        description: descricao,
+        siteName: APP_NAME,
+        url: `/entrar/${assembleiaId}`,
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: titulo,
+        description: descricao,
+      },
+    }
   } catch {
     return { title: APP_NAME }
   }
@@ -32,7 +62,7 @@ export default async function EntrarPage({ params }: Props) {
 
   let assembleia
   try {
-    assembleia = await getAssembleiaById(assembleiaId)
+    assembleia = (await carregarEntrada(assembleiaId)).assembleia
   } catch {
     notFound()
   }
