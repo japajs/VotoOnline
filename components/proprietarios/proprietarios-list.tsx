@@ -67,6 +67,7 @@ import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, formatCpfCnpj, normalizarBusca } from "@/lib/format"
 import { linkEntrada } from "@/lib/app-url"
+import { Menubar } from "@/components/ui/menubar"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
@@ -777,7 +778,9 @@ export function ProprietariosList({
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3">
         {/* Linha 1 — os 5 menus na ordem do layout "sem poluição visual" do
             Carlos: Assembleia · Cadastro · Filtros · Operacionais · Relatórios. */}
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        {/* Menubar (base-ui): clique abre um menu e, com um aberto, hover troca
+            entre os 5 sem clicar de novo (pedido do Carlos). Ver ui/menubar. */}
+        <Menubar className="flex flex-wrap items-center gap-2 print:hidden">
           {/* 1) Assembleia ▾ (injetado pela tela da apuração). */}
           {menuAssembleia}
           {/* Diálogos do Cadastro ▾ montados OCULTOS (Incluir proprietário / QR
@@ -919,7 +922,7 @@ export function ProprietariosList({
           )}
           {/* 4+5) Operacionais ▾ + Relatórios ▾ (injetados pela tela da apuração). */}
           {barraAcoes}
-        </div>
+        </Menubar>
 
         {/* Linha 2 — busca + Limpar. A busca fica numa linha própria (layout do
             Carlos: menus em cima, busca embaixo). */}
