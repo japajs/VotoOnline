@@ -1074,6 +1074,28 @@ export async function getProprietarioIdsPresentes(assembleiaId: string): Promise
   return new Set(((data ?? []) as { proprietario_id: string }[]).map((r) => r.proprietario_id))
 }
 
+// Hora (presente_em) em que cada proprietário registrou presença nesta assembleia
+// — pela entrada do link OU marcada pela mesa na chamada. Map proprietario_id →
+// ISO. Pedido do Carlos: mostrar na lista o momento em que a pessoa começou a
+// participar (abaixo do celular, igual ao CPF).
+export async function getPresencaHoraPorProprietario(
+  assembleiaId: string
+): Promise<Map<string, string>> {
+  const db = createServerClient()
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .select("proprietario_id, presente_em")
+    .eq("assembleia_id", assembleiaId)
+    .not("presente_em", "is", null)
+
+  if (error) throw new Error(error.message)
+  const map = new Map<string, string>()
+  for (const r of (data ?? []) as { proprietario_id: string; presente_em: string | null }[]) {
+    if (r.presente_em) map.set(r.proprietario_id, r.presente_em)
+  }
+  return map
+}
+
 // Proprietários cujo e-mail de disparo teve PROBLEMA, pelos eventos do webhook
 // do Resend: "bounce" (voltou — não existe/caixa indisponível) ou "spam"
 // (complaint — a pessoa marcou como spam; o e-mail até chegou, mas não convém

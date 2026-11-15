@@ -86,6 +86,9 @@ interface ProprietariosListProps {
   // Quem está marcado PRESENTE na assembleia aberta (filtro "Presentes" +
   // estado inicial da caixa de presença por linha).
   presentesNaAberta?: Set<string>
+  // Hora (ISO) em que cada presente registrou presença — mostrada abaixo do
+  // celular (pedido do Carlos: ver quando a pessoa começou a participar).
+  presencaHoraNaAberta?: Map<string, string>
   // Quantas pautas distintas cada proprietário já respondeu na assembleia
   // aberta — distingue voto TOTAL (respondeu todas) de PARCIAL (só algumas).
   pautasVotadasNaAberta?: Map<string, number>
@@ -194,6 +197,7 @@ export function ProprietariosList({
   proprietariosQueJaVotaram,
   votouNaAberta,
   presentesNaAberta,
+  presencaHoraNaAberta,
   pautasVotadasNaAberta,
   totalPautasVotaveis,
   outorgantesNaAberta,
@@ -1095,6 +1099,7 @@ export function ProprietariosList({
                 tentouEntrarEm={tentandoEntrar.get(p.id) ?? null}
                 mostrarPresenca={podeMarcarPresenca}
                 presente={presentesLocal.has(p.id)}
+                presencaHora={presencaHoraNaAberta?.get(p.id) ?? null}
                 marcandoPresenca={marcandoId === p.id}
                 onTogglePresente={handleTogglePresente}
                 isAdmin={isAdmin}
@@ -1133,6 +1138,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   tentouEntrarEm,
   mostrarPresenca,
   presente,
+  presencaHora,
   marcandoPresenca,
   onTogglePresente,
   isAdmin,
@@ -1163,6 +1169,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
   tentouEntrarEm: string | null
   mostrarPresenca: boolean
   presente: boolean
+  // Hora (ISO) em que registrou presença (link ou mesa), ou null. Mostrada
+  // abaixo do celular (pedido do Carlos).
+  presencaHora: string | null
   marcandoPresenca: boolean
   onTogglePresente: (proprietarioId: string, presente: boolean) => void
   isAdmin: boolean
@@ -1515,7 +1524,17 @@ const ProprietarioRow = memo(function ProprietarioRow({
             </div>
           )}
           {!modoCompartilhar && (
-            <span className="min-w-0 shrink-0 truncate">{celular ?? "—"}</span>
+            <div className="flex min-w-0 shrink-0 flex-col leading-tight">
+              <span className="truncate">{celular ?? "—"}</span>
+              {/* Hora da presença (pedido do Carlos): quando a pessoa registrou
+                  presença — pelo link ou marcada pela mesa. Ajuda a identificar o
+                  momento em que começou a participar. */}
+              {presencaHora && (
+                <span className="truncate text-xs text-muted-foreground/70">
+                  Presente às {horaBR(presencaHora)}
+                </span>
+              )}
+            </div>
           )}
           <span
             className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary lg:ml-0 lg:w-fit"

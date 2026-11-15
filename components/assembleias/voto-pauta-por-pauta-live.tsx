@@ -135,8 +135,9 @@ export function VotoPautaPorPautaLive({
               {nVotadas > 0 ? "Voto registrado!" : "Aguardando a mesa abrir a pauta"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              A mesa está conduzindo a assembleia pauta por pauta. Quando a próxima pauta for aberta,
-              ela aparece aqui automaticamente — pode deixar esta tela aberta.
+              A mesa está conduzindo a assembleia, pauta por pauta. Quando uma pauta é aberta, ela
+              aparece aqui automaticamente. Mantenha esta tela aberta (link ativo) até o encerramento
+              da assembleia.
             </p>
           </div>
         </div>
