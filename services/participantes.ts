@@ -1,6 +1,7 @@
 import {
   getProprietarioIdsVotaram,
   getProprietarioIdsPresentes,
+  getPresencaHoraPorProprietario,
   getPautasVotadasPorProprietario,
   getEmailProblemaPorProprietario,
 } from "@/services/assembleia-votos"
@@ -14,6 +15,9 @@ import type { Assembleia } from "@/types"
 export interface DadosParticipantes {
   votou?: Set<string>
   presentes?: Set<string>
+  // Hora (ISO) em que cada presente registrou presença — mostrada na lista
+  // (abaixo do celular). Só tem chave pra quem está presente.
+  presencaHora?: Map<string, string>
   pautasVotadas?: Map<string, number>
   outorgantes?: Set<string>
   outorgantesComRepVotou?: Map<string, number>
@@ -42,10 +46,11 @@ export async function getDadosParticipantes(
 ): Promise<DadosParticipantes> {
   if (!assembleia) return VAZIO
 
-  const [votou, presentes, pautasVotadas, procuracoes, participantes, emailProblema] =
+  const [votou, presentes, presencaHora, pautasVotadas, procuracoes, participantes, emailProblema] =
     await Promise.all([
       getProprietarioIdsVotaram(assembleia.id).catch(() => new Set<string>()),
       getProprietarioIdsPresentes(assembleia.id).catch(() => new Set<string>()),
+      getPresencaHoraPorProprietario(assembleia.id).catch(() => new Map<string, string>()),
       getPautasVotadasPorProprietario(assembleia.id).catch(() => new Map<string, number>()),
       getProcuracoesByAssembleia(assembleia.id).catch(() => []),
       getParticipantesNaAberta(assembleia.id).catch(() => new Map<string, string>()),
@@ -70,6 +75,7 @@ export async function getDadosParticipantes(
   return {
     votou,
     presentes,
+    presencaHora,
     pautasVotadas,
     outorgantes,
     outorgantesComRepVotou,

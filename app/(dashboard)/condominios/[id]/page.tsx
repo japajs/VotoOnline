@@ -143,6 +143,7 @@ export default async function CondominioDetailPage({ params }: Props) {
           proprietariosQueJaVotaram={proprietariosQueJaVotaram}
           votouNaAberta={dados.votou}
           presentesNaAberta={dados.presentes}
+          presencaHoraNaAberta={dados.presencaHora}
           pautasVotadasNaAberta={dados.pautasVotadas}
           outorgantesNaAberta={dados.outorgantes}
           outorgantesComRepVotouNaAberta={dados.outorgantesComRepVotou}

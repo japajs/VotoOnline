@@ -135,6 +135,7 @@ export default async function ApuracaoAssembleiaPage({ params }: Props) {
             proprietariosQueJaVotaram={proprietariosQueJaVotaram}
             votouNaAberta={dados.votou}
             presentesNaAberta={dados.presentes}
+            presencaHoraNaAberta={dados.presencaHora}
             pautasVotadasNaAberta={dados.pautasVotadas}
             totalPautasVotaveis={dados.totalPautasVotaveis}
             outorgantesNaAberta={dados.outorgantes}
