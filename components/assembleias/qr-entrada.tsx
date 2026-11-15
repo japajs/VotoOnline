@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react"
 import { QRCodeSVG } from "qrcode.react"
+import { linkEntrada } from "@/lib/app-url"
 
 // URL pública de entrada da assembleia (Opção A: um link por assembleia, o
-// condômino se identifica por unidade + CPF). Montada no cliente a partir do
-// domínio em que a página está aberta — assim sempre bate com o ambiente
-// (produção, preview), sem depender de env. Fica null no 1º render (SSR /
-// hidratação) e é preenchida logo após montar.
+// condômino se identifica por unidade + CPF/CNPJ). A base canônica
+// (votoonline.online) vem de linkEntrada (ver lib/app-url). Fica null no 1º
+// render (SSR / hidratação) e é preenchida logo após montar — padrão de valor
+// só-cliente, evita divergência de hidratação; o disable segue a convenção já
+// usada no repo (ver telao-live.tsx) pra este caso de setState em efeito.
 export function useEntradaUrl(assembleiaId: string): string | null {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
-    setUrl(`${window.location.origin}/entrar/${assembleiaId}`)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUrl(linkEntrada(assembleiaId))
   }, [assembleiaId])
   return url
 }

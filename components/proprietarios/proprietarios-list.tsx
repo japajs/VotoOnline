@@ -66,6 +66,7 @@ import {
 import { getPesoParticipante } from "@/lib/peso"
 import { formatUnidade, menorNumeroUnidade } from "@/lib/unidade-format"
 import { formatCelular, formatCpfCnpj, normalizarBusca } from "@/lib/format"
+import { linkEntrada } from "@/lib/app-url"
 import { EditarProprietarioDialog } from "@/components/proprietarios/editar-proprietario-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { QrEntradaDialog } from "@/components/assembleias/qr-entrada-dialog"
@@ -272,7 +273,7 @@ export function ProprietariosList({
 
   function copiarLinkEntrada() {
     if (!assembleiaAtual) return
-    const url = `${window.location.origin}/entrar/${assembleiaAtual.id}`
+    const url = linkEntrada(assembleiaAtual.id)
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url).then(
         () => toast.success("Link de entrada copiado — cole no grupo do WhatsApp."),

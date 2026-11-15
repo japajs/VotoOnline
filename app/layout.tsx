@@ -38,7 +38,14 @@ const plexMono = IBM_Plex_Mono({
   preload: false,
 })
 
+// Base absoluta pra resolver og:url e og:image (cartão de compartilhamento no
+// WhatsApp/Telegram etc.). Sem isso, o Next não consegue montar a URL absoluta
+// da imagem gerada e o preview fica sem cartão. Usa o domínio da marca
+// (votoonline.online) em produção; cai pra localhost só no dev.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
@@ -47,6 +54,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: APP_NAME,
     description: "Sistema de Assembleias Eletrônicas para Condomínios.",
+    siteName: APP_NAME,
     type: "website",
   },
 }
