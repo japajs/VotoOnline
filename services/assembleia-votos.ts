@@ -8,6 +8,7 @@ import { outorgouProcuracao, getOutorgantesIds, getProcuracoesByAssembleia } fro
 import { getIdsInadimplentes } from "@/services/proprietarios"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 import { formatUnidade } from "@/lib/unidade-format"
+import { generateSurveyToken } from "@/lib/tokens"
 import type {
   AssembleiaSend,
   AssembleiaResposta,
@@ -217,6 +218,52 @@ export async function upsertAssembleiaSend(input: {
     user_agent_snapshot: data.user_agent_snapshot,
     created_at: data.created_at,
   }
+}
+
+// Pega o send existente do proprietário nesta assembleia PRESERVANDO o token já
+// emitido, ou cria um novo (token fresco) se ainda não houver. Diferente de
+// upsertAssembleiaSend, que ROTACIONA o token de propósito (pro re-disparo de
+// e-mail gerar um link novo). Usado pelo VOTO MANUAL: o síndico lança o voto em
+// nome da pessoa e não precisa de link novo — e, crucialmente, NÃO pode invalidar
+// um link que o condômino já tenha ABERTO (bug: rotacionar o token matava a tela
+// ao vivo do /v, que parava de sincronizar). O token aqui, quando criado, nunca
+// é comunicado a ninguém — é só o "assento" pra gravar as respostas.
+export async function getOrCreateAssembleiaSend(
+  assembleiaId: string,
+  proprietarioId: string
+): Promise<{ id: string; token: string }> {
+  const db = createServerClient()
+  const { data: existente, error: selErr } = await db
+    .from("assembleia_sends")
+    .select("id, token")
+    .eq("assembleia_id", assembleiaId)
+    .eq("proprietario_id", proprietarioId)
+    .maybeSingle()
+  if (selErr) throw new Error(selErr.message)
+  if (existente) return { id: existente.id, token: existente.token }
+
+  // Ainda não existe: cria com token fresco. Em corrida (dois cliques quase
+  // simultâneos), o insert pode bater na constraint única (assembleia_id,
+  // proprietario_id) — nesse caso, relê o que o outro criou, sem rotacionar.
+  const { data, error } = await db
+    .from("assembleia_sends")
+    .insert({ assembleia_id: assembleiaId, proprietario_id: proprietarioId, token: generateSurveyToken() })
+    .select("id, token")
+    .single()
+  if (error) {
+    if (error.code === "23505") {
+      const { data: again, error: reErr } = await db
+        .from("assembleia_sends")
+        .select("id, token")
+        .eq("assembleia_id", assembleiaId)
+        .eq("proprietario_id", proprietarioId)
+        .single()
+      if (reErr) throw new Error(reErr.message)
+      return { id: again.id, token: again.token }
+    }
+    throw new Error(error.message)
+  }
+  return { id: data.id, token: data.token }
 }
 
 export async function updateAssembleiaSendStatus(

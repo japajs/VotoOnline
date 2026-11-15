@@ -9,6 +9,7 @@ import { outorgouProcuracao, getProcuracoesByAssembleia } from "@/services/procu
 import { getPesoParticipante } from "@/lib/peso"
 import {
   upsertAssembleiaSend,
+  getOrCreateAssembleiaSend,
   updateAssembleiaSendStatus,
   registrarDisparos,
   createAssembleiaRespostas,
@@ -611,11 +612,11 @@ export async function iniciarVotoManualAction(
       }
     }
 
-    const send = await upsertAssembleiaSend({
-      assembleia_id: assembleiaId,
-      proprietario_id: proprietarioId,
-      token: generateSurveyToken(),
-    })
+    // PRESERVA o token já emitido (getOrCreate, não upsert): rotacionar o token
+    // aqui invalidava o link que o condômino pudesse ter ABERTO — a tela ao vivo
+    // do /v parava de sincronizar (bug do Carlos). O voto manual não precisa de
+    // link novo; só do "assento" pra gravar as respostas.
+    const send = await getOrCreateAssembleiaSend(assembleiaId, proprietarioId)
     // Pautas que o formulário deve oferecer: as que a pessoa ainda não votou e,
     // no modo pauta-por-pauta, só as que a mesa já abriu (impede lançar voto em
     // pauta fechada/futura; reforçado no núcleo em validarVotoOuFalhar).
