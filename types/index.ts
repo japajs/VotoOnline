@@ -223,6 +223,11 @@ export interface Assembleia {
   // sem o nome (assina à mão). Preenchidos na tela da apuração.
   mesa_presidente?: string | null
   mesa_secretario?: string | null
+  // Ata (pedido do Carlos): textos livres que entram na ata — abertura (local,
+  // convocação etc.) e encerramento. O que foi discutido/decidido por pauta
+  // fica em Pauta.ata_deliberacao. Opcionais; em branco não saem na ata.
+  ata_abertura?: string | null
+  ata_encerramento?: string | null
   created_at: string
   updated_at: string
   // joined
@@ -263,6 +268,9 @@ export interface Pauta {
   votacao_aberta?: boolean
   votacao_aberta_em?: string | null
   votacao_fechada_em?: string | null
+  // Ata: o que foi discutido/decidido nesta pauta (texto livre da mesa), além
+  // do resultado numérico. Opcional; em branco não sai na ata.
+  ata_deliberacao?: string | null
   created_at: string
   // joined — só populado para pautas do tipo "multipla_escolha"
   opcoes?: PautaOpcao[]

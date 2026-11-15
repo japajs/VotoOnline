@@ -30,6 +30,7 @@ import {
   RotateCcw,
   ListChecks,
   Check,
+  NotebookPen,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,7 @@ import { EditarAssembleiaDialog } from "@/components/assembleias/editar-assemble
 import { AdicionarPautaDialog } from "@/components/assembleias/adicionar-pauta-dialog"
 import { RegistrarVotoManualDialog } from "@/components/assembleias/registrar-voto-manual-dialog"
 import { MesaAssembleiaDialog } from "@/components/assembleias/mesa-assembleia-dialog"
+import { AtaDialog } from "@/components/assembleias/ata-dialog"
 import { ProcuracoesDialog } from "@/components/assembleias/procuracoes-dialog"
 import { HistoricoDisparosDialog } from "@/components/assembleias/historico-disparos-dialog"
 import { DispararAssembleiaDialog } from "@/components/assembleias/disparar-assembleia-dialog"
@@ -153,6 +155,7 @@ export function BarraAcoesAssembleia({
   const criarAssembleiaRef = useRef<HTMLButtonElement>(null)
   const historicoRef = useRef<HTMLButtonElement>(null)
   const mesaRef = useRef<HTMLButtonElement>(null)
+  const ataRef = useRef<HTMLButtonElement>(null)
   const votoManualRef = useRef<HTMLButtonElement>(null)
   const dispararRef = useRef<HTMLButtonElement>(null)
   const anularRef = useRef<HTMLButtonElement>(null)
@@ -496,6 +499,24 @@ export function BarraAcoesAssembleia({
               triggerClassName="hidden"
             />
           )}
+          {/* Preencher ata (abertura, deliberação por pauta, encerramento) —
+              montado oculto, disponível em qualquer status: a secretária anota
+              as deliberações conforme as pautas fecham; o PDF da ata sai depois
+              de encerrada. */}
+          <AtaDialog
+            assembleiaId={assembleia.id}
+            condominioId={condominioId}
+            aberturaInicial={assembleia.ata_abertura ?? null}
+            encerramentoInicial={assembleia.ata_encerramento ?? null}
+            pautas={(assembleia.pautas ?? []).map((p) => ({
+              id: p.id,
+              ordem: p.ordem,
+              titulo: p.titulo,
+              ata_deliberacao: p.ata_deliberacao ?? null,
+            }))}
+            triggerRef={ataRef}
+            triggerClassName="hidden"
+          />
           {/* QR de entrada (item do Operacionais ▾), montado oculto. Vale
               enquanto não encerrada — igual ao que era no Cadastro ▾. */}
           {status !== "encerrada" && (
@@ -614,6 +635,11 @@ export function BarraAcoesAssembleia({
               <DropdownMenuItem onClick={() => abrirPeloTrigger(historicoRef)}>
                 <History className="h-4 w-4" />
                 Histórico de e-mail
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => abrirPeloTrigger(ataRef)}>
+                <NotebookPen className="h-4 w-4" />
+                Preencher ata da reunião
               </DropdownMenuItem>
               {status === "encerrada" && (
                 <>
