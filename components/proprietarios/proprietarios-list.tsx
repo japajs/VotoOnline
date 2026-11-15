@@ -774,7 +774,14 @@ export function ProprietariosList({
 
       {/* Painel de ferramentas — fundo e borda diferentes da listagem abaixo,
           para deixar claro à primeira vista que esta área serve para
-          localizar/organizar registros, não faz parte da tabela em si. */}
+          localizar/organizar registros, não faz parte da tabela em si.
+          Barra FIXA (pedido do Carlos): menus + busca grudam no topo ao rolar a
+          lista, pra aplicar comandos sem voltar ao começo. A rolagem acontece no
+          <main> (ver dashboard-shell), e nenhum ancestral até lá corta overflow,
+          então `sticky top-0` gruda certo. O wrapper opaco (bg-background, igual
+          ao fundo da página) impede que as linhas vazem por trás do painel
+          semitransparente; z-20 fica ABAIXO dos menus (portais z-50). */}
+      <div className="sticky top-0 z-20 bg-background pb-3">
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3">
         {/* Linha 1 — os 5 menus na ordem do layout "sem poluição visual" do
             Carlos: Assembleia · Cadastro · Filtros · Operacionais · Relatórios. */}
@@ -955,6 +962,7 @@ export function ProprietariosList({
             Limpar
           </button>
         </div>
+      </div>
       </div>
 
       {/* Aviso discreto quando o modo compartilhar está ligado — fica visível
