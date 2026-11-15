@@ -19,6 +19,35 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
   )
   const [erroPolling, setErroPolling] = useState<string | null>(null)
 
+  // Lembrar as credenciais no PRÓPRIO aparelho (nome/unidade/CPF) pra quem volta
+  // com o "‹" do celular não precisar digitar tudo de novo (pedido do Carlos).
+  // sessionStorage (não localStorage) de propósito: limpa ao fechar o navegador,
+  // então num aparelho compartilhado o CPF de uma pessoa não fica pra próxima.
+  // Começa vazio no SSR e é preenchido só depois de montar (evita divergência de
+  // hidratação); um objeto único → um setState só no efeito.
+  const STORAGE_KEY = `votoonline:entrada:${assembleiaId}`
+  const [cred, setCred] = useState({ nome: "", unidade: "", cpf: "" })
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const d = JSON.parse(raw) as { nome?: string; unidade?: string; cpf?: string }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCred({ nome: d.nome ?? "", unidade: d.unidade ?? "", cpf: d.cpf ?? "" })
+    } catch {
+      // storage indisponível/privado: segue com os campos vazios
+    }
+  }, [STORAGE_KEY])
+
+  function lembrarCredenciais() {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cred))
+    } catch {
+      // storage indisponível: nunca bloqueia a entrada
+    }
+  }
+
   const aguardando = !!state?.aguardando
   const numero = state?.numero
   const bloco = state?.bloco ?? null
@@ -76,7 +105,9 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
   }
 
   return (
-    <form action={formAction} className="space-y-4">
+    // onSubmit grava as credenciais na sessão ANTES do envio — assim, se a pessoa
+    // voltar (‹) depois de entrar, os campos voltam preenchidos.
+    <form action={formAction} onSubmit={lembrarCredenciais} className="space-y-4">
       {/* Nome de quem está participando (opcional — ideia dos síndicos): alimenta
           o "quem participou" sem a mesa digitar. Opcional de propósito, nunca
           trava a entrada. A identidade continua sendo unidade + CPF, abaixo. */}
@@ -90,6 +121,8 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
           placeholder="Como você quer aparecer na lista de presença"
           autoComplete="name"
           maxLength={120}
+          value={cred.nome}
+          onChange={(e) => setCred((c) => ({ ...c, nome: e.target.value }))}
         />
         <p className="text-xs text-muted-foreground">
           Ajuda a mesa a registrar quem participou por este imóvel.
@@ -98,7 +131,15 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
 
       <div className="space-y-1.5">
         <Label htmlFor="numero">Unidade</Label>
-        <Input id="numero" name="numero" placeholder="Ex.: B108, 0502, Casa 5" autoComplete="off" required />
+        <Input
+          id="numero"
+          name="numero"
+          placeholder="Ex.: B108, 0502, Casa 5"
+          autoComplete="off"
+          required
+          value={cred.unidade}
+          onChange={(e) => setCred((c) => ({ ...c, unidade: e.target.value }))}
+        />
         <p className="text-xs text-muted-foreground">
           Digite como está no seu cadastro. Se tiver bloco, inclua junto (ex.: B108).
         </p>
@@ -113,11 +154,10 @@ export function EntrarForm({ assembleiaId }: { assembleiaId: string }) {
           placeholder="Somente números"
           autoComplete="off"
           required
+          value={cred.cpf}
           // Reforço no celular: bloqueia letras conforme digita (só dígitos,
           // máx. 14 = CNPJ). O servidor também normaliza antes de comparar.
-          onChange={(e) => {
-            e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "").slice(0, 14)
-          }}
+          onChange={(e) => setCred((c) => ({ ...c, cpf: e.target.value.replace(/\D/g, "").slice(0, 14) }))}
         />
       </div>
 
