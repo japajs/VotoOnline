@@ -160,8 +160,16 @@ type FiltroVoto =
   | "inadimplentes"
   | "tentando"
 
+// timeZone FIXO (America/Sao_Paulo): este é um client component SSR'd e a hora
+// (presente_em / tentou_entrar_em) vem do servidor. Sem fixar o fuso, o servidor
+// (UTC) e o navegador (BRT) formatariam horas diferentes → mismatch de
+// hidratação (React #418). Ver memória de hidratação/timezone.
 function horaBR(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  })
 }
 
 function formatPeso(peso: number, criterioPeso: CriterioPeso): string {
