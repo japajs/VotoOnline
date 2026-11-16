@@ -295,7 +295,15 @@ export default async function PublicVotoPage({ params }: Props) {
           </div>
 
           {apuracao && (
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+              {/* Legenda (pedido do Carlos): orienta o eleitor sobre o que vem no
+                  quadro abaixo — quórum/participação — e onde ver quem votou e
+                  como (o "Detalhamento dos votos", pauta a pauta). Texto na redação
+                  exata que o Carlos pediu. */}
+              <p className="text-center text-xs text-muted-foreground">
+                Quórum e percentual de participação dos condôminos no quadro abaixo. Quem e como
+                votou, pauta a pauta. &quot;Detalhamento dos votos&quot;.
+              </p>
               <ResultadoAssembleia
                 condominio_nome={assembleia.condominio_nome ?? null}
                 data_abertura={assembleia.data_abertura ?? null}
