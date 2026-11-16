@@ -1264,52 +1264,6 @@ export async function getSendsNaoVotaram(
     }))
 }
 
-export interface ParticipacaoParcial {
-  totalEnviados: number
-  totalVotaram: number
-  votantes: { nome: string; unidades: { numero: string; bloco: string | null }[] }[]
-}
-
-// Achado de auditoria: participante que já votou não tinha NENHUMA
-// informação sobre o andamento da votação até o encerramento — pediu-se
-// mostrar quem já votou, mas de propósito SEM o placar Sim/Não/Abstenção
-// (evita efeito manada em quem ainda vai votar, mesmo risco pelo qual
-// eleições não divulgam parcial com a urna aberta). Usa nome_snapshot/
-// unidades_snapshot (congelados no voto) em vez do cadastro atual, mesma
-// lógica de sempre — mas cai pro cadastro vigente se o snapshot faltar
-// (proprietário ainda não votou, não deveria acontecer aqui já que o
-// filtro é por votado_em, mas evita null em caso de dado legado).
-export async function getParticipacaoParcial(assembleiaId: string): Promise<ParticipacaoParcial> {
-  const db = createServerClient()
-  const { data, error } = await db
-    .from("assembleia_sends")
-    .select("votado_em, nome_snapshot, unidades_snapshot, proprietarios(nome)")
-    .eq("assembleia_id", assembleiaId)
-
-  if (error) throw new Error(error.message)
-
-  type Row = {
-    votado_em: string | null
-    nome_snapshot: string | null
-    unidades_snapshot: { numero: string; bloco: string | null }[] | null
-    proprietarios: { nome: string } | null
-  }
-
-  const rows = (data ?? []) as unknown as Row[]
-  const votantes = rows
-    .filter((r) => r.votado_em !== null)
-    .map((r) => ({
-      nome: r.nome_snapshot ?? r.proprietarios?.nome ?? "Proprietário",
-      unidades: r.unidades_snapshot ?? [],
-    }))
-
-  return {
-    totalEnviados: rows.length,
-    totalVotaram: votantes.length,
-    votantes,
-  }
-}
-
 export interface ProprietarioSemVoto {
   id: string
   nome: string
