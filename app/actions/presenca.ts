@@ -179,6 +179,11 @@ export type EstadoVotacaoLive = {
   // anotado pela mesa) — pares [proprietarioId, nome]. Sincroniza "quem
   // participou" AO VIVO: a mesa vê o nome preencher sem recarregar a tela.
   participantes: [string, string][]
+  // Link on/off (pedido do Carlos): proprietario_ids com o link de voto aberto
+  // AGORA (conectados) e os que abriram e caíram (desconectados). Atualiza ao
+  // vivo no mesmo ciclo da presença/votos.
+  conectados: string[]
+  desconectados: string[]
 }
 
 const ESTADO_VOTACAO_VAZIO: EstadoVotacaoLive = {
@@ -191,6 +196,8 @@ const ESTADO_VOTACAO_VAZIO: EstadoVotacaoLive = {
   totalPautasVotaveis: 0,
   tentando: [],
   participantes: [],
+  conectados: [],
+  desconectados: [],
 }
 
 // Estado de votação AO VIVO pra a tela de gestão sincronizar entre dispositivos
@@ -240,6 +247,8 @@ export async function getEstadoVotacaoLiveAction(
       totalPautasVotaveis,
       tentando: status.tentando,
       participantes: [...participantesMap.entries()],
+      conectados: status.conectados,
+      desconectados: status.desconectados,
     }
   } catch {
     return ESTADO_VOTACAO_VAZIO

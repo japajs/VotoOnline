@@ -23,7 +23,7 @@ import {
   type RespostaInput,
   type ProprietarioSemVoto,
 } from "@/services/assembleia-votos"
-import { getExigePresenca } from "@/services/presenca"
+import { getExigePresenca, reivindicarLinkAtivo, type ReivindicarLinkResult } from "@/services/presenca"
 import { getHistoricoDisparos, type DisparoHistorico } from "@/services/relatorios"
 import type { AssembleiaStatus, PautaTipo } from "@/types"
 import { sendAssembleiaEmailBatch, sendNovaPautaEmailBatch, sendLembreteVotoEmailBatch } from "@/services/email"
@@ -419,6 +419,17 @@ export interface EstadoVoto {
   votacaoPorPauta: boolean
   sendId: string
   pautas: EstadoVotoPauta[]
+}
+
+// Heartbeat público do link de voto aberto (ver reivindicarLinkAtivo): a tela do
+// eleitor bate aqui a cada ~12s com um id de dispositivo estável por navegador.
+// Sem auth — o TOKEN (122 bits) já é a credencial, igual a getEstadoVotoAction.
+// Diz se este aparelho está com o link ATIVO ou se OUTRO já o segura (ocupado).
+export async function pingLinkAtivoAction(
+  token: string,
+  dispositivo: string
+): Promise<ReivindicarLinkResult> {
+  return reivindicarLinkAtivo(token, dispositivo)
 }
 
 export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | null> {
