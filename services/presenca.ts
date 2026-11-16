@@ -375,6 +375,67 @@ export async function getProprietariosTentandoEntrar(
     .map((r) => ({ id: r.proprietario_id, em: r.tentou_entrar_em! }))
 }
 
+// Janela (ms) pra um link contar como "ativo" (link on). O aparelho bate a cada
+// ~12s; 45s tolera 2–3 batidas perdidas (rede ruim do salão) antes de cair pra
+// link off. Mesma janela no status da mesa (getStatusPresencaLive) e na posse do
+// link (reivindicarLinkAtivo), pra os dois lados concordarem sobre on/off.
+export const JANELA_LINK_ATIVO_MS = 45_000
+
+// O id de dispositivo é gerado no cliente (crypto.randomUUID, guardado em
+// localStorage). Validamos o formato antes de gravar/comparar — nunca confiar no
+// que vem da ponta (e mantém a coluna limpa).
+const DISPOSITIVO_RE = /^[0-9a-fA-F-]{16,64}$/
+
+export type ReivindicarLinkResult =
+  | { ok: true; estado: "ativo" } // este aparelho está com o link (heartbeat ok)
+  | { ok: true; estado: "ocupado" } // OUTRO aparelho segura o link agora
+  | { ok: false } // token inválido, erro, ou colunas ainda sem migração
+
+// Heartbeat + posse do "link ativo" (pedido do Carlos: 1 imóvel = 1 aparelho
+// conectado por vez, e a mesa enxerga link on/off). Cada tela de voto aberta bate
+// aqui a cada ~12s com um id de dispositivo estável por navegador. Regras:
+// - ninguém segura o link, ou é o MESMO aparelho, ou o dono atual está FRIO (sem
+//   bater há > JANELA): este aparelho assume e carimba ultimo_ping_em = agora →
+//   "ativo".
+// - OUTRO aparelho bateu agora há pouco: devolve "ocupado" SEM roubar o link — a
+//   tela do 2º mostra o aviso e segue tentando; quando o 1º cai (link off, ~45s
+//   sem bater, ex.: fechou o link / sem bateria), o 2º assume sozinho.
+// Sem auth: o token (122 bits) é a credencial, igual ao resto do fluxo público.
+export async function reivindicarLinkAtivo(
+  token: string,
+  dispositivo: string
+): Promise<ReivindicarLinkResult> {
+  if (!DISPOSITIVO_RE.test(dispositivo)) return { ok: false }
+  const db = createServerClient()
+
+  const { data: send, error } = await db
+    .from("assembleia_sends")
+    .select("id, sessao_dispositivo, ultimo_ping_em")
+    .eq("token", token)
+    .maybeSingle()
+  // Erro aqui inclui "coluna não existe" (migração ainda não rodada): devolve
+  // ok:false e a tela do eleitor segue normal, sem bloquear ninguém.
+  if (error || !send) return { ok: false }
+
+  const agora = Date.now()
+  const pingMs = send.ultimo_ping_em ? new Date(send.ultimo_ping_em).getTime() : 0
+  const donoOutroAparelho = !!send.sessao_dispositivo && send.sessao_dispositivo !== dispositivo
+  const frio = agora - pingMs >= JANELA_LINK_ATIVO_MS
+  if (donoOutroAparelho && !frio) {
+    // Outro aparelho está ativo com estas credenciais — não rouba o link.
+    return { ok: true, estado: "ocupado" }
+  }
+
+  // Assume (ou renova) a posse e carimba o ping. `dispositivo` só entra no PAYLOAD
+  // do update (parametrizado), nunca num filtro — e já foi validado acima.
+  const { error: upErr } = await db
+    .from("assembleia_sends")
+    .update({ sessao_dispositivo: dispositivo, ultimo_ping_em: new Date(agora).toISOString() })
+    .eq("id", send.id)
+  if (upErr) return { ok: false }
+  return { ok: true, estado: "ativo" }
+}
+
 // Status AO VIVO pra a tela de gestão sincronizar entre dispositivos (duas
 // secretárias ao mesmo tempo — pedido do Carlos). Numa consulta só devolve quem
 // está PRESENTE, quem já VOTOU e quem está TENTANDO ENTRAR (link/QR, ainda sem
@@ -382,18 +443,28 @@ export async function getProprietariosTentandoEntrar(
 // (migração pendente); falha dura LANÇA (ver abaixo) pra não zerar a tela.
 export async function getStatusPresencaLive(
   assembleiaId: string
-): Promise<{ presentes: string[]; votaram: string[]; tentando: { id: string; em: string }[] }> {
+): Promise<{
+  presentes: string[]
+  votaram: string[]
+  tentando: { id: string; em: string }[]
+  // Link on/off (pedido do Carlos): quem está com o link de voto aberto AGORA
+  // (ping recente) vs. quem abriu e caiu (ping existente, porém frio). Sem ping
+  // nenhum = não aparece em nenhum dos dois (a pessoa nunca abriu o link).
+  conectados: string[]
+  desconectados: string[]
+}> {
   const db = createServerClient()
   type Row = {
     proprietario_id: string
     presente_em: string | null
     votado_em: string | null
     tentou_entrar_em?: string | null
+    ultimo_ping_em?: string | null
   }
 
   const comTentou = await db
     .from("assembleia_sends")
-    .select("proprietario_id, presente_em, votado_em, tentou_entrar_em")
+    .select("proprietario_id, presente_em, votado_em, tentou_entrar_em, ultimo_ping_em")
     .eq("assembleia_id", assembleiaId)
 
   let rows: Row[] | null
@@ -424,14 +495,24 @@ export async function getStatusPresencaLive(
   const presentes: string[] = []
   const votaram: string[] = []
   const tentando: { id: string; em: string }[] = []
+  const conectados: string[] = []
+  const desconectados: string[] = []
+  const agora = Date.now()
   for (const r of rows ?? []) {
     if (r.votado_em) votaram.push(r.proprietario_id)
     if (r.presente_em) presentes.push(r.proprietario_id)
     // "Tentando entrar" = abriu o link/QR (tentou_entrar_em) e ainda NÃO está
     // presente — mesma regra do getProprietariosTentandoEntrar.
     else if (r.tentou_entrar_em) tentando.push({ id: r.proprietario_id, em: r.tentou_entrar_em })
+    // Link on/off: ping recente (< JANELA) = on; ping existente, porém frio =
+    // off; sem ping nenhum = nem entra (a pessoa nunca abriu o link).
+    if (r.ultimo_ping_em) {
+      if (agora - new Date(r.ultimo_ping_em).getTime() < JANELA_LINK_ATIVO_MS)
+        conectados.push(r.proprietario_id)
+      else desconectados.push(r.proprietario_id)
+    }
   }
-  return { presentes, votaram, tentando }
+  return { presentes, votaram, tentando, conectados, desconectados }
 }
 
 // Marca/desmarca um proprietário como presente (a "chamada" da mesa). Marcar

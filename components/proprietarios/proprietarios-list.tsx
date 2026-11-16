@@ -382,6 +382,10 @@ export function ProprietariosList({
   // tela que a secretária fica o tempo todo). id → horário da tentativa. Buscado
   // por polling leve enquanto há assembleia aberta e o operador pode marcar.
   const [tentandoEntrar, setTentandoEntrar] = useState<Map<string, string>>(new Map())
+  // Link on/off ao vivo (pedido do Carlos): quem está com o link de voto aberto
+  // AGORA vs. quem abriu e caiu. Semeado vazio — o 1º ciclo do polling preenche.
+  const [conectadosLocal, setConectadosLocal] = useState<Set<string>>(new Set())
+  const [desconectadosLocal, setDesconectadosLocal] = useState<Set<string>>(new Set())
 
   // Polling AO VIVO do estado de votação. O servidor é a verdade — sincroniza
   // entre dispositivos (bug do Carlos: uma secretária marcava/via movimento e a
@@ -394,6 +398,8 @@ export function ProprietariosList({
     // Falha → preserva o estado atual (não zera presença/votos na tela).
     if (!r.success) return
     setTentandoEntrar(new Map(r.tentando.map((t) => [t.id, t.em])))
+    setConectadosLocal(new Set(r.conectados))
+    setDesconectadosLocal(new Set(r.desconectados))
     setVotaramLocal(new Set(r.votaram))
     setPautasVotadasLocal(new Map(r.pautasVotadas))
     setTotalPautasVotaveisLocal(r.totalPautasVotaveis)
@@ -1108,6 +1114,9 @@ export function ProprietariosList({
                 mostrarPresenca={podeMarcarPresenca}
                 presente={presentesLocal.has(p.id)}
                 presencaHora={presencaHoraNaAberta?.get(p.id) ?? null}
+                conexao={
+                  conectadosLocal.has(p.id) ? "on" : desconectadosLocal.has(p.id) ? "off" : null
+                }
                 marcandoPresenca={marcandoId === p.id}
                 onTogglePresente={handleTogglePresente}
                 isAdmin={isAdmin}
@@ -1147,6 +1156,7 @@ const ProprietarioRow = memo(function ProprietarioRow({
   mostrarPresenca,
   presente,
   presencaHora,
+  conexao,
   marcandoPresenca,
   onTogglePresente,
   isAdmin,
@@ -1180,6 +1190,9 @@ const ProprietarioRow = memo(function ProprietarioRow({
   // Hora (ISO) em que registrou presença (link ou mesa), ou null. Mostrada
   // abaixo do celular (pedido do Carlos).
   presencaHora: string | null
+  // Status do link de voto da pessoa: "on" = aberto agora, "off" = abriu e caiu,
+  // null = nunca abriu (nada é mostrado). Atualiza ao vivo pelo polling da mesa.
+  conexao: "on" | "off" | null
   marcandoPresenca: boolean
   onTogglePresente: (proprietarioId: string, presente: boolean) => void
   isAdmin: boolean
@@ -1540,6 +1553,21 @@ const ProprietarioRow = memo(function ProprietarioRow({
               {presencaHora && (
                 <span className="truncate text-xs text-muted-foreground/70">
                   Presente às {horaBR(presencaHora)}
+                </span>
+              )}
+              {/* Link on/off (pedido do Carlos): mostra se a pessoa está com o
+                  link de voto aberto AGORA. Só aparece depois que ela abre o link
+                  ao menos uma vez (conexao != null). */}
+              {conexao === "on" && (
+                <span className="flex items-center gap-1 truncate text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  link on
+                </span>
+              )}
+              {conexao === "off" && (
+                <span className="flex items-center gap-1 truncate text-xs text-muted-foreground/60">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                  link off
                 </span>
               )}
             </div>

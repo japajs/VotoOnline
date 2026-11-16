@@ -346,6 +346,8 @@ export type Database = {
           user_agent_snapshot: string | null
           presente_em: string | null
           tentou_entrar_em: string | null
+          ultimo_ping_em: string | null
+          sessao_dispositivo: string | null
           participante_nome: string | null
           resend_id: string | null
           entregue_em: string | null
@@ -372,6 +374,8 @@ export type Database = {
           user_agent_snapshot?: string | null
           presente_em?: string | null
           tentou_entrar_em?: string | null
+          ultimo_ping_em?: string | null
+          sessao_dispositivo?: string | null
           participante_nome?: string | null
           resend_id?: string | null
           entregue_em?: string | null
@@ -395,6 +399,8 @@ export type Database = {
           user_agent_snapshot?: string | null
           presente_em?: string | null
           tentou_entrar_em?: string | null
+          ultimo_ping_em?: string | null
+          sessao_dispositivo?: string | null
           participante_nome?: string | null
           resend_id?: string | null
           entregue_em?: string | null
