@@ -305,6 +305,27 @@ export default function AjudaPage() {
             digitar de novo.
           </li>
           <li>
+            <strong className="text-foreground">Link on / link off:</strong> abaixo do celular de
+            cada pessoa, a lista mostra se ela está com o{" "}
+            <strong className="text-foreground">link de voto aberto agora</strong> —{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">link on</span> (conectada neste
+            instante) ou <span className="text-muted-foreground">link off</span> (abriu o link e
+            depois fechou ou caiu a conexão). Só aparece depois que a pessoa abre o link ao menos uma
+            vez — ajuda a mesa a enxergar quem está de fato conectado.
+          </li>
+          <li>
+            <strong className="text-foreground">Um imóvel, um aparelho por vez (para votar):</strong>{" "}
+            se alguém abrir o <strong className="text-foreground">mesmo</strong> link de voto (mesma
+            unidade + CPF) num <strong className="text-foreground">segundo aparelho</strong> enquanto
+            o primeiro ainda está conectado, a tela de votação do segundo fica{" "}
+            <strong className="text-foreground">bloqueada</strong> com um aviso — evita voto em
+            duplicidade e confusão. Quando o primeiro fecha o link (vira{" "}
+            <span className="text-muted-foreground">link off</span>), o segundo{" "}
+            <strong className="text-foreground">libera sozinho</strong> em poucos segundos. Só{" "}
+            <em>conferir</em> o resultado num segundo aparelho (depois de já ter votado) continua
+            liberado.
+          </li>
+          <li>
             <strong className="text-foreground">Quem participou pelo imóvel:</strong> quando quem
             compareceu não é o titular do cadastro (ex.: o imóvel está no nome do marido e veio a
             esposa, também dona — diferente de procuração), anote o nome na linha do proprietário (um
