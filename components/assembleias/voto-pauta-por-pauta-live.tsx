@@ -119,7 +119,7 @@ export function VotoPautaPorPautaLive({
           </p>
           <AssembleiaVotoForm
             key={formKey}
-            sendId={estado.sendId}
+            votoRef={token}
             pautas={abertasPendentes}
             assembleiaTitulo={assembleiaTitulo}
             onDone={refresh}

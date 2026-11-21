@@ -43,7 +43,12 @@ export interface PautaVotavel {
 }
 
 interface Props {
-  sendId: string
+  // "Referência do voto" repassada à action: no voto PÚBLICO é o TOKEN do link
+  // (resolvido no servidor por registrarVotosAction); no voto MANUAL pela mesa
+  // é o sendId. O formulário só encaminha esse valor — quem o interpreta é
+  // cada action. Antes era sempre `sendId`, o que fazia o caminho público
+  // gravar voto por um sendId vindo do cliente em vez do token (a credencial).
+  votoRef: string
   pautas: PautaVotavel[]
   assembleiaTitulo: string
   // Auditoria de assembleias — Fase 7: o dialog de registro manual
@@ -52,12 +57,12 @@ interface Props {
   // sem isso, a UI de seleção Sim/Não/Múltipla escolha ficaria duplicada
   // em dois lugares e sujeita a divergir com o tempo. Sem essa prop,
   // comportamento idêntico ao de sempre (voto público via token).
-  registrarAction?: (sendId: string, votos: RespostaInput[]) => Promise<{ success: boolean; error?: string }>
+  registrarAction?: (votoRef: string, votos: RespostaInput[]) => Promise<{ success: boolean; error?: string }>
   onDone?: () => void
 }
 
 export function AssembleiaVotoForm({
-  sendId,
+  votoRef,
   pautas,
   assembleiaTitulo,
   registrarAction = registrarVotosAction,
@@ -91,7 +96,7 @@ export function AssembleiaVotoForm({
         }
         return { pauta_id: p.id, resposta: valor as AssembleiaRespostaValor }
       })
-      const result = await registrarAction(sendId, votos)
+      const result = await registrarAction(votoRef, votos)
       if (result.success) {
         setDone(true)
         onDone?.()

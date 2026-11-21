@@ -435,7 +435,7 @@ export default async function PublicVotoPage({ params }: Props) {
         {heading}
         <LinkAtivoGuard token={token} />
         <AssembleiaVotoForm
-          sendId={send.id}
+          votoRef={token}
           pautas={pautasPendentes}
           assembleiaTitulo={assembleia.titulo}
         />
