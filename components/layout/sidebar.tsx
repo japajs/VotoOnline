@@ -41,8 +41,9 @@ const NAV_OPERACAO: NavItem[] = [
   { href: "/relatorios",  label: "Relatórios",  icon: FileText        },
 ]
 
-// "Usuários" só aparece para administrador — mesma tela que gerencia perfil
-// e escopo por condomínio (MASTER/PESSOAL) dos demais usuários.
+// "Usuários" só aparece para MASTER (administrador com acesso total) — a tela
+// gere perfil e escopo (MASTER/PESSOAL) dos demais usuários, então um admin
+// PESSOAL não deve nem vê-la (gate reforçado na página e nas actions).
 const NAV_SISTEMA: NavItem[] = [
   { href: "/ajuda",         label: "Ajuda",         icon: HelpCircle },
   { href: "/configuracoes", label: "Configurações", icon: Settings   },
@@ -95,7 +96,9 @@ export function Sidebar({ user, open, onClose, collapsed, onToggleCollapse }: Pr
   }, [open])
 
   const sistema =
-    user.perfil === "administrador" ? [...NAV_SISTEMA, NAV_ITEM_USUARIOS] : NAV_SISTEMA
+    user.perfil === "administrador" && user.acessoTotal
+      ? [...NAV_SISTEMA, NAV_ITEM_USUARIOS]
+      : NAV_SISTEMA
 
   function renderItem({ href, label, icon: Icon }: NavItem) {
     const isActive = pathname === href || pathname.startsWith(href + "/")

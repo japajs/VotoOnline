@@ -11,9 +11,11 @@ export const metadata: Metadata = { title: "Usuários" }
 
 export default async function UsuariosPage() {
   const session = await getSession()
-  // Gestão de usuários é restrita a administrador — mesmo padrão de
-  // permissão já usado no resto do sistema, sem perfil novo.
-  if (!session || session.perfil !== "administrador") {
+  // Gestão de usuários é operação GLOBAL → restrita a MASTER (administrador com
+  // acesso total). Um administrador PESSOAL (restrito a condomínios) não gere
+  // usuários — senão poderia criar MASTER e se autopromover. Mesmo gate das
+  // actions (requireMaster em app/actions/usuarios.ts) e do item no menu.
+  if (!session || session.perfil !== "administrador" || !session.acessoTotal) {
     redirect(ROUTES.dashboard)
   }
 
