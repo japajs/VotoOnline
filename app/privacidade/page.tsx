@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 // E-mail de contato para assuntos de privacidade/LGPD. Trocar aqui se mudar.
 const CONTATO_PRIVACIDADE = "cleitonsalazargomes@gmail.com"
-const ATUALIZADO_EM = "12 de outubro de 2026"
+const ATUALIZADO_EM = "21 de novembro de 2026"
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -78,8 +78,10 @@ export default function PrivacidadePage() {
               </li>
               <li>
                 <strong className="text-foreground">Dados técnicos de auditoria:</strong> data/hora
-                do voto, endereço IP e navegador utilizados — guardados apenas para integridade e
-                auditoria da votação, nunca exibidos nos relatórios públicos.
+                do voto, endereço IP, navegador utilizado e um identificador do aparelho usado no
+                link de voto (com o horário da última conexão) — guardados apenas para integridade e
+                auditoria da votação e para evitar voto em duplicidade, nunca exibidos nos relatórios
+                públicos.
               </li>
               <li>
                 <strong className="text-foreground">Acesso administrativo:</strong> para quem opera o
@@ -120,7 +122,12 @@ export default function PrivacidadePage() {
                 lembrete;
               </li>
               <li>
-                <strong className="text-foreground">Vercel</strong> — hospedagem da aplicação.
+                <strong className="text-foreground">Vercel</strong> — hospedagem da aplicação;
+              </li>
+              <li>
+                <strong className="text-foreground">Sentry</strong> — monitoramento de erros da
+                aplicação (registros técnicos de falhas, com os dados pessoais filtrados antes do
+                envio).
               </li>
             </ul>
             <p>
@@ -148,12 +155,30 @@ export default function PrivacidadePage() {
             </p>
           </Secao>
 
-          <Secao titulo="8. Cookies">
+          <Secao titulo="8. Cookies e armazenamento local">
             <p>
-              Usamos apenas o essencial: um cookie de sessão para manter o login de quem opera o
-              sistema. O link de voto do participante funciona por um endereço único e não depende de
-              cookies de rastreamento.
+              Não usamos cookies de rastreamento nem de publicidade. Para quem{" "}
+              <strong className="text-foreground">opera</strong> o sistema, usamos um cookie de
+              sessão essencial para manter o login.
             </p>
+            <p>
+              Para quem <strong className="text-foreground">participa</strong> da assembleia, o link
+              de voto funciona por um endereço único e o navegador guarda apenas o necessário para a
+              votação funcionar, nunca para rastrear:
+            </p>
+            <ul className="ml-4 list-disc space-y-1.5 marker:text-muted-foreground/50">
+              <li>
+                a unidade e o CPF informados na entrada ficam na sessão do próprio navegador
+                (<em>sessionStorage</em>, apagados ao fechar o navegador), só para você não precisar
+                redigitá-los enquanto a mesa confirma sua presença;
+              </li>
+              <li>
+                um identificador aleatório do aparelho fica guardado no navegador
+                (<em>localStorage</em>) para impedir que o mesmo link de voto seja usado em dois
+                aparelhos ao mesmo tempo e para a mesa ver quem está com o link aberto — ele não
+                identifica você fora desta assembleia.
+              </li>
+            </ul>
           </Secao>
 
           <Secao titulo="9. Seus direitos (titular dos dados)">
