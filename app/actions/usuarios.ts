@@ -11,16 +11,18 @@ import {
   setCondominiosAutorizados,
 } from "@/services/usuarios"
 import { sendSenhaAlteradaEmail } from "@/services/email"
-import { requirePerfil } from "@/lib/auth"
+import { requireMaster } from "@/lib/auth"
 import { normalizarCelular, validarEmailFormato } from "@/lib/format"
 import { EMAIL_ALERTA_SENHA_ALTERADA, ROUTES } from "@/lib/constants"
 import type { UserPerfil } from "@/types"
 
-// Gestão de usuários (escopo MASTER/PESSOAL) é uma ação administrativa —
-// mesmo gate de perfil já usado para as demais operações sensíveis do
-// sistema (nenhum papel novo criado só para isto).
+// Gestão de usuários é uma operação GLOBAL (criar usuário MASTER, trocar
+// perfil/escopo, resetar senha de qualquer um) → exclusiva de MASTER (admin
+// com acesso total). Antes checava só o perfil, o que deixava um administrador
+// PESSOAL (restrito a condomínios) escalar privilégio chamando estas actions
+// direto. requireMaster exige perfil administrador + acessoTotal (ver lib/auth.ts).
 async function requireAdmin() {
-  return requirePerfil(["administrador"])
+  return requireMaster()
 }
 
 interface UsuarioInput {

@@ -154,3 +154,24 @@ export async function requireAcessoCondominio(
   }
   return { ok: true, session }
 }
+
+// Operações GLOBAIS — hoje a gestão de usuários — são exclusivas de MASTER
+// (perfil administrador + acessoTotal). Um "administrador PESSOAL" (perfil
+// administrador, mas restrito a certos condomínios) PASSA em requirePerfil,
+// então gating só por perfil deixava ele criar usuário MASTER, se autopromover
+// a acesso total e resetar a senha de qualquer usuário — escalada de
+// privilégio. Exigir acessoTotal fecha isso, no mesmo espírito do check já
+// feito em condominios.ts para criar/excluir condomínio.
+export async function requireMaster(): Promise<
+  { ok: true; session: SessionUser } | { ok: false; error: string }
+> {
+  const session = await getSession()
+  if (!session) return { ok: false, error: "Não autenticado." }
+  if (session.perfil !== "administrador" || !session.acessoTotal) {
+    return {
+      ok: false,
+      error: "Apenas administradores com acesso total podem realizar esta ação.",
+    }
+  }
+  return { ok: true, session }
+}
