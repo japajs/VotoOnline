@@ -357,7 +357,7 @@ export function RegistrarVotoManualDialog({
               </p>
             </div>
             <AssembleiaVotoForm
-              sendId={sendId}
+              votoRef={sendId}
               // Só as pautas liberadas pra esta pessoa (no pauta-por-pauta, as
               // abertas que ela ainda não votou) — na ordem original das pautas.
               pautas={pautas.filter((p) => pautaIdsParaVotar.includes(p.id))}

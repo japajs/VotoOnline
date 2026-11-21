@@ -349,10 +349,16 @@ export async function notificarNaoVotaramAction(
 }
 
 export async function registrarVotosAction(
-  sendId: string,
+  // Endurecimento de autorização (defense-in-depth): o voto público é
+  // autorizado pela posse do TOKEN (122 bits — a credencial real do link), e
+  // não por um sendId vindo do cliente. O send é resolvido pelo token aqui no
+  // servidor — a MESMA prova de identidade usada pra LER o estado do voto
+  // (getEstadoVotoAction) e pra abrir a página /v/[token]. Fecha o gap de
+  // alguém gravar voto conhecendo só o sendId.
+  token: string,
   respostas: RespostaInput[]
 ): Promise<{ success: boolean; error?: string }> {
-  if (!sendId || respostas.length === 0) {
+  if (!token || respostas.length === 0) {
     return { success: false, error: "Dados inválidos." }
   }
 
@@ -365,6 +371,12 @@ export async function registrarVotosAction(
   }
 
   try {
+    // Resolve o envio pelo token (credencial do link). Sem send válido, nada
+    // é gravado. A constraint única do banco segue impedindo voto duplicado.
+    const send = await getAssembleiaSendByToken(token)
+    if (!send) return { success: false, error: "Link inválido ou expirado." }
+    const sendId = send.id
+
     // Melhor esforço: IP/user-agent viram parte do snapshot histórico do
     // voto (Etapa 3), mas nunca bloqueiam o registro do voto se faltarem.
     const h = await headers()
