@@ -155,7 +155,8 @@ export async function requireAcessoCondominio(
   return { ok: true, session }
 }
 
-// Operações GLOBAIS — hoje a gestão de usuários — são exclusivas de MASTER
+// Operações GLOBAIS — gestão de usuários e configurações globais do sistema
+// (conta, remetente de e-mail, defaults de votação) — são exclusivas de MASTER
 // (perfil administrador + acessoTotal). Um "administrador PESSOAL" (perfil
 // administrador, mas restrito a certos condomínios) PASSA em requirePerfil,
 // então gating só por perfil deixava ele criar usuário MASTER, se autopromover

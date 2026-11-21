@@ -17,19 +17,27 @@ import {
 interface ContaSectionProps {
   adminNome: string
   adminEmail: string
+  // Nome/e-mail do administrador são config GLOBAL do sistema → só MASTER edita
+  // (as actions também exigem requireMaster). A troca da PRÓPRIA senha fica
+  // disponível pra todos os perfis.
+  isMaster: boolean
 }
 
-export function ContaSection({ adminNome, adminEmail }: ContaSectionProps) {
+export function ContaSection({ adminNome, adminEmail, isMaster }: ContaSectionProps) {
   return (
     <Card className="border-border/60">
       <CardHeader>
         <CardTitle className="text-base">Conta</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <NomeForm initialNome={adminNome} />
-        <div className="border-t border-border/40" />
-        <EmailForm initialEmail={adminEmail} />
-        <div className="border-t border-border/40" />
+        {isMaster && (
+          <>
+            <NomeForm initialNome={adminNome} />
+            <div className="border-t border-border/40" />
+            <EmailForm initialEmail={adminEmail} />
+            <div className="border-t border-border/40" />
+          </>
+        )}
         <SenhaForm />
       </CardContent>
     </Card>
