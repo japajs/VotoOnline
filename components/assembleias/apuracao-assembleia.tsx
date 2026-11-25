@@ -5,6 +5,7 @@ import { Trash2, Scale, Lock, Unlock, ListChecks, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 import { DonutChart } from "@/components/ui/donut-chart"
 import { EditarPautaDialog } from "@/components/assembleias/editar-pauta-dialog"
 import { ConfirmarSenhaDialog } from "@/components/ui/confirmar-senha-dialog"
@@ -492,7 +493,7 @@ function PautaApuracaoSection({
       {/* Título da pauta */}
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="shrink-0 text-xs font-semibold uppercase tracking-widest text-primary/60">
-          Pauta {index + 1}
+          Pauta {rotuloPauta(pauta, index + 1)}
         </span>
         <h2 className="text-base font-semibold tracking-tight">{pauta.titulo}</h2>
         {/* Com votação pauta por pauta ligada, a fase (aberta/fechada/

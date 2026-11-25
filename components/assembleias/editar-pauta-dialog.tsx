@@ -40,6 +40,7 @@ export function EditarPautaDialog({ pauta, assembleiaId, condominioId }: Props) 
   const [permiteAbstencao, setPermiteAbstencao] = useState(pauta.permite_abstencao)
   const [quorumAprovacao, setQuorumAprovacao] = useState(String(Math.round(pauta.quorum_aprovacao * 10000) / 100))
   const [sigiloso, setSigiloso] = useState(pauta.sigiloso)
+  const [numeroEdital, setNumeroEdital] = useState(pauta.numero_edital ?? "")
   const [opcoes, setOpcoes] = useState<string[]>(
     pauta.opcoes && pauta.opcoes.length > 0 ? pauta.opcoes.map((o) => o.label) : ["", ""]
   )
@@ -52,6 +53,7 @@ export function EditarPautaDialog({ pauta, assembleiaId, condominioId }: Props) 
     setPermiteAbstencao(pauta.permite_abstencao)
     setQuorumAprovacao(String(Math.round(pauta.quorum_aprovacao * 10000) / 100))
     setSigiloso(pauta.sigiloso)
+    setNumeroEdital(pauta.numero_edital ?? "")
     setOpcoes(pauta.opcoes && pauta.opcoes.length > 0 ? pauta.opcoes.map((o) => o.label) : ["", ""])
   }
 
@@ -85,6 +87,7 @@ export function EditarPautaDialog({ pauta, assembleiaId, condominioId }: Props) 
         permite_abstencao: permiteAbstencao,
         quorum_aprovacao: tipo === "sim_nao" ? quorumNum / 100 : undefined,
         sigiloso,
+        numero_edital: numeroEdital,
         opcoes: tipo === "multipla_escolha" ? opcoes : undefined,
       })
       if (result.success) {
@@ -110,6 +113,19 @@ export function EditarPautaDialog({ pauta, assembleiaId, condominioId }: Props) 
 
         <div className="max-h-[55vh] space-y-3 overflow-y-auto px-1">
           <Input placeholder="Título da pauta" value={titulo} onChange={(e) => setTitulo(e.target.value)} autoFocus />
+          {/* Sub-pautas (Carlos): nº do edital, opcional. Use 2.1, 2.2. */}
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="editar-pauta-numedital" className="shrink-0 text-xs text-muted-foreground">
+              Nº no edital
+            </Label>
+            <Input
+              id="editar-pauta-numedital"
+              placeholder="opcional (ex.: 2.1)"
+              value={numeroEdital}
+              onChange={(e) => setNumeroEdital(e.target.value)}
+              className="h-7 w-36 text-xs"
+            />
+          </div>
           <Textarea
             placeholder="Descrição (opcional)"
             value={descricao}

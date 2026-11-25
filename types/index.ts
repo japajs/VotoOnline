@@ -271,6 +271,11 @@ export interface Pauta {
   // Ata: o que foi discutido/decidido nesta pauta (texto livre da mesa), além
   // do resultado numérico. Opcional; em branco não sai na ata.
   ata_deliberacao?: string | null
+  // Sub-pautas (pedido do Carlos): "Nº no edital" livre — rótulo que a mesa
+  // digita pra a numeração bater com o edital (1, 2, 2.1, 2.2, 3). null/ausente
+  // = usa o número automático. Só exibição (ver lib/pauta-rotulo.ts), nunca
+  // muda voto/apuração.
+  numero_edital?: string | null
   created_at: string
   // joined — só populado para pautas do tipo "multipla_escolha"
   opcoes?: PautaOpcao[]

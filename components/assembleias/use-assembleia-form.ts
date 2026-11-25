@@ -17,6 +17,8 @@ export interface PautaFormState {
   // síndico) — resultado agregado continua público; PDF/Excel omitem o
   // vínculo nome↔voto no detalhamento pra essa pauta.
   sigiloso: boolean
+  // Sub-pautas (Carlos): "Nº no edital" livre (1, 2, 2.1, 2.2, 3). Só exibição.
+  numeroEdital: string
   opcoes: string[]
 }
 
@@ -45,6 +47,7 @@ export function novaPauta(): PautaFormState {
     permiteAbstencao: true,
     quorumAprovacao: "50",
     sigiloso: false,
+    numeroEdital: "",
     opcoes: [],
   }
 }
@@ -96,7 +99,7 @@ export function useAssembleiaForm(initial?: Partial<AssembleiaFormValues>) {
     setPautas((prev) => prev.filter((_, i) => i !== index))
   }
 
-  function updatePauta(index: number, field: "titulo" | "descricao", value: string) {
+  function updatePauta(index: number, field: "titulo" | "descricao" | "numeroEdital", value: string) {
     setPautas((prev) => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)))
   }
 

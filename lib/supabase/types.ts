@@ -268,6 +268,7 @@ export type Database = {
           votacao_aberta_em: string | null
           votacao_fechada_em: string | null
           ata_deliberacao: string | null
+          numero_edital: string | null
           created_at: string
         }
         Insert: {
@@ -286,6 +287,7 @@ export type Database = {
           votacao_aberta_em?: string | null
           votacao_fechada_em?: string | null
           ata_deliberacao?: string | null
+          numero_edital?: string | null
           created_at?: string
         }
         Update: {
@@ -302,6 +304,7 @@ export type Database = {
           votacao_aberta_em?: string | null
           votacao_fechada_em?: string | null
           ata_deliberacao?: string | null
+          numero_edital?: string | null
         }
         Relationships: []
       }

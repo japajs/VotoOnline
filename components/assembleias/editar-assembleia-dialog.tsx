@@ -59,6 +59,7 @@ function pautasParaFormState(assembleia: Assembleia): PautaFormState[] {
     permiteAbstencao: p.permite_abstencao,
     quorumAprovacao: fracaoParaPctTexto(p.quorum_aprovacao) || "50",
     sigiloso: p.sigiloso,
+    numeroEdital: p.numero_edital ?? "",
     opcoes: (p.opcoes ?? []).map((o) => o.label),
   }))
 }
@@ -123,6 +124,7 @@ export function EditarAssembleiaDialog({
               permite_abstencao: p.permiteAbstencao,
               quorum_aprovacao: form.pctParaFracao(p.quorumAprovacao),
               sigiloso: p.sigiloso,
+              numero_edital: p.numeroEdital,
               opcoes: p.tipo === "multipla_escolha" ? p.opcoes : undefined,
             }))
           : null,

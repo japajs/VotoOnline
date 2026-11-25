@@ -180,6 +180,25 @@ export function AssembleiaFormFields({ form, pautasEditaveis, mensagemPautasBloq
                     </button>
                   )}
                 </div>
+                {/* Sub-pautas (Carlos): nº do edital, opcional. Vazio = numera
+                    automático. Use 2.1, 2.2 para sub-pautas de uma pauta. */}
+                <div className="flex items-center gap-1.5">
+                  <Label
+                    htmlFor={`${idPrefix}-pauta-${i}-numedital`}
+                    className="shrink-0 text-xs text-muted-foreground"
+                  >
+                    Nº no edital
+                  </Label>
+                  <Input
+                    id={`${idPrefix}-pauta-${i}-numedital`}
+                    placeholder={`${i + 1} (opcional)`}
+                    value={pauta.numeroEdital}
+                    onChange={(e) => form.updatePauta(i, "numeroEdital", e.target.value)}
+                    disabled={!pautasEditaveis}
+                    className="h-7 w-24 text-xs"
+                  />
+                  <span className="text-[11px] text-muted-foreground">2.1, 2.2 p/ sub-pautas</span>
+                </div>
                 <Input
                   placeholder="Título da pauta"
                   value={pauta.titulo}

@@ -4,6 +4,7 @@ import { pluralImovel } from "@/lib/format"
 import type { Assembleia, AssembleiaApuracao, Condominio } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
 import { fmtPonderado, formatDateTimeBR, formatDateBR } from "./utils"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 
 // Auditoria de assembleias — Fase 3: Ata formal, documento narrativo pra
 // assinatura/registro — diferente do PDF de Apuração (lib/relatorios/
@@ -251,7 +252,7 @@ export function AtaPDF({
             // fluir/quebrar entre páginas preserva o texto inteiro.
             <View key={pauta.id} style={s.pautaBlock}>
               <Text style={s.pautaTitle}>
-                {i + 1}. {pauta.titulo}
+                {rotuloPauta(pauta, i + 1)}. {pauta.titulo}
                 {pauta.sigiloso ? " (votação sigilosa)" : ""}
               </Text>
               {pauta.descricao && <Text style={s.paragraph}>{pauta.descricao}</Text>}

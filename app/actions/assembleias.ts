@@ -25,6 +25,7 @@ import { getAssembleiaById, contarParticipantesJaVotaram } from "@/services/asse
 import { requirePerfil, requireAcessoCondominio } from "@/lib/auth"
 import { verificarSenhaUsuarioAtual } from "@/lib/confirmar-senha"
 import { ROUTES } from "@/lib/constants"
+import { limparNumeroEdital } from "@/lib/pauta-rotulo"
 import { isVotacaoAberta } from "@/lib/assembleia-status"
 import type { AssembleiaStatus, PautaTipo } from "@/types"
 
@@ -39,6 +40,8 @@ interface PautaInput {
   // Auditoria de assembleias — Fase 5: pauta sigilosa (ex.: eleição de
   // síndico) — PDF/Excel omitem o vínculo nome↔voto no detalhamento.
   sigiloso?: boolean
+  // Sub-pautas (Carlos): "Nº no edital" livre (1, 2, 2.1, 2.2, 3). Só exibição.
+  numero_edital?: string
   opcoes?: string[]
 }
 
@@ -144,6 +147,7 @@ export async function createAssembleiaAction(input: {
         permite_abstencao: p.permite_abstencao ?? true,
         quorum_aprovacao: p.quorum_aprovacao ?? 0.5,
         sigiloso: p.sigiloso ?? false,
+        numero_edital: limparNumeroEdital(p.numero_edital),
         opcoes:
           p.tipo === "multipla_escolha"
             ? (p.opcoes ?? []).map((o) => o.trim()).filter(Boolean)
@@ -242,6 +246,7 @@ export async function updateAssembleiaAction(input: {
             permite_abstencao: p.permite_abstencao ?? true,
             quorum_aprovacao: p.quorum_aprovacao ?? 0.5,
             sigiloso: p.sigiloso ?? false,
+            numero_edital: limparNumeroEdital(p.numero_edital),
             opcoes:
               p.tipo === "multipla_escolha"
                 ? (p.opcoes ?? []).map((o) => o.trim()).filter(Boolean)
@@ -334,6 +339,7 @@ export async function adicionarPautaAssembleiaAction(input: {
         permite_abstencao: input.pauta.permite_abstencao ?? true,
         quorum_aprovacao: input.pauta.quorum_aprovacao ?? 0.5,
         sigiloso: input.pauta.sigiloso ?? false,
+        numero_edital: limparNumeroEdital(input.pauta.numero_edital),
         opcoes:
           input.pauta.tipo === "multipla_escolha"
             ? (input.pauta.opcoes ?? []).map((o) => o.trim()).filter(Boolean)
@@ -368,6 +374,7 @@ export async function editarPautaAction(input: {
   permite_abstencao?: boolean
   quorum_aprovacao?: number
   sigiloso?: boolean
+  numero_edital?: string
   opcoes?: string[]
 }): Promise<{ success: boolean; error?: string }> {
   const auth = await requirePerfil(["administrador", "operador"])
@@ -400,6 +407,7 @@ export async function editarPautaAction(input: {
       permite_abstencao: input.permite_abstencao ?? true,
       quorum_aprovacao: input.quorum_aprovacao ?? 0.5,
       sigiloso: input.sigiloso ?? false,
+      numero_edital: limparNumeroEdital(input.numero_edital),
       opcoes: tipo === "multipla_escolha" ? (input.opcoes ?? []).map((o) => o.trim()).filter(Boolean) : undefined,
     })
 

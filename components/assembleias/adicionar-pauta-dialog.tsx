@@ -51,6 +51,7 @@ export function AdicionarPautaDialog({
   const [permiteAbstencao, setPermiteAbstencao] = useState(true)
   const [quorumAprovacao, setQuorumAprovacao] = useState("50")
   const [sigiloso, setSigiloso] = useState(false)
+  const [numeroEdital, setNumeroEdital] = useState("")
   const [opcoes, setOpcoes] = useState<string[]>(["", ""])
   const [pautaCriadaId, setPautaCriadaId] = useState<string | null>(null)
   const [participantesParaNotificar, setParticipantesParaNotificar] = useState(0)
@@ -65,6 +66,7 @@ export function AdicionarPautaDialog({
     setPermiteAbstencao(true)
     setQuorumAprovacao("50")
     setSigiloso(false)
+    setNumeroEdital("")
     setOpcoes(["", ""])
     setPautaCriadaId(null)
     setParticipantesParaNotificar(0)
@@ -100,6 +102,7 @@ export function AdicionarPautaDialog({
           permite_abstencao: permiteAbstencao,
           quorum_aprovacao: tipo === "sim_nao" ? quorumNum / 100 : undefined,
           sigiloso,
+          numero_edital: numeroEdital,
           opcoes: tipo === "multipla_escolha" ? opcoes : undefined,
         },
       })
@@ -162,6 +165,19 @@ export function AdicionarPautaDialog({
                 onChange={(e) => setTitulo(e.target.value)}
                 autoFocus
               />
+              {/* Sub-pautas (Carlos): nº do edital, opcional. Use 2.1, 2.2. */}
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="add-pauta-numedital" className="shrink-0 text-xs text-muted-foreground">
+                  Nº no edital
+                </Label>
+                <Input
+                  id="add-pauta-numedital"
+                  placeholder="opcional (ex.: 2.1)"
+                  value={numeroEdital}
+                  onChange={(e) => setNumeroEdital(e.target.value)}
+                  className="h-7 w-36 text-xs"
+                />
+              </div>
               <Textarea
                 placeholder="Descrição (opcional)"
                 value={descricao}
