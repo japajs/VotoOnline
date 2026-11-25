@@ -16,10 +16,12 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { atualizarAtaAction } from "@/app/actions/assembleias"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 
 export interface AtaPautaItem {
   id: string
   ordem: number
+  numero_edital: string | null
   titulo: string
   ata_deliberacao: string | null
 }
@@ -127,7 +129,7 @@ export function AtaDialog({
             {pautasOrdenadas.map((p, i) => (
               <div key={p.id} className="space-y-1.5">
                 <Label htmlFor={`ata-delib-${p.id}`} className="text-xs font-normal text-muted-foreground">
-                  {i + 1}. {p.titulo}
+                  {rotuloPauta(p, i + 1)}. {p.titulo}
                 </Label>
                 <Textarea
                   id={`ata-delib-${p.id}`}

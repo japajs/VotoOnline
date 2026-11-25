@@ -511,6 +511,7 @@ export function BarraAcoesAssembleia({
             pautas={(assembleia.pautas ?? []).map((p) => ({
               id: p.id,
               ordem: p.ordem,
+              numero_edital: p.numero_edital ?? null,
               titulo: p.titulo,
               ata_deliberacao: p.ata_deliberacao ?? null,
             }))}
