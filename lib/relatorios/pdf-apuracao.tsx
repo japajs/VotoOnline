@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import { APP_NAME, APP_VERSION, APP_AUTORIA } from "@/lib/constants"
 import { pluralImovel } from "@/lib/format"
 import type { Assembleia, AssembleiaApuracao, Condominio, CriterioPeso } from "@/types"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 import type { VotoDetalhado } from "@/services/relatorios"
 import { fmtPonderado, formatDateTimeBR, pctStr, statusLabelPT } from "./utils"
 
@@ -708,7 +709,7 @@ export function ApuracaoPDF({
                   quebre no meio entre páginas. */}
               <View style={s.pautaBlock} wrap={layoutExpandido}>
                 <View style={s.pautaHeader}>
-                  <Text style={s.pautaIdx}>PAUTA {pauta.ordem}</Text>
+                  <Text style={s.pautaIdx}>PAUTA {rotuloPauta(pauta, pauta.ordem)}</Text>
                   <Text style={s.pautaTitle}>{pauta.titulo}</Text>
                   {pautaIncluidaDepois(pauta.created_at) ? (
                     <Text style={s.pautaNovaBadge}>INCLUÍDA APÓS A ABERTURA</Text>

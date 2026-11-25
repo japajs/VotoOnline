@@ -1,5 +1,6 @@
 import { CheckCircle2, XCircle, Building2, CalendarDays, Users, Scale, Lock } from "lucide-react"
 import { pluralImovel } from "@/lib/format"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 import type { AssembleiaApuracao, CriterioPeso } from "@/types"
 import type { VotoDetalhado } from "@/services/relatorios"
 
@@ -279,7 +280,7 @@ export function ResultadoAssembleia({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-widest text-primary/60">
-                    Pauta {i + 1}
+                    Pauta {rotuloPauta(pauta, i + 1)}
                   </p>
                   <h3 className="mt-1 flex items-center gap-1.5 text-sm font-semibold leading-snug">
                     {pauta.titulo}

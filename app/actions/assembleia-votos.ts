@@ -417,6 +417,7 @@ export async function registrarVotosAction(
 export interface EstadoVotoPauta {
   id: string
   ordem: number
+  numero_edital: string | null
   titulo: string
   descricao: string | null
   tipo: PautaTipo
@@ -472,6 +473,7 @@ export async function getEstadoVotoAction(token: string): Promise<EstadoVoto | n
       .map((p) => ({
         id: p.id,
         ordem: p.ordem,
+        numero_edital: p.numero_edital ?? null,
         titulo: p.titulo,
         descricao: p.descricao,
         tipo: p.tipo,

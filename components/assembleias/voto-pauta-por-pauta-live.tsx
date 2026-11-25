@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { CheckCircle2, Clock, Loader2, PauseCircle, Vote } from "lucide-react"
 import { AssembleiaVotoForm } from "@/components/assembleias/assembleia-voto-form"
 import { getEstadoVotoAction, type EstadoVoto } from "@/app/actions/assembleia-votos"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 
 const POLL_MS = 10_000
 
@@ -76,7 +77,7 @@ export function VotoPautaPorPautaLive({
                 className="flex items-center gap-2 rounded-lg border border-border/40 bg-background px-3 py-2 text-sm"
               >
                 <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                  {i + 1}.
+                  {rotuloPauta(p, i + 1)}.
                 </span>
                 <span className="min-w-0 flex-1 truncate">{p.titulo}</span>
                 {estadoPauta === "votada" ? (

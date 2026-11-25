@@ -780,3 +780,9 @@ where s.status in ('sent', 'failed')
 alter table assembleias add column if not exists ata_abertura text;
 alter table assembleias add column if not exists ata_encerramento text;
 alter table pautas add column if not exists ata_deliberacao text;
+
+-- Sub-pautas (pedido do Carlos): rótulo livre "Nº no edital" pra a numeração
+-- das pautas bater com o edital de convocação, inclusive quando uma pauta do
+-- edital é quebrada em sub-pautas (1, 2, 2.1, 2.2, 3). Só exibição — não muda
+-- voto/peso/apuração. null = usa o número automático (posição/ordem).
+alter table pautas add column if not exists numero_edital text;

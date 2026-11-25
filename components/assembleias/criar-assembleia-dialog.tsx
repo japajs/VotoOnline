@@ -56,6 +56,7 @@ export function CriarAssembleiaDialog({
           permite_abstencao: p.permiteAbstencao,
           quorum_aprovacao: form.pctParaFracao(p.quorumAprovacao),
           sigiloso: p.sigiloso,
+          numero_edital: p.numeroEdital,
           opcoes: p.tipo === "multipla_escolha" ? p.opcoes : undefined,
         })),
       })

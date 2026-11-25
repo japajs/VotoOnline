@@ -44,6 +44,7 @@ type JoinedPauta = {
   quorum_aprovacao: number
   sigiloso: boolean
   votacao_aberta?: boolean | null
+  numero_edital?: string | null
   created_at: string
   pauta_opcoes: JoinedPautaOpcao[] | null
 }
@@ -102,7 +103,7 @@ type JoinedSend = JoinedSendSnapshot & {
 }
 
 const SELECT_SEND_JOINED =
-  "*, assembleias(id, condominio_id, titulo, descricao, status, data_abertura, data_encerramento, quorum_minimo, data_1a_convocacao, quorum_minimo_2a, votacao_por_pauta, condominios(nome), pautas(id, assembleia_id, ordem, titulo, descricao, ativa, tipo, permite_abstencao, status, quorum_aprovacao, sigiloso, votacao_aberta, created_at, pauta_opcoes(*))), proprietarios(id, nome, email)"
+  "*, assembleias(id, condominio_id, titulo, descricao, status, data_abertura, data_encerramento, quorum_minimo, data_1a_convocacao, quorum_minimo_2a, votacao_por_pauta, condominios(nome), pautas(id, assembleia_id, ordem, titulo, descricao, ativa, tipo, permite_abstencao, status, quorum_aprovacao, sigiloso, votacao_aberta, numero_edital, created_at, pauta_opcoes(*))), proprietarios(id, nome, email)"
 
 function rowToSend(row: JoinedSend): AssembleiaSend {
   const a = row.assembleias
@@ -152,6 +153,7 @@ function rowToSend(row: JoinedSend): AssembleiaSend {
               quorum_aprovacao: p.quorum_aprovacao,
               sigiloso: p.sigiloso,
               votacao_aberta: p.votacao_aberta ?? false,
+              numero_edital: p.numero_edital ?? null,
               created_at: p.created_at,
               opcoes: p.pauta_opcoes
                 ? [...p.pauta_opcoes].sort((x, y) => x.ordem - y.ordem).map(rowToPautaOpcao)

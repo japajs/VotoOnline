@@ -367,6 +367,7 @@ export default async function PublicVotoPage({ params }: Props) {
         .map((p) => ({
           id: p.id,
           ordem: p.ordem,
+          numero_edital: p.numero_edital ?? null,
           titulo: p.titulo,
           descricao: p.descricao,
           tipo: p.tipo,

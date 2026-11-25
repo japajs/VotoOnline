@@ -5,6 +5,7 @@ import { Loader2, Send, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { registrarVotosAction } from "@/app/actions/assembleia-votos"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 import type { RespostaInput } from "@/services/assembleia-votos"
 import type { AssembleiaRespostaValor, Pauta } from "@/types"
 
@@ -35,6 +36,7 @@ const OPCOES: { valor: AssembleiaRespostaValor; colorSelected: string; colorHove
 export interface PautaVotavel {
   id: string
   ordem: number
+  numero_edital?: string | null
   titulo: string
   descricao: string | null
   tipo: Pauta["tipo"]
@@ -134,7 +136,7 @@ export function AssembleiaVotoForm({
           >
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-primary/60">
-                Pauta {pauta.ordem}
+                Pauta {rotuloPauta(pauta, pauta.ordem)}
               </p>
               <p className="mt-1 text-sm font-medium leading-snug">{pauta.titulo}</p>
               {pauta.descricao && (

@@ -27,6 +27,7 @@ type JoinedPauta = {
   votacao_aberta_em?: string | null
   votacao_fechada_em?: string | null
   ata_deliberacao?: string | null
+  numero_edital?: string | null
   created_at: string
   pauta_opcoes: JoinedPautaOpcao[] | null
 }
@@ -80,6 +81,7 @@ function rowToPauta(row: JoinedPauta): Pauta {
     votacao_aberta_em: row.votacao_aberta_em ?? null,
     votacao_fechada_em: row.votacao_fechada_em ?? null,
     ata_deliberacao: row.ata_deliberacao ?? null,
+    numero_edital: row.numero_edital ?? null,
     created_at: row.created_at,
     opcoes: row.pauta_opcoes
       ? [...row.pauta_opcoes].sort((a, b) => a.ordem - b.ordem).map(rowToPautaOpcao)
@@ -263,6 +265,7 @@ export interface PautaEdicaoInput {
   permite_abstencao: boolean
   quorum_aprovacao: number
   sigiloso: boolean
+  numero_edital: string | null
   opcoes?: string[]
 }
 
@@ -340,6 +343,7 @@ export async function updateAssembleiaCompleta(
           permite_abstencao: p.permite_abstencao,
           quorum_aprovacao: p.quorum_aprovacao,
           sigiloso: p.sigiloso,
+          numero_edital: p.numero_edital,
           opcoes: p.tipo === "multipla_escolha" ? p.opcoes : undefined,
         }))
       )

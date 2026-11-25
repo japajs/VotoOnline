@@ -2,6 +2,7 @@ import * as XLSX from "xlsx"
 import { APP_NAME, APP_VERSION } from "@/lib/constants"
 import type { Assembleia, AssembleiaApuracao, Condominio } from "@/types"
 import type { ParticipanteRelatorio, UnidadeRelatorio, VotoDetalhado } from "@/services/relatorios"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 import {
   formatDateTimeBR,
   pctStr,
@@ -104,7 +105,7 @@ export function gerarXlsxApuracao(data: XlsxApuracaoData): Buffer {
         ] as (string | number)[][])
       : []),
     ["PAUTAS VOTADAS", assembleia.pautas?.length ?? 0],
-    ...(assembleia.pautas ?? []).map((p, i) => [`Pauta ${i + 1}`, p.titulo]),
+    ...(assembleia.pautas ?? []).map((p, i) => [`Pauta ${rotuloPauta(p, i + 1)}`, p.titulo]),
     [],
     ["Emitido em", emitidoEm],
     ["Emitido por", emitidoPor],
