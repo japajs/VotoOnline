@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { MAX_PAUTAS, MIN_OPCOES, type AssembleiaFormApi } from "./use-assembleia-form"
+import { rotuloPauta } from "@/lib/pauta-rotulo"
 
 interface Props {
   form: AssembleiaFormApi
@@ -167,8 +168,11 @@ export function AssembleiaFormFields({ form, pautasEditaveis, mensagemPautasBloq
                 className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-2"
               >
                 <div className="flex items-center justify-between">
+                  {/* O cabeçalho acompanha o Nº no edital ao vivo (ex.: digitou
+                      4.1 → "Pauta 4.1"), batendo com a apuração/resultado. Em
+                      branco, numera pela posição na lista (ver rotuloPauta). */}
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Pauta {i + 1}
+                    Pauta {rotuloPauta({ numero_edital: pauta.numeroEdital }, i + 1)}
                   </span>
                   {pautasEditaveis && form.pautas.length > 1 && (
                     <button
